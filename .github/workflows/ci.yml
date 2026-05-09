@@ -24,7 +24,10 @@ jobs:
         run: uv venv .venv
 
       - name: Install dependencies
-        run: uv pip install --python .venv -e ".[dev]"
+        run: |
+          uv pip install --python .venv pytest pytest-cov
+          uv pip install --python .venv python-docx python-pptx pymupdf
 
       - name: Run tests
-        run: uv pip run --python .venv pytest tests/ -v --cov=src/opp --cov-report=term-missing
+        run: |
+          .venv/bin/python -m pytest tests/ -v --cov=src/opp --cov-report=term-missing
