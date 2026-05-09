@@ -42,6 +42,9 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v4
 
+      - name: Create virtual environment
+        run: uv venv .venv
+
       - name: Install dependencies
         run: uv pip install --python .venv ruff
 
@@ -61,8 +64,11 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v4
 
+      - name: Create virtual environment
+        run: uv venv .venv
+
       - name: Install dependencies
-        run: uv pip install --python .venv mypy
+        run: uv pip install --python .venv mypy types-python-docx types-python-pptx
 
       - name: Type check
         run: uv pip run --python .venv mypy src/opp --ignore-missing-imports
