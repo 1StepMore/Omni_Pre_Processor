@@ -15,6 +15,8 @@ from opp.utils.dataclasses import (
     SlideData,
     TableData,
 )
+from opp.xliff import XLIFFFileGenerator, XLIFFValidator
+from opp.xliff import XLIFFTransUnit, XLIFFFileAttributes, XLIFFUnitState
 
 __all__ = [
     "DOCXExtractor",
@@ -28,4 +30,9 @@ __all__ = [
     "ParagraphData",
     "SlideData",
     "TableData",
+    "XLIFFFileGenerator",
+    "XLIFFValidator",
+    "XLIFFTransUnit",
+    "XLIFFFileAttributes",
+    "XLIFFUnitState",
 ]
