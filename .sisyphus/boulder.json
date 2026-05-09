@@ -1,0 +1,49 @@
+{
+  "active_plan": "/mnt/d/贯维/Omni_Pre_Processor/.sisyphus/plans/opp-phase1-md-generator.md",
+  "started_at": "2026-05-09T07:25:50.287Z",
+  "session_ids": [
+    "ses_1f48434b6ffe80O3eLh1J95FJG"
+  ],
+  "session_origins": {
+    "ses_1f48434b6ffe80O3eLh1J95FJG": "direct"
+  },
+  "plan_name": "opp-phase1-md-generator",
+  "agent": "atlas",
+  "task_sessions": {
+    "todo:1": {
+      "task_key": "todo:1",
+      "task_label": "1",
+      "task_title": "**创建 test_md_generator.py (RED阶段)**",
+      "session_id": "ses_1f45e1049ffevsDVh4bfv0obRv",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-09T07:29:42.338Z"
+    },
+    "todo:5": {
+      "task_key": "todo:5",
+      "task_label": "5",
+      "task_title": "**实现 generate_headings() 方法**",
+      "session_id": "ses_1f45a3b89ffeIilomMSsn22JS8",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-09T07:37:06.506Z"
+    },
+    "todo:10": {
+      "task_key": "todo:10",
+      "task_label": "10",
+      "task_title": "**MarkdownGenerator 集成**",
+      "session_id": "ses_1f453cce3ffewiCHEVlhXLITY8",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-09T08:02:04.525Z"
+    },
+    "final-wave:f1": {
+      "task_key": "final-wave:f1",
+      "task_label": "F1",
+      "task_title": "**Plan Compliance Audit** — `oracle`",
+      "session_id": "ses_1f43d5643ffewl0UsJhmgtSSoe",
+      "agent": "oracle",
+      "updated_at": "2026-05-09T08:05:46.703Z"
+    }
+  }
+}

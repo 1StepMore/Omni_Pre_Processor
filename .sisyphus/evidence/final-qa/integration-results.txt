@@ -1,0 +1,33 @@
+INTEGRATION TEST RESULTS
+========================================
+[I1] Full generation:
+# Main Title
+## Introduction
+
+- Overview
+  - Detail A
+1. Summary
+
+| Name | Value |
+| --- | --- |
+| X | 100 |
+| Y | 200 |
+[I1] Full extraction result: PASS
+[I2] FormatProtector + Markdown integration: PASS
+     Protected text: '\\# Title\n```\ndef hello():\n    print("world")\n```\nHere is \\*italic\\* text\\.'...
+[I3] Mixed nested lists:
+1. Step 1
+  - Substep 1.1
+  - Substep 1.2
+1. Step 2
+[I3] Mixed ordered/unordered: FAIL
+[I4] Wide table warning: PASS
+[I5] Empty text skip: FAIL
+[I6] Multiple headings:
+# First
+# Second
+## Third
+[I6] Multiple headings: FAIL
+Integration Tests: [3/6 pass]
+========================================
+Integration Tests: [3/6 pass]
