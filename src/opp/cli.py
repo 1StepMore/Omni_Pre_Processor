@@ -9,6 +9,7 @@ from opp.detector import FormatType, detect_format
 from opp.error_handler import ErrorHandler, ErrorContext
 from opp.pipeline import OPPPipeline
 from opp.resource_manager import ResourceManager
+from opp.logger import logger, setup_logger
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -17,10 +18,9 @@ def create_parser() -> argparse.ArgumentParser:
         description="OPP - Omni Pre-Processor. Extract content from DOCX, PPTX, and PDF files.",
         epilog="""Examples:
   opp file.docx                          Extract from a single file
+  opp folder/                            Process folder (batch mode)
   opp --detect-format file.docx          Auto-detect format and extract
   opp --resource-dir ./output file.docx  Extract and save resources to ./output
-  opp --report html file.docx            Generate HTML report after extraction
-  opp --batch file1.docx file2.pdf       Process multiple files
   opp --target-format md --output-dir ./out file.docx   Generate markdown output
   opp --target-format xlf --source-lang en --target-lang fr file.docx  Generate XLIFF
         """
@@ -30,7 +30,7 @@ def create_parser() -> argparse.ArgumentParser:
         "files",
         nargs="+",
         type=Path,
-        help="Input files to process (DOCX, PPTX, PDF)"
+        help="Input files or folders to process (DOCX, PPTX, PDF)"
     )
 
     parser.add_argument(
@@ -103,57 +103,70 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def detect_and_report_format(file_path: Path) -> FormatType:
-    fmt, confidence = detect_format(file_path)
-    return fmt
+def get_supported_extensions() -> List[str]:
+    return ['.docx', '.pptx', '.pdf']
 
 
-def process_file(
+def expand_directories(paths: List[Path]) -> List[Path]:
+    files = []
+    for path in paths:
+        if path.is_dir():
+            supported_exts = get_supported_extensions()
+            for ext in supported_exts:
+                for f in path.rglob(f'*{ext}'):
+                    if not f.name.startswith('.'):
+                        files.append(f)
+        else:
+            files.append(path)
+    return files
+
+
+def process_single_file(
     file_path: Path,
-    detect_format_flag: bool = False,
-    resource_dir: Optional[Path] = None,
-    error_handler: Optional[ErrorHandler] = None
-) -> dict:
-    result = {
-        "file": str(file_path),
-        "success": False,
-        "format": None,
-        "errors": [],
-        "warnings": []
-    }
-
+    args: argparse.Namespace,
+    pipeline: OPPPipeline,
+    stats: dict,
+    error_handler: ErrorHandler
+) -> bool:
     try:
-        if detect_format_flag:
-            fmt, confidence = detect_format(file_path)
-            result["format"] = fmt.value
-            result["confidence"] = confidence
-            if fmt == FormatType.UNKNOWN:
-                result["errors"].append(f"Unknown format (confidence: {confidence})")
-                return result
+        proc_result = pipeline.process_file(file_path)
 
-        result["success"] = True
+        if proc_result.errors:
+            stats["errors"] += 1
+            for error in proc_result.errors:
+                logger.error(f"{file_path}: {error}")
+            return False
 
-    except FileNotFoundError:
-        result["errors"].append(f"File not found: {file_path}")
+        if proc_result.extraction_result is None:
+            stats["errors"] += 1
+            logger.error(f"No extraction result for {file_path}")
+            return False
+
+        output_dir = args.output_dir if args.output_dir else file_path.parent
+        output_dir.mkdir(parents=True, exist_ok=True)
+        base_name = file_path.stem
+
+        if args.target_format in ("md", "both"):
+            md_path = output_dir / f"{base_name}.md"
+            pipeline.generate_markdown(proc_result.extraction_result, md_path)
+            logger.info(f"Generated: {md_path}")
+
+        if args.target_format in ("xlf", "both"):
+            xliff_path = output_dir / f"{base_name}.xlf"
+            pipeline.generate_xliff(
+                proc_result.extraction_result,
+                xliff_path,
+                args.source_lang,
+                args.target_lang
+            )
+            logger.info(f"Generated: {xliff_path}")
+
+        return True
+
     except Exception as e:
-        result["errors"].append(f"Processing error: {str(e)}")
-
-    return result
-
-
-def print_statistics(stats: dict) -> None:
-    print("\n" + "=" * 50)
-    print("PROCESSING STATISTICS")
-    print("=" * 50)
-    print(f"  Files processed: {stats.get('files_processed', 0)}")
-    print(f"  Errors:          {stats.get('errors', 0)}")
-    print(f"  Warnings:        {stats.get('warnings', 0)}")
-    duration = stats.get('duration_seconds', 0.0)
-    print(f"  Duration:        {duration:.2f} seconds")
-    if duration > 0:
-        rate = stats.get('files_processed', 0) / duration
-        print(f"  Throughput:      {rate:.2f} files/second")
-    print("=" * 50)
+        stats["errors"] += 1
+        logger.error(f"Error processing {file_path}: {e}")
+        return False
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -163,9 +176,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.target_format in ("xlf", "both") and not args.target_lang:
         parser.error("--target-lang is required when --target-format is 'xlf' or 'both'")
 
+    setup_logger(args.verbose)
+
     if args.verbose:
-        print(f"OPP CLI v0.1.0")
-        print(f"Processing {len(args.files)} file(s)")
+        logger.info(f"OPP CLI v0.1.0")
+        logger.info(f"Processing {len(args.files)} input(s)")
 
     start_time = time.time()
     error_handler = ErrorHandler()
@@ -176,19 +191,35 @@ def main(argv: Optional[List[str]] = None) -> int:
         "duration_seconds": 0.0
     }
 
-    for i, file_path in enumerate(args.files, 1):
-        if args.verbose or args.batch:
-            print(f"[{i}/{len(args.files)}] Processing: {file_path}")
+    all_files = expand_directories(args.files)
+
+    if len(all_files) != len(args.files):
+        logger.info(f"Expanded {len(args.files)} input(s) to {len(all_files)} file(s)")
+
+    if not all_files:
+        logger.warning("No supported files found")
+        return 1
+
+    if len(all_files) > 1 and not args.output_dir:
+        args.output_dir = args.files[0].parent / f"{args.files[0].name}_converted"
+        args.output_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Batch output directory: {args.output_dir}")
+
+    pipeline = OPPPipeline(resource_storage_dir=args.resource_dir or (Path.cwd() / "resources"))
+
+    for i, file_path in enumerate(all_files, 1):
+        if args.verbose:
+            logger.info(f"[{i}/{len(all_files)}] Processing: {file_path}")
 
         detected_format = None
         if args.detect_format:
             fmt, confidence = detect_format(file_path)
             detected_format = fmt.value
             if args.verbose:
-                print(f"  Detected: {fmt.value} (confidence: {confidence})")
+                logger.info(f"  Detected: {fmt.value} (confidence: {confidence})")
 
             if fmt == FormatType.UNKNOWN:
-                print(f"  ERROR: Unknown file format")
+                logger.error(f"Unknown file format: {file_path}")
                 error_handler.add_error(ErrorContext(
                     file_path=str(file_path),
                     error_type="detection",
@@ -198,82 +229,24 @@ def main(argv: Optional[List[str]] = None) -> int:
                 stats["errors"] += 1
                 continue
 
-        result = process_file(
-            file_path,
-            detect_format_flag=args.detect_format,
-            resource_dir=args.resource_dir,
-            error_handler=error_handler
-        )
-
-        # If target-format is specified, use OPPPipeline for full extraction + generation
         if args.target_format:
-            resource_dir = args.resource_dir or (file_path.parent / "resources")
-            pipeline = OPPPipeline(resource_storage_dir=resource_dir)
-
-            try:
-                proc_result = pipeline.process_file(file_path)
-
-                if proc_result.errors:
-                    stats["errors"] += 1
-                    for error in proc_result.errors:
-                        if args.verbose:
-                            print(f"  ERROR: {error}")
-                    continue
-
-                if proc_result.extraction_result is None:
-                    stats["errors"] += 1
-                    if args.verbose:
-                        print(f"  ERROR: No extraction result")
-                    continue
-
-                # Determine output directory
-                output_dir = args.output_dir if args.output_dir else file_path.parent
-                output_dir.mkdir(parents=True, exist_ok=True)
-
-                base_name = file_path.stem
-
-                # Generate output based on target-format
-                if args.target_format in ("md", "both"):
-                    md_path = output_dir / f"{base_name}.md"
-                    pipeline.generate_markdown(proc_result.extraction_result, md_path)
-                    if args.verbose:
-                        print(f"  Generated: {md_path}")
-
-                if args.target_format in ("xlf", "both"):
-                    xliff_path = output_dir / f"{base_name}.xlf"
-                    pipeline.generate_xliff(
-                        proc_result.extraction_result,
-                        xliff_path,
-                        args.source_lang,
-                        args.target_lang
-                    )
-                    if args.verbose:
-                        print(f"  Generated: {xliff_path}")
-
+            success = process_single_file(file_path, args, pipeline, stats, error_handler)
+            if success:
                 stats["files_processed"] += 1
-                if args.verbose:
-                    print(f"  Success!")
-
-            except Exception as e:
-                stats["errors"] += 1
-                if args.verbose:
-                    print(f"  ERROR: {e}")
-            continue
-
-        if result["success"]:
-            stats["files_processed"] += 1
-            if args.verbose:
-                print(f"  Success!")
         else:
-            stats["errors"] += 1
-            for error in result.get("errors", []):
-                if args.verbose:
-                    print(f"  ERROR: {error}")
+            result = {
+                "file": str(file_path),
+                "success": True,
+                "format": detected_format,
+                "errors": [],
+                "warnings": []
+            }
+            if result["success"]:
+                stats["files_processed"] += 1
+            else:
+                stats["errors"] += 1
 
     if args.report:
-        if args.verbose:
-            print(f"\nGenerating {args.report} report...")
-
         if args.report == "html":
             report = error_handler.generate_html_report(file_count=stats["files_processed"])
         else:
@@ -281,15 +254,14 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         if args.output:
             args.output.write_text(report, encoding="utf-8")
-            if args.verbose:
-                print(f"Report saved to: {args.output}")
+            logger.info(f"Report saved to: {args.output}")
         else:
             print("\n" + report)
 
     duration = time.time() - start_time
     stats["duration_seconds"] = duration
 
-    print_statistics(stats)
+    logger.info(f"Completed: {stats['files_processed']} succeeded, {stats['errors']} failed")
 
     return 0 if stats["errors"] == 0 else 1
 

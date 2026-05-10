@@ -3,12 +3,13 @@ chcp 65001 >nul 2>&1
 
 REM OPP XLIFF Conversion - Quick Convert to .xlf for translation
 REM Usage: xliff.bat "file.docx" [target-lang] [flags]
-REM target-lang is required for XLIFF output
+REM Supports drag-drop of files and folders
 
 if "%~1"=="" (
     echo OPP XLIFF Converter
     echo.
     echo Usage: xliff.bat "file.docx" [target-lang] [flags]
+    echo         xliff.bat "folder" [target-lang] [flags]
     echo.
     echo Converts document to XLIFF format for translation.
     echo.
@@ -16,13 +17,12 @@ if "%~1"=="" (
     echo   target-lang          Target language code ^(e.g., zh, ja, fr^) ^(^default: zh^)
     echo.
     echo Flags:
-    echo   --source-lang en    Source language ^(default: en^)
     echo   --output-dir ./output  Output directory
+    echo   -v                       Verbose logging
     echo.
     echo Example:
     echo   xliff.bat "document.docx" zh
-    echo   xliff.bat "file.pptx" ja --output-dir ./out
-    echo   xliff.bat "manual.docx" fr --source-lang en
+    echo   xliff.bat "folder" ja --output-dir ./out
     pause
     exit /b 1
 )
@@ -42,7 +42,6 @@ set TARGET_LANG=zh
 if not "%~2"=="" set TARGET_LANG=%~2
 
 REM Build command line: file + any flags after target-lang
-REM Skip first 2 args (file + target-lang), pass rest to OPP
 set "EXTRA_FLAGS="
 :parse_args
 shift
@@ -54,5 +53,5 @@ goto parse_args
 python -m opp --target-format=xlf --target-lang=%TARGET_LANG% "%~1"%EXTRA_FLAGS%
 
 echo.
-echo Done! .xlf file created.
+echo Done! Logs saved to logs\ directory.
 pause >nul

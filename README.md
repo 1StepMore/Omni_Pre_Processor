@@ -86,18 +86,24 @@ opp --target-format=md --output-dir ./output document.docx
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
-| `md.bat` | Convert to Markdown | `md.bat "file.docx" [flags]` |
-| `xliff.bat` | Convert to XLIFF | `xliff.bat "file.docx" [target-lang] [flags]` |
+| `md.bat` | Convert to Markdown | `md.bat "file.docx"` or `md.bat "folder"` |
+| `xliff.bat` | Convert to XLIFF | `xliff.bat "file.docx" [target-lang]` |
+
+Supports drag-drop of files **and folders**. Logs saved to `logs/` directory.
 
 ```batch
-# Convert to Markdown
+# Convert single file to Markdown
 md.bat "document.docx"
-md.bat "file.pdf" --output-dir ./output
+
+# Convert folder to Markdown (batch mode)
+md.bat "folder" --output-dir ./output
 
 # Convert to XLIFF for translation
 xliff.bat "document.docx" zh
-xliff.bat "file.pptx" ja --output-dir ./out
-xliff.bat "manual.docx" fr --source-lang en
+xliff.bat "folder" ja
+
+# Verbose logging
+md.bat "file.pdf" -v
 ```
 
 ## Development

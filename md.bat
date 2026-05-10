@@ -3,24 +3,23 @@ chcp 65001 >nul 2>&1
 
 REM OPP Markdown Conversion - Quick Convert to .md
 REM Usage: md.bat "file.docx" [flags]
-REM No target-lang needed for Markdown output
+REM Supports drag-drop of files and folders
 
 if "%~1"=="" (
     echo OPP Markdown Converter
     echo.
     echo Usage: md.bat "file.docx" [flags]
+    echo         md.bat "folder" [flags]
     echo.
     echo Converts document to Markdown format.
     echo.
     echo Flags:
-    echo   --source-lang en        Source language ^(default: en^)
     echo   --output-dir ./output    Output directory
-    echo   --batch                 Enable batch mode
+    echo   -v                       Verbose logging
     echo.
     echo Example:
     echo   md.bat "document.docx"
-    echo   md.bat "file.pdf" --output-dir ./output
-    echo   md.bat "*.docx" --batch --output-dir ./out
+    echo   md.bat "folder" --output-dir ./output
     pause
     exit /b 1
 )
@@ -35,9 +34,9 @@ if exist "%~dp0.venv\Scripts\activate.bat" (
 REM Change to project directory
 cd /d "%~dp0"
 
-REM Run OPP with Markdown target, pass all args after file
+REM Run OPP with Markdown target
 python -m opp --target-format=md "%~1" %~2 %~3 %~4 %~5 %~6 %~7 %~8 %~9
 
 echo.
-echo Done! .md file created.
+echo Done! Logs saved to logs\ directory.
 pause >nul
