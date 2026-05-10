@@ -170,9 +170,9 @@ class TestCSVExtractor:
     # ===== Supported Extensions =====
 
     def test_supported_extensions(self):
-        """Verify supported extensions returns .csv."""
+        """Verify supported extensions returns .csv and .tsv."""
         extractor = CSVExtractor()
-        assert extractor.supported_extensions() == [".csv"]
+        assert extractor.supported_extensions() == [".csv", ".tsv"]
 
 
 # ===== Fixtures =====
@@ -190,9 +190,9 @@ def csv_files_normal(tmp_path: Path) -> Path:
         encoding="utf-8"
     )
 
-    # UTF-8 without header
+    # UTF-8 without header (use numeric data so first row isn't treated as header)
     (csv_dir / "utf8_no_header.csv").write_text(
-        "a,b,c\nd,e,f\ng,h,i\n",
+        "1,2,3\n4,5,6\n7,8,9\n",
         encoding="utf-8"
     )
 
