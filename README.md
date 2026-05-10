@@ -10,6 +10,7 @@ Document content extraction package for DOCX, PPTX, and PDF files.
 - **Error handling** - Unified error hierarchy with HTML/text reports
 - **Pipeline orchestrator** - Single API for detect → extract → manage → report
 - **CLI interface** - Full command-line interface with batch support
+- **Output generation** - Markdown and XLIFF export for localization pipelines
 
 ## Phases
 
@@ -19,6 +20,7 @@ Document content extraction package for DOCX, PPTX, and PDF files.
 | Phase 1 | ✅ Complete | Markdown generation |
 | Phase 2 | ✅ Complete | XLIFF 1.2/2.0 export |
 | Phase 3 | ✅ Complete | Multi-format convergence, auto-detection, resource management |
+| Phase 4 | ✅ Complete | CLI/Pipeline integration, E2E tests, PyPI publishing |
 
 ## Installation
 
@@ -67,8 +69,26 @@ opp --report html document.docx -o report.html
 # Batch processing
 opp --batch file1.docx file2.pdf file3.pptx
 
-# Full pipeline with all features
-opp --detect-format --resource-dir ./images --report html --batch *.docx *.pdf *.pptx
+# Generate Markdown output
+opp --target-format=md document.docx
+
+# Generate XLIFF for translation
+opp --target-format=xlf --source-lang=en --target-lang=zh document.docx
+
+# Generate both MD and XLIFF
+opp --target-format=both --source-lang=en --target-lang=zh document.docx
+
+# Custom output directory
+opp --target-format=md --output-dir ./output document.docx
+```
+
+### Batch Entry Point (Windows)
+
+Double-click `opp.bat` or drag-drop files onto it:
+
+```batch
+opp.bat "document.docx" --target-format=md --output-dir ./output
+opp.bat "file.pdf" --target-format=xlf --source-lang=en --target-lang=zh
 ```
 
 ## Development
@@ -108,7 +128,7 @@ src/opp/
 
 ```
                     ┌─────────────────────────────────────────────────────────┐
-                    │                        OPPPipeline                       │
+                    │                        OPPPipeline                           │
                     │  detect_format() → Extractor → ResourceManager → Report    │
                     └─────────────────────────────────────────────────────────┘
 
@@ -127,4 +147,22 @@ src/opp/
 | resource_manager | 18 |
 | error_handler | 18 |
 | integration | 21 |
-| **Total** | **70+** |
+| cli | 18 |
+| e2e (docx/pptx/pdf) | 52 |
+| opp-ol integration | 16 |
+| xliff | 40+ |
+| **Total** | **240** |
+
+## PyPI Publishing
+
+```bash
+# Tag a release
+git tag v0.1.1
+git push origin v0.1.1
+
+# GitHub Actions automatically:
+# 1. Runs tests
+# 2. Builds package
+# 3. Publishes to TestPyPI for verification
+# 4. On manual approval, publishes to PyPI
+```
