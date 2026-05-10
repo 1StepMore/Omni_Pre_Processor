@@ -26,7 +26,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv pip install --python .venv pytest pytest-cov
-          uv pip install --python .venv python-docx python-pptx pymupdf lxml translate-toolkit
+          uv pip install --python .venv python-docx python-pptx pymupdf lxml translate-toolkit openpyxl pandas chardet
 
       - name: Run tests
         env:
