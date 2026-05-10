@@ -82,13 +82,22 @@ opp --target-format=both --source-lang=en --target-lang=zh document.docx
 opp --target-format=md --output-dir ./output document.docx
 ```
 
-### Batch Entry Point (Windows)
+### Batch Entry Points (Windows)
 
-Double-click `opp.bat` or drag-drop files onto it:
+| Script | Purpose | Usage |
+|--------|---------|-------|
+| `md.bat` | Convert to Markdown | `md.bat "file.docx" [flags]` |
+| `xliff.bat` | Convert to XLIFF | `xliff.bat "file.docx" [target-lang] [flags]` |
 
 ```batch
-opp.bat "document.docx" --target-format=md --output-dir ./output
-opp.bat "file.pdf" --target-format=xlf --source-lang=en --target-lang=zh
+# Convert to Markdown
+md.bat "document.docx"
+md.bat "file.pdf" --output-dir ./output
+
+# Convert to XLIFF for translation
+xliff.bat "document.docx" zh
+xliff.bat "file.pptx" ja --output-dir ./out
+xliff.bat "manual.docx" fr --source-lang en
 ```
 
 ## Development
