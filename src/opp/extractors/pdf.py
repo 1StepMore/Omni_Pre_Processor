@@ -10,6 +10,7 @@ from opp.utils.dataclasses import (
     ExtractionResult,
     ImageData,
     ParagraphData,
+    TableData,
     TextBlockData,
 )
 from opp.utils.exceptions import CorruptedFileError, PasswordProtectedError
@@ -86,13 +87,15 @@ class PDFExtractor(ExtractorBase):
         return result
 
     def detect_tables(self, doc: fitz.Document) -> List:
-        result: List = []
+        result: List[TableData] = []
         for page_num in range(doc.page_count):
             page = doc[page_num]
-            tables = page.find_tables()
-            if tables:
-                for table in tables:
-                    result.append(table)
+            for table in page.find_tables():
+                extracted = table.extract()
+                if extracted:
+                    headers = table.header.names if table.header else []
+                    rows = extracted
+                    result.append(TableData(headers=headers, rows=rows))
         return result
 
     def extract_images(self, doc: fitz.Document) -> List[ImageData]:
