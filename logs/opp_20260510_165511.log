@@ -1,0 +1,3 @@
+[2026-05-10 16:55:11] [INFO] Log file: /mnt/d/贯维/Omni_Pre_Processor/logs/opp_20260510_165511.log
+[2026-05-10 16:55:11] [ERROR] /tmp/pytest-of-renanzai/pytest-79/test_source_lang_custom_value0/test.docx: Extraction failed: 文件损坏或无法解析: /tmp/pytest-of-renanzai/pytest-79/test_source_lang_custom_value0/test.docx
+[2026-05-10 16:55:11] [INFO] Completed: 0 succeeded, 1 failed

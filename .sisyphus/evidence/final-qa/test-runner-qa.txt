@@ -1,0 +1,10 @@
+============================================================
+Unit Tests Execution QA
+============================================================
+
+
+--- Testing test_auto_detector.py ---
+(Skipping - requires full pytest environment)
+test_auto_detector.py: Can be imported successfully
+test_resource_manager.py: Can be imported successfully
+test_error_handler.py: Can be imported successfully

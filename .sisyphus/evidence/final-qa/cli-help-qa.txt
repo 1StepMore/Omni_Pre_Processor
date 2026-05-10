@@ -1,0 +1,39 @@
+usage: opp [-h] [--detect-format] [--resource-dir RESOURCE_DIR]
+           [--report {html,text}] [--batch] [-o OUTPUT]
+           [--target-format {md,xlf,both}] [--source-lang SOURCE_LANG]
+           [--target-lang TARGET_LANG] [--output-dir OUTPUT_DIR] [-v]
+           files [files ...]
+
+OPP - Omni Pre-Processor. Extract content from DOCX, PPTX, and PDF files.
+
+positional arguments:
+  files                 Input files to process (DOCX, PPTX, PDF)
+
+options:
+  -h, --help            show this help message and exit
+  --detect-format       Auto-detect file format before processing
+  --resource-dir RESOURCE_DIR
+                        Directory for storing extracted resources (images,
+                        etc.)
+  --report {html,text}  Generate report in specified format (html or text)
+  --batch               Enable batch processing mode
+  -o, --output OUTPUT   Output file for extracted content
+  --target-format {md,xlf,both}
+                        Output format for generated files: md (markdown), xlf
+                        (XLIFF), both
+  --source-lang SOURCE_LANG
+                        Source language code (default: en)
+  --target-lang TARGET_LANG
+                        Target language code (required for --target-format=xlf
+                        or both)
+  --output-dir OUTPUT_DIR
+                        Output directory for generated files
+  -v, --verbose         Enable verbose output
+
+Examples: opp file.docx Extract from a single file opp --detect-format
+file.docx Auto-detect format and extract opp --resource-dir ./output file.docx
+Extract and save resources to ./output opp --report html file.docx Generate
+HTML report after extraction opp --batch file1.docx file2.pdf Process multiple
+files opp --target-format md --output-dir ./out file.docx Generate markdown
+output opp --target-format xlf --source-lang en --target-lang fr file.docx
+Generate XLIFF

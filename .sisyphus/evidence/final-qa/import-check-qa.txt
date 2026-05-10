@@ -1,0 +1,8 @@
+============================================================
+Import Verification QA
+============================================================
+
+✗ from opp.detector import detect_format, FormatType - No module named 'docx'
+✗ from opp.resource_manager import ResourceManager - No module named 'docx'
+✗ from opp.error_handler import ErrorHandler, ErrorContext - No module named 'docx'
+✗ from opp.pipeline import OPPPipeline - ModuleNotFoundError: No module named 'docx'

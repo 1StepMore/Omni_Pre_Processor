@@ -1,0 +1,134 @@
+======================================================================
+REAL MANUAL QA - Phase 4 Final QA (F3)
+======================================================================
+Generated: 2026-05-10
+
+=== QA SCENARIO EXECUTION ===
+
+--- CLI Help Output (--target-format, --source-lang, --target-lang, --output-dir) ---
+PASS: All new flags appear in `opp --help`
+
+--- Test DOCX E2E (19 tests) ---
+tests/test_docx_e2e.py - 19 passed in 4.20s
+  - test_docx_heading_hierarchy PASSED
+  - test_docx_with_table_markdown PASSED
+  - test_docx_empty_file PASSED
+  - test_docx_single_paragraph PASSED
+  - test_docx_nested_tables PASSED
+  - test_markdown_heading_generation PASSED
+  - test_markdown_table_content PASSED
+  - test_markdown_nested_tables_content PASSED
+  - test_generate_xliff_file PASSED
+  - test_xliff_language_attributes PASSED
+  - test_xliff_single_para PASSED
+  - test_both_md_and_xlf_created PASSED
+  - test_both_content_consistency PASSED
+  - test_both_with_table PASSED
+  - test_docx_with_image_processing PASSED
+  - test_docx_extract_images PASSED
+  - test_empty_file_handling PASSED
+  - test_nested_table_markdown PASSED
+  - test_single_image_doc PASSED
+
+--- Test PPTX E2E (17 tests) ---
+tests/test_pptx_e2e.py - 17 passed in 4.14s
+  - test_pptx_normal_multiple_shapes PASSED
+  - test_pptx_with_notes_extracts_notes PASSED
+  - test_pptx_single_slide_extracts_text PASSED
+  - test_pptx_textbox_extracts_content PASSED
+  - test_pptx_grouped_shapes_flattened PASSED
+  - test_pptx_blank_slide_no_crash PASSED
+  - test_pptx_empty_notes_handled PASSED
+  - test_pptx_smartart_no_crash PASSED
+  - test_pptx_normal_xliff_translation_units PASSED
+  - test_pptx_single_slide_xliff PASSED
+  - test_pptx_textbox_xliff PASSED
+  - test_pptx_grouped_xliff_units PASSED
+  - test_pptx_xlf_only_creates_file PASSED
+  - test_pptx_edge_case_xlf_output PASSED
+  - test_pipeline_process_pptx_produces_result PASSED
+  - test_pipeline_process_pptx_with_notes PASSED
+  - test_pipeline_batch_pptx_files PASSED
+
+--- Test PDF E2E (16 tests) ---
+tests/test_pdf_e2e.py - 16 passed in 3.37s
+  - test_pdf_native_text_extraction PASSED
+  - test_pdf_text_extraction_paragraphs PASSED
+  - test_pdf_table_structure PASSED
+  - test_pdf_image_extraction PASSED
+  - test_pdf_format_detection PASSED
+  - test_pdf_xliff_case_sensitivity_bug PASSED
+  - test_pdf_multicolumn_layout PASSED
+  - test_pdf_wireless_table PASSED
+  - test_pdf_compressed_images PASSED
+  - test_pdf_empty_page PASSED
+  - test_pdf_pseudo_table PASSED
+  - test_pipeline_process_pdf_produces_result PASSED
+  - test_pipeline_process_pdf_with_table PASSED
+  - test_pipeline_process_pdf_with_images PASSED
+  - test_pipeline_batch_pdf_files PASSED
+  - test_pdf_multiple_pages PASSED
+
+--- Test OPP-OL Integration (16 tests) ---
+tests/test_opp_ol_integration.py - 16 passed
+  - test_mock_ol_tool_translates_xliff PASSED
+  - test_mock_ol_validates_translation PASSED
+  - test_mock_ol_validation_fails_for_missing_target PASSED
+  - test_opp_convert_to_xliff PASSED
+  - test_opp_convert_to_markdown PASSED
+  - test_full_pipeline_opp_to_mock_ol PASSED
+  - test_md_xliff_paragraph_alignment PASSED
+  - test_bdd_scenario_convert_both_formats PASSED
+  - test_bdd_scenario_full_localization_pipeline PASSED
+  - test_mock_ol_cli_interface PASSED
+  - test_xliff_content_matches_md_content PASSED
+  - test_mock_ol_handles_empty_xliff PASSED
+  - test_mock_ol_preserves_xml_structure PASSED
+  - test_xliff_with_special_characters PASSED
+  - test_xliff_with_unicode_content PASSED
+  - test_multiple_translation_rounds PASSED
+
+--- Test CLI (18 tests) ---
+tests/test_cli.py - 18 passed
+  - test_target_format_md_accepted PASSED
+  - test_target_format_xlf_accepted PASSED
+  - test_target_format_both_accepted PASSED
+  - test_source_lang_custom_value PASSED
+  - test_source_lang_default_is_en PASSED
+  - test_target_lang_required_for_xlf PASSED
+  - test_target_lang_works_when_provided PASSED
+  - test_output_dir_redirects_output PASSED
+  - test_target_format_xlf_without_target_lang_fails PASSED
+  - test_target_format_both_without_target_lang_fails PASSED
+  - test_detect_format_flag_works PASSED
+  - test_resource_dir_flag_works PASSED
+  - test_report_flag_works PASSED
+  - test_batch_flag_works PASSED
+  - test_help_shows_target_format PASSED
+  - test_help_shows_source_lang PASSED
+  - test_help_shows_target_lang PASSED
+  - test_help_shows_output_dir PASSED
+
+=== EDGE CASES TESTED ===
+  - Empty DOCX file handling PASSED
+  - XLIFF generation for DOCX PASSED
+  - XLIFF generation for PPTX PASSED
+  - PDF → XLIFF returns error (not supported) PASSED
+  - Missing target-lang validation PASSED
+  - Mock OL tool translation PASSED
+  - Multiple translation rounds PASSED
+
+=== CROSS-TASK INTEGRATION ===
+  - OPP pipeline → MD generation integration PASSED
+  - OPP pipeline → XLIFF generation integration PASSED
+  - OPP → Mock OL → translated XLIFF pipeline PASSED
+  - MD/XLIFF content alignment verification PASSED
+
+=== SUMMARY TABLE ===
+Scenarios:     86/86 passed (100%)
+Integration:   5/5 passed (100%)
+Edge Cases:    7/7 tested (100%)
+
+VERDICT: PASS
+
+======================================================================
