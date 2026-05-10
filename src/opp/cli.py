@@ -7,6 +7,7 @@ from typing import List, Optional
 
 from opp.detector import FormatType, detect_format
 from opp.error_handler import ErrorHandler, ErrorContext
+from opp.pipeline import OPPPipeline
 from opp.resource_manager import ResourceManager
 
 
@@ -20,6 +21,8 @@ def create_parser() -> argparse.ArgumentParser:
   opp --resource-dir ./output file.docx  Extract and save resources to ./output
   opp --report html file.docx            Generate HTML report after extraction
   opp --batch file1.docx file2.pdf       Process multiple files
+  opp --target-format md --output-dir ./out file.docx   Generate markdown output
+  opp --target-format xlf --source-lang en --target-lang fr file.docx  Generate XLIFF
         """
     )
 
@@ -61,6 +64,34 @@ def create_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="Output file for extracted content"
+    )
+
+    parser.add_argument(
+        "--target-format",
+        choices=["md", "xlf", "both"],
+        default=None,
+        help="Output format for generated files: md (markdown), xlf (XLIFF), both"
+    )
+
+    parser.add_argument(
+        "--source-lang",
+        type=str,
+        default="en",
+        help="Source language code (default: en)"
+    )
+
+    parser.add_argument(
+        "--target-lang",
+        type=str,
+        default=None,
+        help="Target language code (required for --target-format=xlf or both)"
+    )
+
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="Output directory for generated files"
     )
 
     parser.add_argument(
@@ -129,6 +160,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser = create_parser()
     args = parser.parse_args(argv)
 
+    if args.target_format in ("xlf", "both") and not args.target_lang:
+        parser.error("--target-lang is required when --target-format is 'xlf' or 'both'")
+
     if args.verbose:
         print(f"OPP CLI v0.1.0")
         print(f"Processing {len(args.files)} file(s)")
@@ -170,6 +204,61 @@ def main(argv: Optional[List[str]] = None) -> int:
             resource_dir=args.resource_dir,
             error_handler=error_handler
         )
+
+        # If target-format is specified, use OPPPipeline for full extraction + generation
+        if args.target_format:
+            resource_dir = args.resource_dir or (file_path.parent / "resources")
+            pipeline = OPPPipeline(resource_storage_dir=resource_dir)
+
+            try:
+                proc_result = pipeline.process_file(file_path)
+
+                if proc_result.errors:
+                    stats["errors"] += 1
+                    for error in proc_result.errors:
+                        if args.verbose:
+                            print(f"  ERROR: {error}")
+                    continue
+
+                if proc_result.extraction_result is None:
+                    stats["errors"] += 1
+                    if args.verbose:
+                        print(f"  ERROR: No extraction result")
+                    continue
+
+                # Determine output directory
+                output_dir = args.output_dir if args.output_dir else file_path.parent
+                output_dir.mkdir(parents=True, exist_ok=True)
+
+                base_name = file_path.stem
+
+                # Generate output based on target-format
+                if args.target_format in ("md", "both"):
+                    md_path = output_dir / f"{base_name}.md"
+                    pipeline.generate_markdown(proc_result.extraction_result, md_path)
+                    if args.verbose:
+                        print(f"  Generated: {md_path}")
+
+                if args.target_format in ("xlf", "both"):
+                    xliff_path = output_dir / f"{base_name}.xlf"
+                    pipeline.generate_xliff(
+                        proc_result.extraction_result,
+                        xliff_path,
+                        args.source_lang,
+                        args.target_lang
+                    )
+                    if args.verbose:
+                        print(f"  Generated: {xliff_path}")
+
+                stats["files_processed"] += 1
+                if args.verbose:
+                    print(f"  Success!")
+
+            except Exception as e:
+                stats["errors"] += 1
+                if args.verbose:
+                    print(f"  ERROR: {e}")
+            continue
 
         if result["success"]:
             stats["files_processed"] += 1

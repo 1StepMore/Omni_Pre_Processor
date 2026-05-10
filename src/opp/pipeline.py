@@ -1,13 +1,15 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from opp.detector import detect_format, FormatType
 from opp.error_handler import ErrorHandler, ErrorContext
 from opp.extractors import DOCXExtractor, PDFExtractor, PPTXExtractor
 from opp.extractors.base import ExtractorBase
+from opp.markdown import MarkdownGenerator
 from opp.resource_manager import ResourceManager
+from opp.xliff import XLIFFFileGenerator
 from opp.utils.dataclasses import ExtractionResult
 
 
@@ -19,6 +21,7 @@ class ProcessingResult:
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
     duration_ms: float = 0.0
+    extraction_result: Optional[ExtractionResult] = None
 
 
 @dataclass
@@ -27,6 +30,13 @@ class BatchResult:
     failed: int
     total_duration_ms: float
     results: List[ProcessingResult] = field(default_factory=list)
+
+
+@dataclass
+class GenerationResult:
+    md_path: Optional[Path] = None
+    xliff_path: Optional[Path] = None
+    errors: List[str] = field(default_factory=list)
 
 
 class OPPPipeline:
@@ -39,6 +49,57 @@ class OPPPipeline:
             FormatType.PPTX: PPTXExtractor(),
             FormatType.PDF: PDFExtractor(),
         }
+        self.markdown_generator = MarkdownGenerator()
+
+    def generate_markdown(self, result: ExtractionResult, output_path: Path) -> Path:
+        """Generate Markdown file from extraction result.
+
+        Args:
+            result: The extraction result containing paragraphs, tables, and images
+            output_path: Path to write the Markdown file to
+
+        Returns:
+            The output_path that was written to
+        """
+        self.markdown_generator.generate_to_file(result, output_path)
+        return output_path
+
+    def generate_xliff(
+        self,
+        result: ExtractionResult,
+        output_path: Path,
+        source_lang: str,
+        target_lang: str,
+    ) -> Path:
+        """Generate XLIFF file from extraction result.
+
+        Args:
+            result: The extraction result containing paragraphs
+            output_path: Path to write the XLIFF file to
+            source_lang: Source language code (e.g., 'en')
+            target_lang: Target language code (e.g., 'fr')
+
+        Returns:
+            Path to the generated XLIFF file
+
+        Raises:
+            ValueError: If the source format is PDF (XLIFF not supported for PDF)
+        """
+        if result.metadata.format_type == "PDF":
+            error_msg = "XLIFF not supported for PDF format"
+            self.error_handler.add_error(
+                ErrorContext(
+                    file_path=str(output_path),
+                    error_type="UnsupportedFormat",
+                    timestamp=datetime.now(),
+                    details=error_msg,
+                )
+            )
+            raise ValueError(error_msg)
+
+        generator = XLIFFFileGenerator.from_extraction_result(result, source_lang, target_lang)
+        generator.write_to_file(output_path)
+        return output_path
 
     def process_file(self, file_path: Path) -> ProcessingResult:
         """Process a single file through the full extraction pipeline.
@@ -174,6 +235,7 @@ class OPPPipeline:
             errors=errors,
             warnings=warnings,
             duration_ms=duration_ms,
+            extraction_result=result,
         )
 
     def process_batch(self, file_paths: List[Path]) -> BatchResult:

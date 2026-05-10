@@ -6,10 +6,38 @@ from opp.utils.dataclasses import ExtractionResult, ParagraphData, TableData, Im
 
 class MarkdownGenerator:
     def generate(self, result: ExtractionResult) -> str:
-        raise NotImplementedError("TDD - RED phase")
+        parts = []
+        headings = self.generate_headings(result.paragraphs)
+        if headings:
+            parts.append(headings)
+
+        non_structured = []
+        for para in result.paragraphs:
+            style = para.style or ""
+            if "Heading" not in style and "Number" not in style and "List" not in style:
+                if para.text:
+                    non_structured.append(para.text)
+        if non_structured:
+            if parts:
+                parts.append("")
+            parts.append("\n".join(non_structured))
+
+        lists = self.generate_lists(result.paragraphs)
+        if lists:
+            if parts:
+                parts.append("")
+            parts.append(lists)
+        tables = self.generate_tables_md(result.tables)
+        if tables:
+            if parts:
+                parts.append("")
+            parts.append(tables)
+        return "\n".join(parts)
 
     def generate_to_file(self, result: ExtractionResult, output_path: Path) -> None:
-        raise NotImplementedError("TDD - RED phase")
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        content = self.generate(result)
+        output_path.write_text(content, encoding="utf-8")
 
     def generate_headings(self, paragraphs: List[ParagraphData], style_mapping=None) -> str:
         result_lines = []
