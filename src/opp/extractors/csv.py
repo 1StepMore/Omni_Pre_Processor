@@ -62,11 +62,11 @@ class CSVExtractor(ExtractorBase):
         )
 
     def _read_csv_with_encoding(self, input_path: Path) -> pd.DataFrame:
-        # Try UTF-8 first
         try:
             return pd.read_csv(
                 input_path,
                 sep=None,
+                engine="python",
                 header=0,
                 encoding="utf-8",
                 encoding_errors="replace",
@@ -82,6 +82,7 @@ class CSVExtractor(ExtractorBase):
         return pd.read_csv(
             input_path,
             sep=None,
+            engine="python",
             header=0,
             encoding=encoding,
             encoding_errors="replace",
