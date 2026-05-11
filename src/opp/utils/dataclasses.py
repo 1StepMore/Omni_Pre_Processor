@@ -32,6 +32,13 @@ class ImageData:
 
 
 @dataclass
+class AttachmentData:
+    filename: str
+    mime_type: str
+    data: bytes
+
+
+@dataclass
 class SlideData:
     index: int
     shapes: List[ParagraphData]
@@ -50,10 +57,13 @@ class ExtractionResult:
     paragraphs: List[ParagraphData]
     tables: List[TableData]
     images: List[ImageData]
-    metadata: DocumentMetadata
-    warnings: List[str] = None
+    attachments: List[AttachmentData] = field(default_factory=list)
+    metadata: Optional[DocumentMetadata] = None
+    warnings: List[str] = field(default_factory=list)
 
     def __post_init__(self):
+        if self.metadata is None:
+            self.metadata = DocumentMetadata()
         if self.warnings is None:
             self.warnings = []
 
