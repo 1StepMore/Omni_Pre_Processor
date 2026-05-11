@@ -15,14 +15,14 @@ from opp.logger import logger, setup_logger
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="opp",
-        description="OPP - Omni Pre-Processor. Extract content from DOCX, PPTX, and PDF files.",
+        description="OPP - Omni Pre-Processor. Extract content from DOCX, PPTX, PDF, HTML, and EPUB files.",
         epilog="""Examples:
   opp file.docx                          Extract from a single file
   opp folder/                            Process folder (batch mode)
   opp --detect-format file.docx          Auto-detect format and extract
   opp --resource-dir ./output file.docx  Extract and save resources to ./output
-  opp --target-format md --output-dir ./out file.docx   Generate markdown output
-  opp --target-format xlf --source-lang en --target-lang fr file.docx  Generate XLIFF
+  opp --target-format md --output-dir ./out file.html   Generate markdown output
+  opp --target-format xlf --source-lang en --target-lang fr file.epub  Generate XLIFF
         """
     )
 
