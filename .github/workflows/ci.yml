@@ -34,7 +34,7 @@ jobs:
 
       - name: Run Phase 5 tests
         env:
-          PYTHONPATH: {{ github.workspace }}/src
+          PYTHONPATH: ${{ github.workspace }}/src
         run: |
           .venv/bin/python -m pytest tests/test_xlsx_extractor.py tests/test_csv_extractor.py tests/test_json_extractor.py tests/test_xml_extractor.py tests/test_table_channel.py tests/test_keyvalue_channel.py tests/test_phase5_e2e.py -v || true
 
