@@ -38,6 +38,7 @@ email = [
 audio = [
     "faster-whisper",
     "markitdown[youtube]",
+    "pydub>=0.23.0",
 ]
 notebook = [
     "nbformat>=5.0.0",
