@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 import time
 from datetime import datetime
@@ -23,6 +24,8 @@ def create_parser() -> argparse.ArgumentParser:
   opp --resource-dir ./output file.docx  Extract and save resources to ./output
   opp --target-format md --output-dir ./out file.html   Generate markdown output
   opp --target-format xlf --source-lang en --target-lang fr file.epub  Generate XLIFF
+  opp --ocr-engine tesseract --ocr-lang eng file.png  OCR with Tesseract (English)
+  opp --ocr-engine rapidocr file.jpg     OCR with RapidOCR
         """
     )
 
@@ -100,6 +103,20 @@ def create_parser() -> argparse.ArgumentParser:
         help="Enable verbose output"
     )
 
+    parser.add_argument(
+        "--ocr-engine",
+        choices=["tesseract", "rapidocr"],
+        default=None,
+        help="OCR engine to use for image files (default: tesseract if installed)"
+    )
+
+    parser.add_argument(
+        "--ocr-lang",
+        type=str,
+        default=None,
+        help="Language for Tesseract OCR (e.g., eng, chi_sim) (default: eng)"
+    )
+
     return parser
 
 
@@ -129,6 +146,12 @@ def process_single_file(
     error_handler: ErrorHandler
 ) -> bool:
     try:
+        # Set OCR env vars for image processing
+        if args.ocr_engine:
+            os.environ["OPP_OCR_ENGINE"] = args.ocr_engine
+        if args.ocr_lang:
+            os.environ["OPP_OCR_LANG"] = args.ocr_lang
+
         proc_result = pipeline.process_file(file_path)
 
         if proc_result.errors:

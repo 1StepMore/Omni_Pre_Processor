@@ -31,12 +31,19 @@ class ImageOCRExtractor(ExtractorBase):
         return [".png", ".jpg", ".jpeg", ".tiff", ".bmp"]
 
     def extract(self, input_path: Path) -> ExtractionResult:
+        import os
         self.validate_file(input_path)
 
-        result = self._extract_tesseract(input_path, "eng")
+        engine = os.environ.get("OPP_OCR_ENGINE", "tesseract")
+        lang = os.environ.get("OPP_OCR_LANG", "eng")
 
-        if result.get("error") == "OCR_NOT_INSTALLED":
+        if engine == "rapidocr":
             result = self._extract_rapidocr(input_path)
+        else:
+            result = self._extract_tesseract(input_path, lang)
+
+            if result.get("error") == "OCR_NOT_INSTALLED":
+                result = self._extract_rapidocr(input_path)
 
         if result.get("error") in ("OCR_NOT_INSTALLED", "RAPIDOCR_NOT_INSTALLED"):
             error_warnings = [result.get("install_guide", "No OCR engine available")]
