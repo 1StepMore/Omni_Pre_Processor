@@ -3,7 +3,6 @@ from email.parser import BytesParser
 from pathlib import Path
 from typing import List, Optional, TYPE_CHECKING
 import tempfile
-import email.mime.image
 
 from opp.extractors.base import ExtractorBase
 from opp.utils.dataclasses import (
