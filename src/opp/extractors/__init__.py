@@ -1,6 +1,7 @@
 from opp.extractors.base import ExtractorBase
 from opp.extractors.docx import DOCXExtractor
 from opp.extractors.epub import EPUBExtractor
+from opp.extractors.html import HTMLExtractor
 from opp.extractors.json import JSONExtractor
 from opp.extractors.pdf import PDFExtractor
 from opp.extractors.pptx import PPTXExtractor
@@ -12,6 +13,7 @@ __all__ = [
     "ExtractorBase",
     "DOCXExtractor",
     "EPUBExtractor",
+    "HTMLExtractor",
     "JSONExtractor",
     "PDFExtractor",
     "PPTXExtractor",
