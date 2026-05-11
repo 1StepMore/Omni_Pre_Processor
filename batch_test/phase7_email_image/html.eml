@@ -1,0 +1,22 @@
+From: sender@example.com
+To: recipient@example.com
+Subject: HTML Email
+Date: Mon, 11 May 2026 21:54:47 -0000
+MIME-Version: 1.0
+Content-Type: multipart/alternative;
+ boundary="===============6734507715816585934=="
+
+--===============6734507715816585934==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Plain fallback
+
+--===============6734507715816585934==
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+MIME-Version: 1.0
+
+<p>This is <strong>HTML</strong> body</p>
+
+--===============6734507715816585934==--
