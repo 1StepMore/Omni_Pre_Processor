@@ -1,10 +1,10 @@
 # OPP - Omni Pre-Processor
 
-Document content extraction package for DOCX, PPTX, and PDF files.
+Document content extraction package for DOCX, PPTX, PDF, XLSX, CSV, JSON, and XML files.
 
 ## Features
 
-- **Multi-format extraction** - DOCX, PPTX, PDF support
+- **Multi-format extraction** - DOCX, PPTX, PDF, XLSX, CSV, JSON, XML support
 - **Format auto-detection** - Magic bytes detection (no file extension required)
 - **Resource management** - MD5 deduplication, UUID naming for images
 - **Error handling** - Unified error hierarchy with HTML/text reports
@@ -21,11 +21,16 @@ Document content extraction package for DOCX, PPTX, and PDF files.
 | Phase 2 | ✅ Complete | XLIFF 1.2/2.0 export |
 | Phase 3 | ✅ Complete | Multi-format convergence, auto-detection, resource management |
 | Phase 4 | ✅ Complete | CLI/Pipeline integration, E2E tests, PyPI publishing |
+| Phase 5 | ✅ Complete | Office & data formats (XLSX/CSV/JSON/XML) |
 
 ## Installation
 
 ```bash
+# Core package
 pip install -e .
+
+# With office/data format support (XLSX, CSV, JSON, XML)
+pip install -e ".[office]"
 ```
 
 ## Quick Start
@@ -132,7 +137,14 @@ src/opp/
 │   ├── base.py
 │   ├── docx.py
 │   ├── pptx.py
-│   └── pdf.py
+│   ├── pdf.py
+│   ├── xlsx.py          # Phase 5 - XLSX extractor
+│   ├── csv.py            # Phase 5 - CSV extractor
+│   ├── json.py           # Phase 5 - JSON extractor
+│   └── xml.py            # Phase 5 - XML extractor
+├── channels/            # Phase 5 - Output channels
+│   ├── table_channel.py   # DataFrame → Markdown table
+│   └── keyvalue_channel.py # dict → XLIFF trans-unit
 └── xliff/               # Phase 2 - XLIFF export
     ├── generator.py
     ├── validator.py
@@ -166,7 +178,9 @@ src/opp/
 | e2e (docx/pptx/pdf) | 52 |
 | opp-ol integration | 16 |
 | xliff | 40+ |
-| **Total** | **240** |
+| Phase 5 extractors (xlsx/csv/json/xml) | 100+ |
+| Phase 5 channels | 20+ |
+| **Total** | **457** |
 
 ## PyPI Publishing
 
