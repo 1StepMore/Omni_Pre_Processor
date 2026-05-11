@@ -25,24 +25,16 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install pytest pytest-cov openpyxl pandas chardet python-docx python-pptx pymupdf lxml translate-toolkit readability-lxml markdownify ebooklib beautifulsoup4 extract-msg pytesseract Pillow 2>&1 | tail -20
-
-      - name: Check imports
-        run: |
-          .venv/bin/python -c "import extract_msg; print('extract_msg OK')" || echo "extract_msg FAILED"
-          .venv/bin/python -c "import pytesseract; print('pytesseract OK')" || echo "pytesseract FAILED"
-          .venv/bin/python -c "from PIL import Image; print('Pillow OK')" || echo "Pillow FAILED"
-          .venv/bin/python -c "from opp.extractors.email import EmailExtractor; print('EmailExtractor OK')" || echo "EmailExtractor FAILED"
-          .venv/bin/python -c "from opp.extractors.image_ocr import ImageOCRExtractor; print('ImageOCRExtractor OK')" || echo "ImageOCRExtractor FAILED"
+          uv pip install pytest pytest-cov openpyxl pandas chardet python-docx python-pptx pymupdf lxml translate-toolkit readability-lxml markdownify ebooklib beautifulsoup4 extract-msg pytesseract Pillow
 
       - name: Run Phase 5 tests
         env:
           PYTHONPATH: ${{ github.workspace }}/src
         run: |
-          .venv/bin/python -m pytest tests/test_xlsx_extractor.py tests/test_csv_extractor.py tests/test_json_extractor.py tests/test_table_channel.py tests/test_keyvalue_channel.py tests/test_phase5_e2e.py -v 2>&1 | tail -30
+          .venv/bin/python -m pytest tests/test_xlsx_extractor.py tests/test_csv_extractor.py tests/test_json_extractor.py tests/test_table_channel.py tests/test_keyvalue_channel.py tests/test_phase5_e2e.py -v
 
       - name: Run other tests
         env:
           PYTHONPATH: ${{ github.workspace }}/src
         run: |
-          .venv/bin/python -m pytest tests/ --ignore=tests/test_xlsx_extractor.py --ignore=tests/test_xml_extractor.py -v 2>&1 | tail -50
+          .venv/bin/python -m pytest tests/ --ignore=tests/test_xlsx_extractor.py --ignore=tests/test_xml_extractor.py -v
