@@ -4,9 +4,10 @@ Document content extraction package for DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, H
 
 ## Features
 
-- **Multi-format extraction** - DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPUB, EML, MSG, Image support
+- **Multi-format extraction** - DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPUB, EML, MSG, Image, IPYNB, YouTube URL
 - **Image OCR** - Tesseract and RapidOCR engines with graceful fallback
 - **Email extraction** - EML (RFC 822) and MSG (Outlook) with attachment recursion
+- **Audio/Video transcription** - Whisper-based ASR for audio/video files
 - **Format auto-detection** - Magic bytes detection (no file extension required)
 - **Resource management** - MD5 deduplication, UUID naming for images
 - **Error handling** - Unified error hierarchy with HTML/text reports
@@ -26,6 +27,7 @@ Document content extraction package for DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, H
 | Phase 5 | ✅ Complete | Office & data formats (XLSX/CSV/JSON/XML) |
 | Phase 6 | ✅ Complete | Web & ebook formats (HTML/EPUB) |
 | Phase 7 | ✅ Complete | Email & image OCR (EML/MSG/Image) |
+| Phase 8 | ✅ Complete | Rich media (Audio/Video/IPYNB/YouTube) |
 
 ## Installation
 
@@ -194,15 +196,43 @@ src/opp/
 | detector | 13 |
 | resource_manager | 18 |
 | error_handler | 18 |
-| integration | 21 |
+| integration | 25 |
 | cli | 18 |
 | e2e (docx/pptx/pdf) | 52 |
 | opp-ol integration | 16 |
 | xliff | 40+ |
 | Phase 5 extractors (xlsx/csv/json/xml) | 100+ |
 | Phase 5 channels | 20+ |
-| Phase 7 extractors (email/image_ocr) | 15+ |
-| **Total** | **472+** |
+| Phase 7/8 extractors | 20+ |
+| **Total** | **479+** |
+
+## Batch Testing
+
+A comprehensive test suite is available in `batch_test/` with sample files for all supported formats and edge cases.
+
+```bash
+# Test all formats with batch_test directory
+opp --target-format=both --source-lang=en --target-lang=zh --output-dir=output batch_test/
+
+# Test specific format
+opp --target-format=md batch_test/phase0_office/
+
+# Simulate Windows bat files (Linux/macOS)
+python -m opp --target-format=md batch_test/phase0_office/*.docx
+python -m opp --target-format=xlf --target-lang=zh batch_test/phase5_data/*.json
+```
+
+### Test Directory Structure
+
+```
+batch_test/
+├── phase0_office/      # DOCX, PPTX, PDF
+├── phase5_data/         # XLSX, CSV, JSON, XML
+├── phase6_web/          # HTML, EPUB
+├── phase7_email_image/   # EML, PNG
+├── phase8_media/        # IPYNB, YouTube URL
+└── edge_cases/         # Corrupted, zero-byte, unicode
+```
 
 ## PyPI Publishing
 
