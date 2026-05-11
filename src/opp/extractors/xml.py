@@ -1,6 +1,7 @@
-import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
+
+from lxml import etree
 
 from opp.extractors.base import ExtractorBase
 from opp.utils.dataclasses import (
@@ -23,9 +24,9 @@ class XMLExtractor(ExtractorBase):
         warnings: List[str] = []
 
         try:
-            tree = ET.parse(input_path)
+            tree = etree.parse(str(input_path))
             root = tree.getroot()
-        except ET.ParseError as e:
+        except etree.XMLSyntaxError as e:
             raise CorruptedFileError(f"XML解析失败（非 Well-Formed）: {input_path}: {e}")
 
         namespace_map = self._build_namespace_map(root)
@@ -42,7 +43,54 @@ class XMLExtractor(ExtractorBase):
             warnings=warnings,
         )
 
-    def _build_namespace_map(self, root: ET.Element) -> Dict[str, str]:
+    def extract_nodes(self, input_path: Path, xpath: str) -> List[Dict[str, Any]]:
+        """Extract nodes from XML using XPath expression.
+        
+        Args:
+            input_path: Path to the XML file
+            xpath: XPath expression to select nodes
+            
+        Returns:
+            List of dicts with node data (tag, text, attributes, children)
+        """
+        self.validate_file(input_path)
+        
+        try:
+            tree = etree.parse(str(input_path))
+            root = tree.getroot()
+        except etree.XMLSyntaxError as e:
+            raise CorruptedFileError(f"XML解析失败（非 Well-Formed）: {input_path}: {e}")
+        
+        try:
+            nodes = root.xpath(xpath)
+        except etree.XPathSyntaxError as e:
+            raise CorruptedFileError(f"XPath语法错误: {xpath}: {e}")
+        except etree.XPathEvalError as e:
+            raise CorruptedFileError(f"XPath执行错误: {xpath}: {e}")
+        
+        result = []
+        for node in nodes:
+            node_dict = self._node_to_dict(node)
+            result.append(node_dict)
+        
+        return result
+
+    def _node_to_dict(self, node: etree._Element) -> Dict[str, Any]:
+        """Convert an lxml element to a dict with tag, text, attributes, children."""
+        children = []
+        for child in node:
+            children.append(self._node_to_dict(child))
+        
+        attributes = dict(node.attrib) if node.attrib else {}
+        
+        return {
+            "tag": node.tag,
+            "text": node.text if node.text else "",
+            "attributes": attributes,
+            "children": children,
+        }
+
+    def _build_namespace_map(self, root: etree._Element) -> Dict[str, str]:
         namespace_map: Dict[str, str] = {}
         for elem in root.iter():
             tag = elem.tag
@@ -60,13 +108,13 @@ class XMLExtractor(ExtractorBase):
 
     def _extract_element(
         self,
-        element: ET.Element,
+        element: etree._Element,
         namespace_map: Dict[str, str],
         level: Optional[int] = None,
     ) -> List[ParagraphData]:
         paragraphs: List[ParagraphData] = []
 
-        if element.tag is ET.Comment:
+        if element.tag is etree.Comment:
             return paragraphs
 
         text_content = self._get_text_content(element)
@@ -86,7 +134,7 @@ class XMLExtractor(ExtractorBase):
 
         return paragraphs
 
-    def _get_text_content(self, element: ET.Element) -> str:
+    def _get_text_content(self, element: etree._Element) -> str:
         parts = []
         if element.text:
             parts.append(element.text)

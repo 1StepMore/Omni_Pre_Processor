@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from opp.extractors.base import ExtractorBase
 from opp.utils.dataclasses import (
@@ -47,6 +47,57 @@ class JSONExtractor(ExtractorBase):
                 self._flatten(item, new_key, depth + 1, result, warnings)
         else:
             result[prefix] = str(obj)
+
+        return result
+
+
+    def extract_key_values(self, input_path: Path) -> Dict[str, Any]:
+        """Extract key-value pairs from JSON file as a flat dictionary.
+
+        Args:
+            input_path: Path to JSON file
+
+        Returns:
+            Flat dictionary with dot-notation keys and actual leaf values
+        """
+        self.validate_file(input_path)
+
+        with open(input_path, encoding="utf-8-sig") as f:
+            data = json.load(f)
+
+        if isinstance(data, list):
+            data = {"root": data}
+
+        return self._flatten_to_any(data)
+
+    def _flatten_to_any(
+        self,
+        obj,
+        prefix: str = "",
+        depth: int = 0,
+        result: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Flatten nested JSON to dict with dot-notation keys, preserving value types."""
+        if result is None:
+            result = {}
+
+        if depth > self.MAX_DEPTH:
+            return result
+
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                new_key = f"{prefix}.{key}" if prefix else key
+                if value is None or (isinstance(value, str) and value == ""):
+                    continue
+                self._flatten_to_any(value, new_key, depth + 1, result)
+        elif isinstance(obj, list):
+            for idx, item in enumerate(obj):
+                new_key = f"{prefix}.{idx}"
+                if item is None or (isinstance(item, str) and item == ""):
+                    continue
+                self._flatten_to_any(item, new_key, depth + 1, result)
+        else:
+            result[prefix] = obj
 
         return result
 

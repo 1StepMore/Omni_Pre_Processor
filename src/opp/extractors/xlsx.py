@@ -9,6 +9,7 @@ from opp.utils.dataclasses import (
     DocumentMetadata,
     ExtractionResult,
     ParagraphData,
+    TableData,
 )
 from opp.utils.exceptions import ValidationError
 
@@ -18,6 +19,64 @@ class XLSXExtractor(ExtractorBase):
 
     def supported_extensions(self) -> List[str]:
         return [".xlsx"]
+
+    def extract_tables(self, input_path: Path) -> List[TableData]:
+        self.validate_file(input_path)
+
+        try:
+            wb = openpyxl.load_workbook(input_path, data_only=True)
+        except Exception as e:
+            if "password" in str(e).lower():
+                raise ValidationError(f"文件受密码保护: {input_path}")
+            raise ValueError(f"无法打开XLSX文件: {input_path}")
+
+        result: List[TableData] = []
+        for sheet_name in wb.sheetnames:
+            ws = wb[sheet_name]
+            headers: List[str] = []
+            rows: List[List[str]] = []
+
+            max_row = ws.max_row or 0
+            max_col = ws.max_column or 0
+
+            if max_row == 0 or max_col == 0:
+                continue
+
+            # Extract headers from first row
+            header_row_has_data = False
+            for cell in ws[1]:
+                val = cell.value
+                if val is None:
+                    headers.append("")
+                elif isinstance(val, (datetime, date)):
+                    headers.append(val.isoformat())
+                    header_row_has_data = True
+                else:
+                    headers.append(str(val))
+                    header_row_has_data = True
+
+            # Skip sheet if header row has no data
+            if not header_row_has_data:
+                continue
+
+            # Extract data rows (skip header row)
+            for row_idx in range(2, max_row + 1):
+                row_values: List[str] = []
+                for col_idx in range(1, max_col + 1):
+                    cell = ws.cell(row=row_idx, column=col_idx)
+                    val = cell.value
+                    if val is None:
+                        row_values.append("")
+                    elif isinstance(val, (datetime, date)):
+                        row_values.append(val.isoformat())
+                    else:
+                        row_values.append(str(val))
+                rows.append(row_values)
+
+            if headers or rows:
+                result.append(TableData(headers=headers, rows=rows))
+
+        return result
 
     def extract(self, input_path: Path) -> ExtractionResult:
         self.validate_file(input_path)

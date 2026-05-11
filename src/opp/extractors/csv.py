@@ -60,6 +60,34 @@ class CSVExtractor(ExtractorBase):
             warnings=warnings,
         )
 
+    def extract_tables(self, input_path: Path) -> List[TableData]:
+        """Extract tables from a CSV file.
+
+        Args:
+            input_path: Path to the CSV file.
+
+        Returns:
+            List of TableData objects (CSV typically has one table per file).
+        """
+        self.validate_file(input_path)
+        df = self._read_csv_with_encoding(input_path)
+
+        headers = df.columns.tolist()
+        max_cols = df.shape[1]
+        padded_rows = []
+        for _, row in df.iterrows():
+            padded_row = ["" if pd.isna(v) else str(v) for v in row.values]
+            while len(padded_row) < max_cols:
+                padded_row.append("")
+            padded_rows.append(padded_row)
+
+        return [
+            TableData(
+                headers=[str(h) for h in headers],
+                rows=padded_rows,
+            )
+        ]
+
     def _detect_header(self, input_path: Path) -> int | None:
         with open(input_path, "rb") as f:
             raw_first = f.readline()
