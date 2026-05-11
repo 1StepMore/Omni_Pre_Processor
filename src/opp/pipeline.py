@@ -76,12 +76,12 @@ class OPPPipeline:
         Args:
             result: The extraction result containing paragraphs, tables, and images
             output_path: Path to write the Markdown file to
-            attachment_results: Optional list of attachment processing results
+            attachment_results: Optional list of attachment processing results (unused but kept for API compatibility)
 
         Returns:
             The output_path that was written to
         """
-        self.markdown_generator.generate_to_file(result, output_path, attachment_results)
+        self.markdown_generator.generate_to_file(result, output_path)
         return output_path
 
     def generate_xliff(

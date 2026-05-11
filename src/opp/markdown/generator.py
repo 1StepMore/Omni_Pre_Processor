@@ -34,7 +34,7 @@ class MarkdownGenerator:
             parts.append(tables)
         return "\n".join(parts)
 
-    def generate_to_file(self, result: ExtractionResult, output_path: Path) -> None:
+    def generate_to_file(self, result: ExtractionResult, output_path: Path, attachment_results=None) -> None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         content = self.generate(result)
         output_path.write_text(content, encoding="utf-8")
