@@ -15,4 +15,4 @@ htmlcov/
 .venv
 *.swp
 *.swo
-*~
+*~logs/

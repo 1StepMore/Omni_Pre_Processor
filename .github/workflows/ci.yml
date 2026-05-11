@@ -25,10 +25,16 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install --python .venv pytest pytest-cov openpyxl pandas chardet python-docx python-pptx pymupdf lxml translate-toolkit
+          uv pip install pytest pytest-cov openpyxl pandas chardet python-docx python-pptx pymupdf lxml translate-toolkit
 
-      - name: Run tests
+      - name: Run Phase 5 tests
         env:
           PYTHONPATH: ${{ github.workspace }}/src
         run: |
-          .venv/bin/python -m pytest tests/ -v --cov=src/opp --cov-report=term-missing
+          .venv/bin/python -m pytest tests/test_xlsx_extractor.py tests/test_csv_extractor.py tests/test_json_extractor.py tests/test_xml_extractor.py tests/test_table_channel.py tests/test_keyvalue_channel.py tests/test_phase5_e2e.py -v
+
+      - name: Run other tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/src
+        run: |
+          .venv/bin/python -m pytest tests/ --ignore=tests/test_xlsx_extractor.py --ignore=tests/test_xml_extractor.py -v
