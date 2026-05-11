@@ -1,33 +1,18 @@
 # OPP - Omni Pre-Processor
 
-Document content extraction package for DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPUB, EML, MSG, and Image (OCR) files.
+Document content extraction for DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPUB, EML, MSG, and Image (OCR).
 
 ## Features
 
 - **Multi-format extraction** - DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPUB, EML, MSG, Image, IPYNB, YouTube URL
-- **Image OCR** - Tesseract and RapidOCR engines with graceful fallback
+- **Image OCR** - Tesseract and RapidOCR with graceful fallback
 - **Email extraction** - EML (RFC 822) and MSG (Outlook) with attachment recursion
-- **Audio/Video transcription** - Whisper-based ASR for audio/video files
-- **Format auto-detection** - Magic bytes detection (no file extension required)
+- **Audio/Video transcription** - Whisper-based ASR
+- **Format auto-detection** - Magic bytes detection (extension not required)
 - **Resource management** - MD5 deduplication, UUID naming for images
-- **Error handling** - Unified error hierarchy with HTML/text reports
-- **Pipeline orchestrator** - Single API for detect → extract → manage → report
-- **CLI interface** - Full command-line interface with batch support
-- **Output generation** - Markdown and XLIFF export for localization pipelines
-
-## Phases
-
-| Phase | Status | Description |
-|-------|--------|-------------|
-| Phase 0 | ✅ Complete | Core extractors (DOCX/PPTX/PDF) |
-| Phase 1 | ✅ Complete | Markdown generation |
-| Phase 2 | ✅ Complete | XLIFF 1.2/2.0 export |
-| Phase 3 | ✅ Complete | Multi-format convergence, auto-detection, resource management |
-| Phase 4 | ✅ Complete | CLI/Pipeline integration, E2E tests, PyPI publishing |
-| Phase 5 | ✅ Complete | Office & data formats (XLSX/CSV/JSON/XML) |
-| Phase 6 | ✅ Complete | Web & ebook formats (HTML/EPUB) |
-| Phase 7 | ✅ Complete | Email & image OCR (EML/MSG/Image) |
-| Phase 8 | ✅ Complete | Rich media (Audio/Video/IPYNB/YouTube) |
+- **Pipeline orchestrator** - detect → extract → manage → report
+- **CLI interface** - Full command-line with batch support
+- **Output formats** - Markdown and XLIFF 1.2/2.0
 
 ## Installation
 
@@ -35,10 +20,10 @@ Document content extraction package for DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, H
 # Core package
 pip install -e .
 
-# With office/data format support (XLSX, CSV, JSON, XML)
+# With office/data formats (XLSX, CSV, JSON, XML)
 pip install -e ".[office]"
 
-# With email and image OCR support (EML, MSG, Tesseract, RapidOCR)
+# With email and OCR (EML, MSG, Tesseract, RapidOCR)
 pip install -e ".[email]"
 ```
 
@@ -48,10 +33,8 @@ pip install -e ".[email]"
 
 ```python
 from opp import DOCXExtractor, PDFExtractor, PPTXExtractor
-from opp.detector import detect_format, FormatType
+from opp.detector import detect_format
 from opp.pipeline import OPPPipeline
-from opp.resource_manager import ResourceManager
-from opp.error_handler import ErrorHandler
 
 # Direct extraction
 extractor = DOCXExtractor()
@@ -71,22 +54,10 @@ print(f"Extracted: {len(result.content)} chars, {result.images_stored} images")
 ### CLI
 
 ```bash
-# Auto-detect format and extract
-opp --detect-format document.docx
-
-# Extract with resources to specific directory
-opp --resource-dir ./output document.docx
-
-# Generate HTML report
-opp --report html document.docx -o report.html
-
-# Batch processing
-opp --batch file1.docx file2.pdf file3.pptx
-
-# Generate Markdown output
+# Extract to Markdown
 opp --target-format=md document.docx
 
-# Generate XLIFF for translation
+# Extract to XLIFF for translation
 opp --target-format=xlf --source-lang=en --target-lang=zh document.docx
 
 # Generate both MD and XLIFF
@@ -95,98 +66,74 @@ opp --target-format=both --source-lang=en --target-lang=zh document.docx
 # Custom output directory
 opp --target-format=md --output-dir ./output document.docx
 
-# Image OCR with Tesseract (default)
+# Image OCR
 opp --ocr-engine tesseract scan.png
 
-# Image OCR with RapidOCR
-opp --ocr-engine rapidocr scan.png
-
-# Image OCR with specific language
-opp --ocr-engine tesseract --ocr-lang chi_sim scan.png
-
-# Email extraction with attachments
-opp --target-format=both email.msg
+# Batch processing
+opp --batch file1.docx file2.pdf file3.pptx
 ```
 
-### Batch Entry Points (Windows)
+### Windows Batch Scripts
 
-| Script | Purpose | Usage |
-|--------|---------|-------|
-| `md.bat` | Convert to Markdown | `md.bat "file.docx"` or `md.bat "folder"` |
-| `xliff.bat` | Convert to XLIFF | `xliff.bat "file.docx" [target-lang]` |
-
-Supports drag-drop of files **and folders**. Logs saved to `logs/` directory.
+| Script | Description |
+|--------|-------------|
+| `md.bat` | Convert to Markdown |
+| `en2cn_xliff.bat` | English source → Chinese XLIFF |
+| `cn2en_xliff.bat` | Chinese source → English XLIFF |
 
 ```batch
-# Convert single file to Markdown
 md.bat "document.docx"
+md.bat "folder"
 
-# Convert folder to Markdown (batch mode)
-md.bat "folder" --output-dir ./output
+en2cn_xliff.bat "english.docx"
+cn2en_xliff.bat "中文.docx"
+```
 
-# Convert to XLIFF for translation
-xliff.bat "document.docx" zh
-xliff.bat "folder" ja
+Supports drag-drop of files **and folders**. Logs saved to `logs/`.
 
-# Verbose logging
-md.bat "file.pdf" -v
+## Project Structure
+
+```
+src/opp/
+├── detector.py           # Format auto-detection
+├── extractors/           # Document extractors
+│   ├── docx.py
+│   ├── pptx.py
+│   ├── pdf.py
+│   ├── xlsx.py
+│   ├── csv.py
+│   ├── json.py
+│   ├── xml.py
+│   ├── email.py
+│   └── image_ocr.py
+├── channels/             # Output formatters
+│   ├── table_channel.py   # DataFrame → Markdown table
+│   └── keyvalue_channel.py # dict → XLIFF
+├── xliff/                # XLIFF 1.2/2.0 generator
+├── pipeline.py           # OPPPipeline orchestrator
+├── resource_manager.py   # Image deduplication
+└── cli.py               # Command-line interface
+```
+
+## Architecture
+
+```
+                     ┌─────────────────────────────────────────┐
+                     │              OPPPipeline                  │
+                     │  detect_format() → Extractor → Report   │
+                     └─────────────────────────────────────────┘
+
+┌──────────┐    ┌───────────┐    ┌────────────────┐    ┌──────────────┐
+│ detector │───▶│ extractors│───▶│resource_manager│───▶│error_handler │
+│  magic   │    │  DOCX/...  │    │  MD5 + UUID    │    │ HTML/text    │
+└──────────┘    └───────────┘    └────────────────┘    └──────────────┘
 ```
 
 ## Development
 
 ```bash
 pip install -e ".[dev]"
-
-# Run all tests
-pytest
-
-# Run with coverage
 pytest tests/ -v --cov=src/opp --cov-report=term-missing
-```
-
-## Project Structure
-
-```
-src/opp/
-├── detector.py          # Format auto-detection via magic bytes
-├── resource_manager.py  # Image deduplication and UUID naming
-├── error_handler.py     # Error hierarchy and HTML/text reports
-├── pipeline.py          # OPPPipeline orchestrator
-├── cli.py               # Command-line interface
-├── markdown.py          # Markdown generation
-├── extractors/          # Phase 0 - Document extractors
-│   ├── base.py
-│   ├── docx.py
-│   ├── pptx.py
-│   ├── pdf.py
-│   ├── xlsx.py          # Phase 5 - XLSX extractor
-│   ├── csv.py            # Phase 5 - CSV extractor
-│   ├── json.py           # Phase 5 - JSON extractor
-│   ├── xml.py            # Phase 5 - XML extractor
-│   ├── email.py          # Phase 7 - Email extractor (EML/MSG)
-│   └── image_ocr.py      # Phase 7 - Image OCR extractor
-├── channels/            # Phase 5 - Output channels
-│   ├── table_channel.py   # DataFrame → Markdown table
-│   └── keyvalue_channel.py # dict → XLIFF trans-unit
-└── xliff/               # Phase 2 - XLIFF export
-    ├── generator.py
-    ├── validator.py
-    └── xliff_dataclasses.py
-```
-
-## Architecture
-
-```
-                    ┌─────────────────────────────────────────────────────────┐
-                    │                        OPPPipeline                           │
-                    │  detect_format() → Extractor → ResourceManager → Report    │
-                    └─────────────────────────────────────────────────────────┘
-
-┌─────────────┐    ┌─────────────┐    ┌──────────────────┐    ┌──────────────────┐
-│  detector.py │───▶│  extractors │───▶│ resource_manager │───▶│  error_handler  │
-│  FormatType │    │  DOCX/PPTX/  │    │  MD5 dedup +     │    │  HTML/text       │
-│  Magic bytes │    │  PDF         │    │  UUID naming     │    │  reports         │
-└─────────────┘    └─────────────┘    └──────────────────┘    └──────────────────┘
 ```
 
 ## Test Coverage
@@ -198,52 +145,15 @@ src/opp/
 | error_handler | 18 |
 | integration | 25 |
 | cli | 18 |
-| e2e (docx/pptx/pdf) | 52 |
-| opp-ol integration | 16 |
+| e2e | 52 |
 | xliff | 40+ |
-| Phase 5 extractors (xlsx/csv/json/xml) | 100+ |
-| Phase 5 channels | 20+ |
-| Phase 7/8 extractors | 20+ |
+| extractors | 140+ |
 | **Total** | **479+** |
 
 ## Batch Testing
 
-A comprehensive test suite is available in `batch_test/` with sample files for all supported formats and edge cases.
+Test files available in `batch_test/` covering all formats.
 
 ```bash
-# Test all formats with batch_test directory
 opp --target-format=both --source-lang=en --target-lang=zh --output-dir=output batch_test/
-
-# Test specific format
-opp --target-format=md batch_test/phase0_office/
-
-# Simulate Windows bat files (Linux/macOS)
-python -m opp --target-format=md batch_test/phase0_office/*.docx
-python -m opp --target-format=xlf --target-lang=zh batch_test/phase5_data/*.json
-```
-
-### Test Directory Structure
-
-```
-batch_test/
-├── phase0_office/      # DOCX, PPTX, PDF
-├── phase5_data/         # XLSX, CSV, JSON, XML
-├── phase6_web/          # HTML, EPUB
-├── phase7_email_image/   # EML, PNG
-├── phase8_media/        # IPYNB, YouTube URL
-└── edge_cases/         # Corrupted, zero-byte, unicode
-```
-
-## PyPI Publishing
-
-```bash
-# Tag a release
-git tag v0.1.1
-git push origin v0.1.1
-
-# GitHub Actions automatically:
-# 1. Runs tests
-# 2. Builds package
-# 3. Publishes to TestPyPI for verification
-# 4. On manual approval, publishes to PyPI
 ```
