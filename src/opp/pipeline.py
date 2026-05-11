@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Optional
 
 from opp.detector import detect_format, FormatType
 from opp.error_handler import ErrorHandler, ErrorContext
-from opp.extractors import DOCXExtractor, PDFExtractor, PPTXExtractor, XLSXExtractor, CSVExtractor, JSONExtractor, XMLExtractor, HTMLExtractor, EPUBExtractor
+from opp.extractors import DOCXExtractor, PDFExtractor, PPTXExtractor, XLSXExtractor, CSVExtractor, JSONExtractor, XMLExtractor, HTMLExtractor, EPUBExtractor, EmailExtractor, ImageOCRExtractor
 from opp.extractors.base import ExtractorBase
 from opp.markdown import MarkdownGenerator
 from opp.resource_manager import ResourceManager
@@ -54,6 +54,8 @@ class OPPPipeline:
             FormatType.XML: XMLExtractor(),
             FormatType.HTML: HTMLExtractor(),
             FormatType.EPUB: EPUBExtractor(),
+            FormatType.EMAIL: EmailExtractor(),
+            FormatType.IMAGE: ImageOCRExtractor(),
         }
         self.markdown_generator = MarkdownGenerator()
 

@@ -13,6 +13,8 @@ class FormatType(Enum):
     XML = "xml"
     HTML = "html"
     EPUB = "epub"
+    EMAIL = "email"
+    IMAGE = "image"
     UNKNOWN = "unknown"
 
 
@@ -95,5 +97,13 @@ def detect_format(path: Path) -> Tuple[FormatType, float]:
     ext = path.suffix.lower()
     if ext in (".html", ".htm"):
         return (FormatType.HTML, 0.5)
+
+    # Email format detection
+    if ext in (".eml", ".msg"):
+        return (FormatType.EMAIL, 1.0)
+
+    # Image format detection
+    if ext in (".png", ".jpg", ".jpeg", ".tiff", ".bmp"):
+        return (FormatType.IMAGE, 1.0)
 
     return (FormatType.UNKNOWN, 0.0)

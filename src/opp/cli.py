@@ -104,7 +104,7 @@ def create_parser() -> argparse.ArgumentParser:
 
 
 def get_supported_extensions() -> List[str]:
-    return ['.docx', '.pptx', '.pdf', '.html', '.epub']
+    return ['.docx', '.pptx', '.pdf', '.html', '.epub', '.eml', '.msg', '.png', '.jpg', '.jpeg', '.tiff', '.bmp']
 
 
 def expand_directories(paths: List[Path]) -> List[Path]:

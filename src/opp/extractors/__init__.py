@@ -8,6 +8,8 @@ from opp.extractors.pptx import PPTXExtractor
 from opp.extractors.xlsx import XLSXExtractor
 from opp.extractors.csv import CSVExtractor
 from opp.extractors.xml import XMLExtractor
+from opp.extractors.email import EmailExtractor
+from opp.extractors.image_ocr import ImageOCRExtractor
 
 __all__ = [
     "ExtractorBase",
@@ -20,4 +22,6 @@ __all__ = [
     "XLSXExtractor",
     "CSVExtractor",
     "XMLExtractor",
+    "EmailExtractor",
+    "ImageOCRExtractor",
 ]

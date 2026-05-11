@@ -11,8 +11,8 @@
 > - `tests/test_image_ocr_extractor.py` - Image OCR extractor tests
 >
 > **Estimated Effort**: 1.5 days
-> **Parallel Execution**: YES - 2 waves
-> **Critical Path**: Task 1 → Task 3 → Task 6 → Task 9
+> **Parallel Execution**: YES - 2.5 waves (Wave 1 → Wave 1.5 → Wave 2)
+> **Critical Path**: Task 1 → Task 1.5 → Task 3 → Task 6 → Task 9
 
 ---
 
@@ -95,12 +95,15 @@ Every task includes agent-executed QA scenarios. Evidence saved to `.sisyphus/ev
 ```
 Wave 1 (Foundation - can run immediately):
 ├── Task 1: Project structure + dependencies
+└── Task 1.5: FormatType + OPPPipeline registration (NEW - after T1)
+
+Wave 1.5 (Email implementation):
 ├── Task 2: Email base extractor + tests (RED phase)
 ├── Task 3: MSG extractor implementation (GREEN phase)
 ├── Task 4: EML extractor implementation (GREEN phase)
 └── Task 5: Email tests completion (REFACTOR phase)
 
-Wave 2 (OCR - depends on Wave 1 for patterns):
+Wave 2 (OCR - depends on Wave 1.5 for patterns):
 ├── Task 6: Image OCR base extractor + tests (RED phase)
 ├── Task 7: Tesseract OCR implementation (GREEN phase)
 ├── Task 8: RapidOCR implementation (GREEN phase)
@@ -117,12 +120,13 @@ Wave FINAL (After ALL tasks):
 
 ### Dependency Matrix
 
-- **T1**: - - 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
-- **T2**: 1 - 5, 2
+- **T1.5**: 1 - 3, 4, 5, 11 (NEW: FormatType + Pipeline registration)
+- **T1**: - - 1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
+- **T2**: 1, 1.5 - 5, 2
 - **T3**: 2 - 5, 11, 2
 - **T4**: 2 - 5, 11, 2
 - **T5**: 3, 4 - 2
-- **T6**: 1 - 7, 8, 9, 10, 6
+- **T6**: 1, 1.5 - 7, 8, 9, 10, 6
 - **T7**: 6 - 9, 10, 6
 - **T8**: 6 - 9, 10, 6
 - **T9**: 7, 8 - 10, 6
@@ -133,74 +137,8 @@ Wave FINAL (After ALL tasks):
 
 ## TODOs
 
-- [ ] 1. Project structure + dependencies
-
-  **What to do**:
-  - Add to `pyproject.toml` or `setup.py`:
-    - `extract-msg` for MSG parsing
-    - `pytesseract` for OCR
-    - `rapidocr-onnxruntime` as alternative OCR
-    - `Pillow` for image preprocessing
-  - Create `src/opp/extractors/email.py` (empty module)
-  - Create `src/opp/extractors/image_ocr.py` (empty module)
-  - Create test files with RED phase tests (all should fail)
-
-  **Must NOT do**:
-  - No IMAP/POP3 connectivity code
-  - No cloud OCR API in core dependencies
-
-  **Recommended Agent Profile**:
-  - **Category**: `quick`
-    - Reason: Dependency configuration and file scaffolding
-  - **Skills**: []
-    - No specialized skills needed for setup
-
-  **Parallelization**:
-  - **Can Run In Parallel**: YES
-  - **Parallel Group**: Wave 1 (with Tasks 2-5)
-  - **Blocks**: Tasks 2-11
-  - **Blocked By**: None (can start immediately)
-
-  **References**:
-  - `src/opp/extractors/` - Existing extractor structure to follow
-  - `pyproject.toml` - Current dependency configuration
-  - `tests/test_docx_extractor.py` - Test file pattern to follow
-
-  **Acceptance Criteria**:
-  - [ ] `pip install -e ".[dev]"` succeeds with new deps
-  - [ ] `python -c "import extract_msg"` succeeds
-  - [ ] `python -c "import pytesseract"` succeeds
-  - [ ] `python -c "from opp.extractors.email import EmailExtractor"` succeeds
-  - [ ] `python -c "from opp.extractors.image_ocr import ImageOCRExtractor"` succeeds
-
-  **QA Scenarios**:
-
-  Scenario: Dependencies install correctly
-    Tool: Bash
-    Preconditions: Clean virtual environment
-    Steps:
-      1. `pip install -e ".[dev]"` in project root
-      2. `python -c "import extract_msg; import pytesseract; from PIL import Image"`
-      3. Assert: No ImportError
-    Expected Result: All imports succeed
-    Failure Indicators: ImportError on any dependency
-    Evidence: .sisyphus/evidence/task-1-imports.txt
-
-  Scenario: Empty modules are importable
-    Tool: Bash
-    Preconditions: Dependencies installed
-    Steps:
-      1. `python -c "from opp.extractors.email import EmailExtractor"`
-      2. `python -c "from opp.extractors.image_ocr import ImageOCRExtractor"`
-    Expected Result: Both classes import without error
-    Failure Indicators: ImportError
-    Evidence: .sisyphus/evidence/task-1-imports2.txt
-
-  **Commit**: YES
-  - Message: `feat(phase7): add email and OCR extractor scaffolding`
-  - Files: `src/opp/extractors/email.py`, `src/opp/extractors/image_ocr.py`, `pyproject.toml`
-
----
+- [x] 1. Project structure + dependencies
+- [x] 1.5. FormatType enum update + OPPPipeline registration (NEW)
 
 - [ ] 2. Email base extractor + RED tests
 
@@ -262,12 +200,18 @@ Wave FINAL (After ALL tasks):
 - [ ] 3. MSG extractor implementation
 
   **What to do**:
-  - Implement `EmailExtractor.extract_msg(path)` in `src/opp/extractors/email.py`:
+  - Implement `EmailExtractor` class that inherits from `ExtractorBase`
+  - Implement `extract(self, input_path: Path) -> ExtractionResult`:
+    - Detect if file is MSG (by extension or OLE signature)
+    - Route to `_extract_msg()` for MSG files
+  - Implement private `_extract_msg(path)`:
     - Use `extract_msg` library to parse MSG file
     - Extract: sender, to, cc, date, subject, body (plain + HTML)
-    - Return structured dict with metadata and body
+    - Return structured result with metadata and body
   - Handle: encrypted MSG (raise error), corrupted MSG (catch exception)
-  - Implement `extract_msg_attachments()` - list attachment filenames
+  - Implement `_extract_msg_attachments()` - list attachment filenames
+
+  **API Clarification**: The public `extract()` method dispatches to `_extract_msg()` or `_extract_eml()` internally. Do NOT create separate public `extract_msg()` or `extract_eml()` methods - the base class contract uses `extract()`.
 
   **Must NOT do**:
   - No IMAP connectivity
@@ -301,10 +245,9 @@ Wave FINAL (After ALL tasks):
 
   Scenario: MSG metadata extraction
     Tool: Bash
-    Preconditions: Task 1 & 2 complete, implementation ready
+    Preconditions: Task 1.5 complete, implementation ready, fixture exists
     Steps:
-      1. Create test MSG file or use sample
-      2. `python -c "from opp.extractors.email import EmailExtractor; e = EmailExtractor(); r = e.extract('test.msg'); print(r['metadata'])"`
+      1. `python -c "from opp.extractors.email import EmailExtractor; e = EmailExtractor(); r = e.extract('tests/fixtures/email/sample.msg'); print(r.metadata)"`
       3. Assert: metadata contains sender, to, date, subject
     Expected Result: All metadata fields present
     Failure Indicators: Missing fields, KeyError
@@ -314,7 +257,7 @@ Wave FINAL (After ALL tasks):
     Tool: Bash
     Preconditions: Sample MSG with body content
     Steps:
-      1. `python -c "from opp.extractors.email import EmailExtractor; e = EmailExtractor(); r = e.extract('test.msg'); print(r['body'][:100])"`
+      1. `python -c "from opp.extractors.email import EmailExtractor; e = EmailExtractor(); r = e.extract('tests/fixtures/email/sample.msg'); print(r.body[:100])"`
     Expected Result: Body text extracted
     Failure Indicators: Empty body, encoding errors
     Evidence: .sisyphus/evidence/task-3-msg-body.txt
@@ -323,7 +266,7 @@ Wave FINAL (After ALL tasks):
     Tool: Bash
     Preconditions: Corrupted MSG file
     Steps:
-      1. `python -c "from opp.extractors.email import EmailExtractor; e = EmailExtractor(); e.extract('corrupted.msg')"`
+      1. `python -c "from opp.extractors.email import EmailExtractor; e = EmailExtractor(); e.extract('tests/fixtures/email/corrupted.msg')"`
     Expected Result: Raises informative error, not crash
     Failure Indicators: Unhandled exception, crash
     Evidence: .sisyphus/evidence/task-3-msg-error.json
@@ -337,12 +280,15 @@ Wave FINAL (After ALL tasks):
 - [ ] 4. EML extractor implementation
 
   **What to do**:
-  - Implement `EmailExtractor.extract_eml(path)` in `src/opp/extractors/email.py`:
+  - Implement private `_extract_eml(path)` method in `EmailExtractor`:
     - Use Python `email` stdlib to parse EML file
     - Extract: From, To, Cc, Date, Subject via `email.message_from_bytes()`
     - Handle multipart: extract text/plain and text/html parts
     - Use charset detection for non-UTF8 emails
   - Handle: encoding errors (fallback to chardet), missing headers
+  - The `extract()` base method already dispatches to this - do not create a separate public method
+
+  **API Clarification**: `_extract_eml()` is a private method called by `extract()`. The EmailExtractor already knows how to route EML files to this method based on the FormatType detection.
 
   **Must NOT do**:
   - No SMTP/IMAP connectivity
@@ -376,9 +322,9 @@ Wave FINAL (After ALL tasks):
 
   Scenario: EML metadata extraction
     Tool: Bash
-    Preconditions: Task 1 & 2 complete
+    Preconditions: Task 1.5 complete
     Steps:
-      1. `python -c "from opp.extractors.email import EmailExtractor; e = EmailExtractor(); r = e.extract_eml('test.eml'); print(r['metadata'])"`
+      1. `python -c "from opp.extractors.email import EmailExtractor; e = EmailExtractor(); r = e.extract('tests/fixtures/email/sample.eml'); print(r.metadata)"`
     Expected Result: All headers present
     Failure Indicators: Missing headers, decoding errors
     Evidence: .sisyphus/evidence/task-4-eml-metadata.json
@@ -387,7 +333,7 @@ Wave FINAL (After ALL tasks):
     Tool: Bash
     Preconditions: HTML email sample
     Steps:
-      1. `python -c "from opp.extractors.email import EmailExtractor; e = EmailExtractor(); r = e.extract_eml('html_email.eml'); print(r['body'])"`
+      1. `python -c "from opp.extractors.email import EmailExtractor; e = EmailExtractor(); r = e.extract('tests/fixtures/email/html_email.eml'); print(r.body)"`
     Expected Result: HTML content extracted
     Failure Indicators: Empty body
     Evidence: .sisyphus/evidence/task-4-eml-html.txt
@@ -396,7 +342,7 @@ Wave FINAL (After ALL tasks):
     Tool: Bash
     Preconditions: EML with wrong encoding declared
     Steps:
-      1. `python -c "from opp.extractors.email import EmailExtractor; e = EmailExtractor(); r = e.extract_eml('bad_encoding.eml')"`
+      1. `python -c "from opp.extractors.email import EmailExtractor; e = EmailExtractor(); r = e.extract('tests/fixtures/email/bad_encoding.eml')"`
     Expected Result: Graceful handling with chardet fallback
     Failure Indicators: Crash, UnicodeDecodeError
     Evidence: .sisyphus/evidence/task-4-eml-encoding.json
@@ -476,13 +422,14 @@ Wave FINAL (After ALL tasks):
   **What to do**:
   - Write test file `tests/test_image_ocr_extractor.py`:
     - `test_extract_text_from_image()` - Basic PNG text extraction
-    - `test_extract_chinese_text()` - Chinese OCR
+    - `test_extract_chinese_text()` - Chinese OCR (requires chi_sim Tesseract)
     - `test_extract_low_resolution_warning()` - 72dpi warning
     - `test_no_text_in_image()` - Empty result for风景图
     - `test_corrupted_image()` - Handle损坏图片
     - `test_ocr_engine_not_installed()` - Graceful degradation
     - `test_tesseract_vs_rapidocr()` - Multi-engine comparison
   - All tests should FAIL initially (RED phase)
+  - Use fixture images from `tests/fixtures/ocr/` created in Task 1
 
   **Must NOT do**:
   - No actual OCR implementation yet
@@ -567,18 +514,18 @@ Wave FINAL (After ALL tasks):
 
   Scenario: Basic text extraction
     Tool: Bash
-    Preconditions: Sample image with text
+    Preconditions: Sample image with text at `tests/fixtures/ocr/sample.png`
     Steps:
-      1. `python -c "from opp.extractors.image_ocr import ImageOCRExtractor; e = ImageOCRExtractor(); r = e.extract_text('test.png'); print(r['text'][:100])"`
+      1. `python -c "from opp.extractors.image_ocr import ImageOCRExtractor; e = ImageOCRExtractor(); r = e.extract_text('tests/fixtures/ocr/sample.png'); print(r['text'][:100])"`
     Expected Result: Text extracted from image
     Failure Indicators: Empty text, error
     Evidence: .sisyphus/evidence/task-7-tesseract-basic.txt
 
   Scenario: Chinese text extraction
     Tool: Bash
-    Preconditions: Chinese text image sample
+    Preconditions: Chinese text image sample at `tests/fixtures/ocr/chinese.png`, Tesseract chi_sim installed
     Steps:
-      1. `python -c "from opp.extractors.image_ocr import ImageOCRExtractor; e = ImageOCRExtractor(); r = e.extract_text('chinese.png', lang='chi_sim'); print(r['text'])"`
+      1. `python -c "from opp.extractors.image_ocr import ImageOCRExtractor; e = ImageOCRExtractor(); r = e.extract_text('tests/fixtures/ocr/chinese.png', lang='chi_sim'); print(r['text'])"`
     Expected Result: Chinese text extracted
     Failure Indicators: Empty result, garbled text
     Evidence: .sisyphus/evidence/task-7-tesseract-chinese.txt
@@ -860,7 +807,8 @@ Wave FINAL (After ALL tasks):
 
 ## Commit Strategy
 
-- **1**: `feat(phase7): add email and OCR extractor scaffolding` - pyproject.toml, email.py, image_ocr.py
+- **1**: `feat(phase7): add email and OCR extractor scaffolding` - pyproject.toml, email.py, image_ocr.py, fixtures
+- **1.5**: `feat(phase7): add FormatType entries and OPPPipeline registration` - detector.py, pipeline.py, cli.py
 - **2**: `test(phase7): add email extractor RED phase tests` - test_email_extractor.py
 - **3**: `feat(phase7): implement MSG extractor` - email.py
 - **4**: `feat(phase7): implement EML extractor` - email.py
