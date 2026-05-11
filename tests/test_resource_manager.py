@@ -35,11 +35,6 @@ class OPPError(Exception):
     pass
 
 
-sys.modules['opp'] = type(sys)('opp')
-sys.modules['opp.utils'] = type(sys)('opp.utils')
-sys.modules['opp.utils.exceptions'] = type(sys)('opp.utils.exceptions')
-sys.modules['opp.utils.exceptions'].OPPError = OPPError
-
 spec = importlib.util.spec_from_file_location("resource_manager", Path(__file__).parent.parent / "src" / "opp" / "resource_manager.py")
 resource_manager_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(resource_manager_module)
