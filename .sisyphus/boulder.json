@@ -1,65 +1,7 @@
 {
-  "active_plan": "/mnt/d/贯维/Omni_Pre_Processor/.sisyphus/plans/phase-5-xlsx-csv-json-xml.md",
-  "started_at": "2026-05-10T14:19:10.922Z",
-  "session_ids": [
-    "ses_1eddd9f8bffeaJ8dq5rHngOGJO",
-    "ses_1edbdc74bffePa2TemofeY31Cd",
-    "ses_1edbda873ffeSmcfpQzN0lMNnC",
-    "ses_1edbd6621ffeBrTiPK35JuZZkt"
-  ],
-  "plan_name": "phase-5-xlsx-csv-json-xml",
-  "worktree_path": null,
-  "session_origins": {
-    "ses_1eddd9f8bffeaJ8dq5rHngOGJO": "direct",
-    "ses_1edbdc74bffePa2TemofeY31Cd": "appended",
-    "ses_1edbda873ffeSmcfpQzN0lMNnC": "appended",
-    "ses_1edbd6621ffeBrTiPK35JuZZkt": "appended"
-  },
-  "task_sessions": {
-    "todo:0": {
-      "task_key": "todo:0",
-      "task_label": "0",
-      "task_title": "Infrastructure setup (BLOCKING ALL OTHER TASKS)",
-      "session_id": "ses_1edbd6621ffeBrTiPK35JuZZkt",
-      "agent": "librarian",
-      "category": "unspecified-high",
-      "updated_at": "2026-05-10T14:28:06.820Z"
-    },
-    "todo:1": {
-      "task_key": "todo:1",
-      "task_label": "1",
-      "task_title": "XLSXExtractor implementation",
-      "session_id": "ses_1ed9e09d7ffeSvqsTflOccvNxj",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-05-10T14:59:17.615Z"
-    },
-    "todo:7": {
-      "task_key": "todo:7",
-      "task_label": "7",
-      "task_title": "Pipeline update for new formats (DONE - already updated)",
-      "session_id": "ses_1ed990dcbffeWTEvvLyi2u12l1",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-05-10T15:08:45.231Z"
-    },
-    "todo:13": {
-      "task_key": "todo:13",
-      "task_label": "13",
-      "task_title": "TableChannel tests",
-      "session_id": "ses_1ed909cc0ffe8i597ofGzMUyPL",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-05-10T15:16:06.025Z"
-    },
-    "final-wave:f1": {
-      "task_key": "final-wave:f1",
-      "task_label": "F1",
-      "task_title": "**Plan compliance audit** — `oracle`",
-      "session_id": "ses_1ed907b01ffeFAwRI9mX0lXOkU",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "updated_at": "2026-05-10T15:28:14.034Z"
-    }
-  }
+  "active_plan": "/mnt/d/贯维/Omni_Pre_Processor/.sisyphus/plans/phase6-html-epub.md",
+  "started_at": "2026-05-11T03:28:05.674Z",
+  "session_ids": ["ses_1eb08eab9ffebcg7i4Mb6QrJal"],
+  "plan_name": "phase6-html-epub",
+  "worktree_path": null
 }

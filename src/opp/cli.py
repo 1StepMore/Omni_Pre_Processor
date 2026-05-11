@@ -30,7 +30,7 @@ def create_parser() -> argparse.ArgumentParser:
         "files",
         nargs="+",
         type=Path,
-        help="Input files or folders to process (DOCX, PPTX, PDF)"
+        help="Input files or folders to process (DOCX, PPTX, PDF, HTML, EPUB)"
     )
 
     parser.add_argument(
@@ -104,7 +104,7 @@ def create_parser() -> argparse.ArgumentParser:
 
 
 def get_supported_extensions() -> List[str]:
-    return ['.docx', '.pptx', '.pdf']
+    return ['.docx', '.pptx', '.pdf', '.html', '.epub']
 
 
 def expand_directories(paths: List[Path]) -> List[Path]:

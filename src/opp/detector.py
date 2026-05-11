@@ -11,6 +11,7 @@ class FormatType(Enum):
     CSV = "csv"
     JSON = "json"
     XML = "xml"
+    HTML = "html"
     EPUB = "epub"
     UNKNOWN = "unknown"
 
@@ -77,5 +78,22 @@ def detect_format(path: Path) -> Tuple[FormatType, float]:
     # XML detection: starts with <?xml (case-insensitive, no extension case)
     if header.startswith(b"<?xml") or header.startswith(b"<?XML") or header.startswith(b"<?Xml") or header.startswith(b"<?xMl"):
         return (FormatType.XML, 1.0)
+
+    # HTML detection: check for <!DOCTYPE html> or <html> tag start
+    try:
+        with open(path, "rb") as f:
+            content_start = f.read(1024).lower()
+            if b"<!doctype html" in content_start or b"<html" in content_start:
+                ext = path.suffix.lower()
+                if ext in (".html", ".htm"):
+                    return (FormatType.HTML, 1.0)
+                return (FormatType.HTML, 0.9)
+    except Exception:
+        pass
+
+    # Extension-based HTML fallback
+    ext = path.suffix.lower()
+    if ext in (".html", ".htm"):
+        return (FormatType.HTML, 0.5)
 
     return (FormatType.UNKNOWN, 0.0)
