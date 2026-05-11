@@ -1,0 +1,77 @@
+from pathlib import Path
+from typing import List
+
+from opp.extractors.base import ExtractorBase
+from opp.utils.dataclasses import (
+    DocumentMetadata,
+    ExtractionResult,
+    ParagraphData,
+)
+from opp.utils.exceptions import CorruptedFileError
+
+
+class IPYNBExtractor(ExtractorBase):
+
+    def supported_extensions(self) -> List[str]:
+        return [".ipynb"]
+
+    def extract(self, input_path: Path) -> ExtractionResult:
+        self.validate_file(input_path)
+
+        try:
+            import nbformat
+        except ImportError:
+            raise CorruptedFileError(
+                "nbformat is required to extract Jupyter notebooks. "
+                "Install it with: pip install nbformat"
+            )
+
+        try:
+            with open(input_path, "r", encoding="utf-8") as f:
+                notebook = nbformat.read(f, as_version=4)
+        except Exception as e:
+            raise CorruptedFileError(f"Cannot parse notebook file: {input_path}")
+
+        paragraphs: List[ParagraphData] = []
+
+        for cell in notebook.cells:
+            cell_type = cell.cell_type
+            source = cell.source
+            if isinstance(source, list):
+                source = "".join(source)
+
+            if cell_type == "markdown":
+                paragraphs.append(
+                    ParagraphData(
+                        text=source or "",
+                        style="Markdown",
+                        level=0,
+                    )
+                )
+            elif cell_type == "code":
+                text = source or ""
+                if cell.outputs:
+                    output_lines = []
+                    for output in cell.outputs:
+                        if hasattr(output, "text") and output.text:
+                            output_lines.append(f"# Output: {output.text}")
+                        elif hasattr(output, "data") and output.data:
+                            output_lines.append(f"# Data: {output.data}")
+                        elif hasattr(output, "output_type"):
+                            output_lines.append(f"# [{output.output_type}]")
+                    if output_lines:
+                        text = source + "\n" + "\n".join(output_lines)
+                paragraphs.append(
+                    ParagraphData(
+                        text=text,
+                        style="Code",
+                        level=0,
+                    )
+                )
+
+        return ExtractionResult(
+            paragraphs=paragraphs,
+            tables=[],
+            images=[],
+            metadata=DocumentMetadata(format_type="ipynb"),
+        )

@@ -66,6 +66,7 @@ class ExtractionResult:
     attachments: List[AttachmentData] = field(default_factory=list)
     metadata: Optional[DocumentMetadata] = None
     warnings: List[str] = field(default_factory=list)
+    is_transcription: bool = False
 
     def __post_init__(self):
         if self.metadata is None:

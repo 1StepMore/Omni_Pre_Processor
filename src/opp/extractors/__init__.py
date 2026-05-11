@@ -10,6 +10,10 @@ from opp.extractors.csv import CSVExtractor
 from opp.extractors.xml import XMLExtractor
 from opp.extractors.email import EmailExtractor
 from opp.extractors.image_ocr import ImageOCRExtractor
+from opp.extractors.audio import AudioExtractor
+from opp.extractors.video import VideoExtractor
+from opp.extractors.youtube import YouTubeExtractor
+from opp.extractors.ipynb import IPYNBExtractor
 
 __all__ = [
     "ExtractorBase",
@@ -24,4 +28,8 @@ __all__ = [
     "XMLExtractor",
     "EmailExtractor",
     "ImageOCRExtractor",
+    "AudioExtractor",
+    "VideoExtractor",
+    "YouTubeExtractor",
+    "IPYNBExtractor",
 ]

@@ -36,7 +36,14 @@ email = [
     "Pillow>=10.0.0",
 ]
 audio = [
+    "faster-whisper",
+    "markitdown[youtube]",
+]
+notebook = [
     "nbformat>=5.0.0",
+]
+all = [
+    "opp[audio,notebook]",
 ]
 
 [build-system]

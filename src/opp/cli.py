@@ -117,6 +117,20 @@ def create_parser() -> argparse.ArgumentParser:
         help="Language for Tesseract OCR (e.g., eng, chi_sim) (default: eng)"
     )
 
+    parser.add_argument(
+        "--asr-engine",
+        choices=["whisper"],
+        default=None,
+        help="ASR engine for audio files (default: whisper)"
+    )
+
+    parser.add_argument(
+        "--model-size",
+        choices=["tiny", "base", "small", "medium", "large-v3"],
+        default="tiny",
+        help="Whisper model size for ASR (default: tiny)"
+    )
+
     return parser
 
 
@@ -151,6 +165,12 @@ def process_single_file(
             os.environ["OPP_OCR_ENGINE"] = args.ocr_engine
         if args.ocr_lang:
             os.environ["OPP_OCR_LANG"] = args.ocr_lang
+
+        # Set ASR env vars for audio processing
+        if args.asr_engine:
+            os.environ["OPP_ASR_ENGINE"] = args.asr_engine
+        if args.model_size:
+            os.environ["OPP_MODEL_SIZE"] = args.model_size
 
         proc_result = pipeline.process_file(file_path)
 
