@@ -29,7 +29,7 @@ class JSONExtractor(ExtractorBase):
         if warnings is None:
             warnings = []
 
-        if depth >= self.MAX_DEPTH:
+        if depth > self.MAX_DEPTH:
             warnings.append(f"最大嵌套深度 {self.MAX_DEPTH} 已超出，截断路径: {prefix}")
             return result
 
@@ -55,7 +55,7 @@ class JSONExtractor(ExtractorBase):
         metadata = self.get_file_info(input_path)
         warnings: List[str] = []
 
-        with open(input_path, encoding="utf-8") as f:
+        with open(input_path, encoding="utf-8-sig") as f:
             data = json.load(f)
 
         if isinstance(data, list):

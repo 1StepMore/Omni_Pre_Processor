@@ -219,9 +219,8 @@ class TestJSONExtractor:
     def test_extract_bom_json(self, tmp_path: Path):
         """Exception: JSON with BOM should be handled correctly."""
         json_file = tmp_path / "bom.json"
-        # UTF-8 BOM (0xEF 0xBB 0xBF)
-        content = '\ufeff{"name": "bom_test", "value": 123}'
-        json_file.write_bytes(content.encode('utf-8-sig'))
+        content = '{"name": "bom_test", "value": 123}'
+        json_file.write_bytes(b'\xef\xbb\xbf' + content.encode('utf-8'))
 
         extractor = JSONExtractor()
         result = extractor.extract(json_file)

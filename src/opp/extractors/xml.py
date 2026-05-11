@@ -71,7 +71,7 @@ class XMLExtractor(ExtractorBase):
 
         text_content = self._get_text_content(element)
 
-        if text_content.strip():
+        if element.text and element.text.strip():
             tag_name = self._get_local_name(element.tag)
             style = self._get_style_name(tag_name, namespace_map)
             paragraphs.append(ParagraphData(

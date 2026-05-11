@@ -60,7 +60,7 @@ class XLSXExtractor(ExtractorBase):
                         style=None,
                     ))
 
-        if not paragraphs:
+        if not any(p.style != "sheet_header" for p in paragraphs):
             warnings.append("工作簿为空")
 
         return ExtractionResult(
