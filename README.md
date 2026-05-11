@@ -1,10 +1,12 @@
 # OPP - Omni Pre-Processor
 
-Document content extraction package for DOCX, PPTX, PDF, XLSX, CSV, JSON, and XML files.
+Document content extraction package for DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPUB, EML, MSG, and Image (OCR) files.
 
 ## Features
 
-- **Multi-format extraction** - DOCX, PPTX, PDF, XLSX, CSV, JSON, XML support
+- **Multi-format extraction** - DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPUB, EML, MSG, Image support
+- **Image OCR** - Tesseract and RapidOCR engines with graceful fallback
+- **Email extraction** - EML (RFC 822) and MSG (Outlook) with attachment recursion
 - **Format auto-detection** - Magic bytes detection (no file extension required)
 - **Resource management** - MD5 deduplication, UUID naming for images
 - **Error handling** - Unified error hierarchy with HTML/text reports
@@ -22,6 +24,8 @@ Document content extraction package for DOCX, PPTX, PDF, XLSX, CSV, JSON, and XM
 | Phase 3 | ✅ Complete | Multi-format convergence, auto-detection, resource management |
 | Phase 4 | ✅ Complete | CLI/Pipeline integration, E2E tests, PyPI publishing |
 | Phase 5 | ✅ Complete | Office & data formats (XLSX/CSV/JSON/XML) |
+| Phase 6 | ✅ Complete | Web & ebook formats (HTML/EPUB) |
+| Phase 7 | ✅ Complete | Email & image OCR (EML/MSG/Image) |
 
 ## Installation
 
@@ -31,6 +35,9 @@ pip install -e .
 
 # With office/data format support (XLSX, CSV, JSON, XML)
 pip install -e ".[office]"
+
+# With email and image OCR support (EML, MSG, Tesseract, RapidOCR)
+pip install -e ".[email]"
 ```
 
 ## Quick Start
@@ -85,6 +92,18 @@ opp --target-format=both --source-lang=en --target-lang=zh document.docx
 
 # Custom output directory
 opp --target-format=md --output-dir ./output document.docx
+
+# Image OCR with Tesseract (default)
+opp --ocr-engine tesseract scan.png
+
+# Image OCR with RapidOCR
+opp --ocr-engine rapidocr scan.png
+
+# Image OCR with specific language
+opp --ocr-engine tesseract --ocr-lang chi_sim scan.png
+
+# Email extraction with attachments
+opp --target-format=both email.msg
 ```
 
 ### Batch Entry Points (Windows)
@@ -141,7 +160,9 @@ src/opp/
 │   ├── xlsx.py          # Phase 5 - XLSX extractor
 │   ├── csv.py            # Phase 5 - CSV extractor
 │   ├── json.py           # Phase 5 - JSON extractor
-│   └── xml.py            # Phase 5 - XML extractor
+│   ├── xml.py            # Phase 5 - XML extractor
+│   ├── email.py          # Phase 7 - Email extractor (EML/MSG)
+│   └── image_ocr.py      # Phase 7 - Image OCR extractor
 ├── channels/            # Phase 5 - Output channels
 │   ├── table_channel.py   # DataFrame → Markdown table
 │   └── keyvalue_channel.py # dict → XLIFF trans-unit
@@ -180,7 +201,8 @@ src/opp/
 | xliff | 40+ |
 | Phase 5 extractors (xlsx/csv/json/xml) | 100+ |
 | Phase 5 channels | 20+ |
-| **Total** | **457** |
+| Phase 7 extractors (email/image_ocr) | 15+ |
+| **Total** | **472+** |
 
 ## PyPI Publishing
 
