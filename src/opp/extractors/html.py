@@ -30,22 +30,25 @@ except ImportError:
     DOCLING_AVAILABLE = False
 
 
-class _HTMLMarkdownConverter(MarkdownConverter):
-    def __init__(self, **options):
-        options.setdefault("heading_style", "atx")
-        options.setdefault("bullets", "-")
-        options.setdefault("strip", ["script", "style"])
-        super().__init__(**options)
+if MARKDOWNIFY_AVAILABLE:
+    class _HTMLMarkdownConverter(MarkdownConverter):
+        def __init__(self, **options):
+            options.setdefault("heading_style", "atx")
+            options.setdefault("bullets", "-")
+            options.setdefault("strip", ["script", "style"])
+            super().__init__(**options)
 
-    def convert_img(self, el, text, convert_as_inline=False, **_kwargs):
-        alt = el.get("alt", "") or ""
-        src = el.get("src", "") or el.get("data-src", "") or ""
-        title = el.get("title", "") or ""
-        title_part = f' "{title}"' if title else ""
-        alt_clean = alt.replace("\n", " ")
-        if src.startswith("data:") and not self.options.get("keep_data_uris", False):
-            src = src.split(",")[0] + "..."
-        return f"![{alt_clean}]({src}{title_part})"
+        def convert_img(self, el, text, convert_as_inline=False, **_kwargs):
+            alt = el.get("alt", "") or ""
+            src = el.get("src", "") or el.get("data-src", "") or ""
+            title = el.get("title", "") or ""
+            title_part = f' "{title}"' if title else ""
+            alt_clean = alt.replace("\n", " ")
+            if src.startswith("data:") and not self.options.get("keep_data_uris", False):
+                src = src.split(",")[0] + "..."
+            return f"![{alt_clean}]({src}{title_part})"
+else:
+    _HTMLMarkdownConverter = None
 
 
 class HTMLExtractor(ExtractorBase):

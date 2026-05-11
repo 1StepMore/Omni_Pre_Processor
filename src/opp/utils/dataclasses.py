@@ -8,6 +8,12 @@ class DocumentMetadata:
     page_count: Optional[int] = None
     file_size: Optional[int] = None
     format_type: Optional[str] = None
+    # Email-specific fields
+    subject: Optional[str] = None
+    sender: Optional[str] = None
+    to: Optional[str] = None
+    cc: Optional[str] = None
+    date: Optional[str] = None
 
 
 @dataclass

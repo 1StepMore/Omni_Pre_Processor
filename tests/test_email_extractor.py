@@ -1,4 +1,7 @@
 from pathlib import Path
+import email.encoders
+import email.mime.multipart
+import email.mime.base
 import pytest
 from datetime import datetime
 
@@ -7,11 +10,10 @@ from opp.extractors.email import EmailExtractor
 
 class TestEmailExtractor:
     def test_extract_msg_metadata(self, tmp_path: Path):
-        import extract_msg
-
-        msg_path = tmp_path / "test_email.msg"
+        pytest.importorskip("extract_msg")
         from extract_msg import Message
 
+        msg_path = tmp_path / "test_email.msg"
         msg = Message(
             str(msg_path),
             to="recipient@example.com",
@@ -50,6 +52,7 @@ class TestEmailExtractor:
         assert "subject" in dir(result.metadata) or hasattr(result.metadata, "subject")
 
     def test_extract_msg_body(self, tmp_path: Path):
+        pytest.importorskip("extract_msg")
         from extract_msg import Message
 
         msg_path = tmp_path / "body_test.msg"
@@ -95,6 +98,7 @@ class TestEmailExtractor:
         assert "bold" in body_text
 
     def test_extract_msg_attachments(self, tmp_path: Path):
+        pytest.importorskip("extract_msg")
         from extract_msg import Message
 
         attachment_path = tmp_path / "attachment.txt"
@@ -117,24 +121,21 @@ class TestEmailExtractor:
         assert hasattr(result, "attachments") or hasattr(result, "images")
 
     def test_extract_eml_attachments(self, tmp_path: Path):
-        from email.message import EmailMessage
-        import base64
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.nonmultipart import MIMENonMultipart
 
         eml_path = tmp_path / "eml_with_attachments.eml"
-        msg = EmailMessage()
+        msg = MIMEMultipart()
         msg["From"] = "sender@example.com"
         msg["To"] = "recipient@example.com"
         msg["Subject"] = "EML Attachment Test"
         msg["Date"] = datetime.now().strftime("%a, %d %b %Y %H:%M:%S %z")
 
         attachment_data = b"Attachment file content"
-        encoded_data = base64.b64encode(attachment_data).decode()
-
-        msg.set_content("Email body with attachment")
-        msg.add_attachment(
-            "test_file.txt",
-            ("text/plain", "attachment", None, None, encoded_data, None),
-        )
+        part = MIMENonMultipart("application", "octet-stream")
+        part.set_payload(attachment_data)
+        part.add_header("Content-Disposition", "attachment", filename="test_file.txt")
+        msg.attach(part)
 
         with open(eml_path, "wb") as f:
             f.write(msg.as_bytes())

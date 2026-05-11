@@ -1,7 +1,9 @@
 from email import policy
 from email.parser import BytesParser
 from pathlib import Path
-from typing import List
+from typing import List, Optional, TYPE_CHECKING
+import tempfile
+import email.mime.image
 
 from opp.extractors.base import ExtractorBase
 from opp.utils.dataclasses import (
@@ -11,6 +13,10 @@ from opp.utils.dataclasses import (
     ParagraphData,
 )
 from opp.utils.exceptions import CorruptedFileError, PasswordProtectedError
+
+if TYPE_CHECKING:
+    from opp.pipeline import OPPPipeline
+    from opp.pipeline import ProcessingResult
 
 
 class EmailExtractor(ExtractorBase):
@@ -34,6 +40,7 @@ class EmailExtractor(ExtractorBase):
         except Exception as e:
             raise CorruptedFileError(f"Cannot parse EML file: {path}")
 
+        warnings: List[str] = []
         body = ""
         if msg.is_multipart():
             for part in msg.walk():
@@ -41,24 +48,32 @@ class EmailExtractor(ExtractorBase):
                 if content_type == "text/plain" and not body:
                     try:
                         body = str(part.get_content())
-                    except Exception:
+                    except Exception as e:
+                        warnings.append(f"Body decode warning: {str(e)}")
                         payload = part.get_payload(decode=True)
                         if isinstance(payload, bytes):
                             body = payload.decode("utf-8", errors="replace")
                 elif content_type == "text/html" and not body:
                     try:
                         body = str(part.get_content())
-                    except Exception:
+                    except Exception as e:
+                        warnings.append(f"HTML body decode warning: {str(e)}")
                         payload = part.get_payload(decode=True)
                         if isinstance(payload, bytes):
                             body = payload.decode("utf-8", errors="replace")
         else:
             try:
                 body = str(msg.get_content())
-            except Exception:
-                payload = msg.get_payload(decode=True)
-                if isinstance(payload, bytes):
-                    body = payload.decode("utf-8", errors="replace")
+            except Exception as e:
+                body = ""
+                warnings.append(f"Non-multipart body decode warning: {str(e)}")
+            if "\ufffd" in body:
+                warnings.append("Body contains invalid UTF-8 sequences, used replacement characters")
+            elif body:
+                try:
+                    body.encode("utf-8").decode("utf-8")
+                except UnicodeDecodeError:
+                    warnings.append("Body contains invalid UTF-8 sequences, used replacement characters")
 
         paragraphs = [ParagraphData(text=body or "", level=0, style="Normal")]
 
@@ -81,11 +96,15 @@ class EmailExtractor(ExtractorBase):
                 )
             )
 
-        warnings: List[str] = []
         metadata = DocumentMetadata(
             file_size=path.stat().st_size,
             format_type="EMAIL",
             page_count=1,
+            subject=msg["subject"] or None,
+            sender=msg["sender"] or msg["from"] or None,
+            to=msg["to"] or None,
+            cc=msg["cc"] or None,
+            date=msg["date"] or None,
         )
 
         return ExtractionResult(
@@ -98,10 +117,15 @@ class EmailExtractor(ExtractorBase):
         )
 
     def _extract_msg(self, path: Path) -> ExtractionResult:
-        import extract_msg
+        try:
+            import extract_msg
+        except ImportError:
+            raise CorruptedFileError(f"extract_msg library not installed for MSG parsing: {path}")
 
         try:
             msg = extract_msg.Message(str(path))
+        except ImportError:
+            raise CorruptedFileError(f"extract_msg library not available for MSG parsing: {path}")
         except Exception as e:
             error_str = str(e).lower()
             if "encrypted" in error_str or "password" in error_str:
@@ -112,6 +136,11 @@ class EmailExtractor(ExtractorBase):
             file_size=path.stat().st_size,
             format_type="EMAIL",
             page_count=1,
+            subject=msg.subject or None,
+            sender=msg.sender or None,
+            to=msg.to or None,
+            cc=msg.cc or None,
+            date=str(msg.date) if hasattr(msg, "date") and msg.date else None,
         )
 
         body = msg.body or ""
@@ -151,3 +180,34 @@ class EmailExtractor(ExtractorBase):
             metadata=metadata,
             warnings=warnings,
         )
+
+
+class AttachmentHandler:
+    def __init__(self, pipeline: "OPPPipeline", max_depth: int = 3) -> None:
+        self.pipeline = pipeline
+        self.max_depth = max_depth
+        self._current_depth = 0
+
+    def process_attachment(self, attachment_data: AttachmentData) -> Optional["ProcessingResult"]:
+        if self._current_depth >= self.max_depth:
+            return None
+
+        temp_path = Path(tempfile.gettempdir()) / attachment_data.filename
+        try:
+            with open(temp_path, "wb") as f:
+                f.write(attachment_data.data)
+
+            self._current_depth += 1
+            result = self.pipeline.process_file(temp_path)
+            self._current_depth -= 1
+
+            return result
+        except Exception:
+            return None
+        finally:
+            if temp_path.exists():
+                temp_path.unlink()
+
+    @property
+    def recursion_depth(self) -> int:
+        return self._current_depth
