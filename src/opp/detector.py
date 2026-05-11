@@ -11,6 +11,7 @@ class FormatType(Enum):
     CSV = "csv"
     JSON = "json"
     XML = "xml"
+    EPUB = "epub"
     UNKNOWN = "unknown"
 
 
@@ -29,6 +30,8 @@ def detect_format(path: Path) -> Tuple[FormatType, float]:
             return (FormatType.PPTX, 1.0)
         elif ext == ".xlsx":
             return (FormatType.XLSX, 1.0)
+        elif ext == ".epub":
+            return (FormatType.EPUB, 1.0)
         elif ext in (".doc", ".docm"):
             return (FormatType.DOCX, 0.5)
         elif ext == ".potx":
