@@ -7,6 +7,7 @@ from opp.detector import detect_format, FormatType
 from opp.error_handler import ErrorHandler, ErrorContext
 from opp.extractors import DOCXExtractor, PDFExtractor, PPTXExtractor, XLSXExtractor, CSVExtractor, JSONExtractor, XMLExtractor, HTMLExtractor, EPUBExtractor, EmailExtractor, ImageOCRExtractor
 from opp.extractors.base import ExtractorBase
+from opp.extractors.email import AttachmentHandler
 from opp.markdown import MarkdownGenerator
 from opp.resource_manager import ResourceManager
 from opp.xliff import XLIFFFileGenerator
@@ -22,6 +23,7 @@ class ProcessingResult:
     warnings: List[str] = field(default_factory=list)
     duration_ms: float = 0.0
     extraction_result: Optional[ExtractionResult] = None
+    attachment_results: List["ProcessingResult"] = field(default_factory=list)
 
 
 @dataclass
@@ -59,17 +61,23 @@ class OPPPipeline:
         }
         self.markdown_generator = MarkdownGenerator()
 
-    def generate_markdown(self, result: ExtractionResult, output_path: Path) -> Path:
+    def generate_markdown(
+        self,
+        result: ExtractionResult,
+        output_path: Path,
+        attachment_results: Optional[List["ProcessingResult"]] = None,
+    ) -> Path:
         """Generate Markdown file from extraction result.
 
         Args:
             result: The extraction result containing paragraphs, tables, and images
             output_path: Path to write the Markdown file to
+            attachment_results: Optional list of attachment processing results
 
         Returns:
             The output_path that was written to
         """
-        self.markdown_generator.generate_to_file(result, output_path)
+        self.markdown_generator.generate_to_file(result, output_path, attachment_results)
         return output_path
 
     def generate_xliff(
@@ -236,6 +244,16 @@ class OPPPipeline:
             )
 
         duration_ms = (datetime.now() - start_time).total_seconds() * 1000
+
+        # Process email attachments recursively
+        attachment_results: List[ProcessingResult] = []
+        if fmt == FormatType.EMAIL and result.attachments:
+            att_handler = AttachmentHandler(self, max_depth=3)
+            for att in result.attachments:
+                att_result = att_handler.process_attachment(att)
+                if att_result is not None:
+                    attachment_results.append(att_result)
+
         return ProcessingResult(
             content=result.content,
             format_type=fmt,
@@ -244,6 +262,7 @@ class OPPPipeline:
             warnings=warnings,
             duration_ms=duration_ms,
             extraction_result=result,
+            attachment_results=attachment_results,
         )
 
     def process_batch(self, file_paths: List[Path]) -> BatchResult:

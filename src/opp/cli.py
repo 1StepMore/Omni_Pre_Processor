@@ -171,7 +171,7 @@ def process_single_file(
 
         if args.target_format in ("md", "both"):
             md_path = output_dir / f"{base_name}.md"
-            pipeline.generate_markdown(proc_result.extraction_result, md_path)
+            pipeline.generate_markdown(proc_result.extraction_result, md_path, proc_result.attachment_results)
             logger.info(f"Generated: {md_path}")
 
         if args.target_format in ("xlf", "both"):

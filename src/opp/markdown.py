@@ -1,11 +1,14 @@
 from pathlib import Path
-from typing import List
+from typing import List, Optional, TYPE_CHECKING
 
 from opp.utils.dataclasses import ExtractionResult, ParagraphData, TableData, ImageData
 
+if TYPE_CHECKING:
+    from opp.pipeline import ProcessingResult
+
 
 class MarkdownGenerator:
-    def generate(self, result: ExtractionResult) -> str:
+    def generate(self, result: ExtractionResult, attachment_results: Optional[List["ProcessingResult"]] = None) -> str:
         parts = []
 
         headings_paragraphs = [p for p in result.paragraphs if p.level is not None and p.level >= 1]
@@ -24,10 +27,18 @@ class MarkdownGenerator:
         if result.tables:
             parts.append(self.generate_tables_md(result.tables))
 
+        if attachment_results:
+            parts.append(self._generate_attachments_section(attachment_results))
+
         return '\n'.join(parts)
 
-    def generate_to_file(self, result: ExtractionResult, output_path: Path) -> None:
-        content = self.generate(result)
+    def generate_to_file(
+        self,
+        result: ExtractionResult,
+        output_path: Path,
+        attachment_results: Optional[List["ProcessingResult"]] = None,
+    ) -> None:
+        content = self.generate(result, attachment_results)
         output_path.write_text(content, encoding='utf-8')
 
         if result.images:
@@ -101,3 +112,15 @@ class MarkdownGenerator:
 
     def _escape_table_cell(self, cell: str) -> str:
         return cell.replace('|', '\\|').replace('\n', ' ')
+
+    def _generate_attachments_section(self, attachment_results: List["ProcessingResult"]) -> str:
+        if not attachment_results:
+            return ""
+        lines = ["", "## Attachments", ""]
+        for att_result in attachment_results:
+            if att_result.content:
+                lines.append(f"### {att_result.format_type.value} Attachment")
+                lines.append("")
+                lines.append(att_result.content)
+                lines.append("")
+        return '\n'.join(lines)
