@@ -228,3 +228,66 @@ class TestMarkdownGenerator:
         data_line = "| " + " | ".join(row) + " |"
         expected = f"{header_line}\n{sep_line}\n{data_line}"
         assert result == expected
+
+    def test_generate_tables_md_empty_table(self):
+        """Empty table with no rows."""
+        table = TableData(
+            headers=["Column1", "Column2", "Column3"],
+            rows=[]
+        )
+        generator = MarkdownGenerator()
+        result = generator.generate_tables_md([table])
+        lines = result.split("\n")
+        assert len(lines) == 2  # header + separator only
+        assert "| Column1 | Column2 | Column3 |" in result
+
+    def test_generate_tables_md_empty_headers(self):
+        """Table with empty headers list."""
+        table = TableData(
+            headers=[],
+            rows=[]
+        )
+        generator = MarkdownGenerator()
+        result = generator.generate_tables_md([table])
+        # Empty headers produces |  | with separator
+        assert result.count('|') >= 2  # at least header and separator
+
+    def test_generate_tables_md_multiple_tables(self):
+        """Multiple tables rendered consecutively."""
+        table1 = TableData(headers=["A", "B"], rows=[["1", "2"]])
+        table2 = TableData(headers=["X", "Y", "Z"], rows=[["a", "b", "c"]])
+        generator = MarkdownGenerator()
+        result = generator.generate_tables_md([table1, table2])
+        assert "| A | B |" in result
+        assert "| X | Y | Z |" in result
+        assert "| 1 | 2 |" in result
+        assert "| a | b | c |" in result
+
+    def test_generate_headings_deep_nesting_multiple_levels(self):
+        """Multiple headings all exceeding level 6."""
+        paragraphs = [
+            ParagraphData(text="Level 8", style="Heading 8", level=8),
+            ParagraphData(text="Level 12", style="Heading 12", level=12),
+            ParagraphData(text="Level 99", style="Heading 99", level=99),
+        ]
+        generator = MarkdownGenerator()
+        result = generator.generate_headings(paragraphs)
+        # All should degrade to H6
+        for line in result.split('\n'):
+            assert line.startswith('######')
+
+    def test_generate_lists_mixed_ordered_unordered(self):
+        """Mixed ordered and unordered lists at same level."""
+        paragraphs = [
+            ParagraphData(text="Bullet Item", style="List Bullet", level=1),
+            ParagraphData(text="Numbered Item 1", style="List Number", level=1),
+            ParagraphData(text="Numbered Item 2", style="List Number", level=1),
+            ParagraphData(text="Another Bullet", style="List Bullet", level=1),
+        ]
+        generator = MarkdownGenerator()
+        result = generator.generate_lists(paragraphs)
+        lines = result.split('\n')
+        assert '- Bullet Item' in lines[0]
+        assert '1. Numbered Item 1' in lines[1]
+        assert '2. Numbered Item 2' in lines[2]
+        assert '- Another Bullet' in lines[3]

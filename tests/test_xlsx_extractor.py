@@ -309,3 +309,103 @@ def sample_xlsx_edge(tmp_path: Path) -> Path:
     file_path = tmp_path / "edge.xlsx"
     wb.save(str(file_path))
     return file_path
+
+class TestXLSXExtractorTables:
+    """Test XLSXExtractor.extract_tables() method - Phase 5."""
+
+    def test_extract_tables_multi_sheet(self, tmp_path: Path):
+        """Multi-sheet workbook returns tables from each sheet."""
+        wb = openpyxl.Workbook()
+        wb.create_sheet("Data1")
+        wb.create_sheet("Data2")
+        wb["Data1"].append(["Name", "Age"])
+        wb["Data1"].append(["Alice", 30])
+        wb["Data1"].append(["Bob", 25])
+        wb["Data2"].append(["City", "Country"])
+        wb["Data2"].append(["Beijing", "China"])
+        file_path = tmp_path / "multi.xlsx"
+        wb.save(str(file_path))
+
+        extractor = XLSXExtractor()
+        tables = extractor.extract_tables(file_path)
+
+        assert len(tables) == 2
+        assert tables[0].headers == ["Name", "Age"]
+        assert tables[0].rows == [["Alice", "30"], ["Bob", "25"]]
+        assert tables[1].headers == ["City", "Country"]
+        assert tables[1].rows == [["Beijing", "China"]]
+
+    def test_extract_tables_empty_sheet(self, tmp_path: Path):
+        """Empty sheets are skipped."""
+        wb = openpyxl.Workbook()
+        wb.create_sheet("EmptySheet")
+        file_path = tmp_path / "empty_sheet.xlsx"
+        wb.save(str(file_path))
+
+        extractor = XLSXExtractor()
+        tables = extractor.extract_tables(file_path)
+
+        assert len(tables) == 0
+
+    def test_extract_tables_header_only(self, tmp_path: Path):
+        """Sheets with only headers return table with empty rows."""
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(["Header1", "Header2"])
+        # Only header row, no data rows
+        file_path = tmp_path / "header_only.xlsx"
+        wb.save(str(file_path))
+
+        extractor = XLSXExtractor()
+        tables = extractor.extract_tables(file_path)
+
+        # Header-only sheet returns table with headers but empty rows
+        assert len(tables) == 1
+        assert tables[0].headers == ["Header1", "Header2"]
+        assert tables[0].rows == []
+
+    def test_extract_tables_datetime_values(self, tmp_path: Path):
+        """Datetime values are converted to ISO format strings."""
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(["Date", "Time"])
+        ws.append([datetime(2024, 1, 15, 12, 30, 0), date(2024, 12, 25)])
+        file_path = tmp_path / "dates.xlsx"
+        wb.save(str(file_path))
+
+        extractor = XLSXExtractor()
+        tables = extractor.extract_tables(file_path)
+
+        assert len(tables) == 1
+        assert "2024-01-15T12:30:00" in tables[0].rows[0]
+        assert "2024-12-25T00:00:00" in tables[0].rows[0]
+
+    def test_extract_tables_merged_cells(self, tmp_path: Path):
+        """Merged cells are extracted with the merged value."""
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.merge_cells("A1:C1")
+        ws["A1"] = "Merged Value"
+        ws["A2"] = "Normal"
+        ws.append(["A", "B", "C"])
+        ws.append(["D", "E", "F"])
+        file_path = tmp_path / "merged.xlsx"
+        wb.save(str(file_path))
+
+        extractor = XLSXExtractor()
+        tables = extractor.extract_tables(file_path)
+
+        assert len(tables) == 1
+        # Row 1 (merged) is header, Row 2 is "Normal", Row 3-4 are data
+        assert "Merged Value" in tables[0].headers[0] or "Merged Value" in str(tables[0].rows)
+
+    def test_extract_tables_empty_workbook(self, tmp_path: Path):
+        """Empty workbook returns empty list."""
+        wb = openpyxl.Workbook()
+        file_path = tmp_path / "empty.xlsx"
+        wb.save(str(file_path))
+
+        extractor = XLSXExtractor()
+        tables = extractor.extract_tables(file_path)
+
+        assert tables == []

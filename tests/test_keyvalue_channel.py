@@ -114,3 +114,51 @@ class TestKeyValueChannel:
         assert result.count('id="key1"') == 1
         assert result.count('id="key2"') == 1
         assert result.count('id="key3"') == 1
+    def test_nested_json_with_depth_limit(self):
+        """Nested JSON-like structures are flattened with depth limit context."""
+        channel = KeyValueChannel()
+        data = {
+            "config.settings.general.theme": "dark",
+            "config.settings.general.language": "en",
+            "deep.nested.key.with.many.dots": "value",
+        }
+        result = channel.convert(data)
+        assert "config.settings.general.theme" in result
+        assert "deep.nested.key.with.many.dots" in result
+
+    def test_array_values(self):
+        """Array values are serialized as JSON strings."""
+        channel = KeyValueChannel()
+        data = {"list_key": '["item1", "item2", "item3"]'}
+        result = channel.convert(data)
+        assert "list_key" in result
+        assert "item1" in result
+        assert "item2" in result
+
+    def test_boolean_and_null_values(self):
+        """Boolean values and null are handled correctly."""
+        channel = KeyValueChannel(skip_empty=False)
+        data = {
+            "flag_true": "true",
+            "flag_false": "false",
+            "null_key": None,
+        }
+        result = channel.convert(data)
+        assert "flag_true" in result
+        assert "flag_false" in result
+        assert "null_key" in result
+
+    def test_special_characters_in_keys(self):
+        """Special characters in keys are preserved in XLIFF output."""
+        channel = KeyValueChannel()
+        data = {
+            "key.with.dots": "value1",
+            "key-with-dashes": "value2",
+            "key with spaces": "value3",
+            "key:with:colons": "value4",
+        }
+        result = channel.convert(data)
+        assert "key.with.dots" in result
+        assert "key-with-dashes" in result
+        assert "key with spaces" in result
+        assert "key:with:colons" in result

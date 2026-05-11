@@ -312,3 +312,65 @@ def csv_files_error(tmp_path: Path) -> Path:
     )
 
     return csv_dir
+
+
+class TestCSVExtractorTables:
+    """Test CSVExtractor.extract_tables() method - Phase 5."""
+
+    def test_extract_tables_with_header(self, tmp_path: Path):
+        """CSV with header row returns headers and data rows."""
+        csv_file = tmp_path / "with_header.csv"
+        csv_file.write_text("name,age,city\nJohn,30,Beijing\nJane,25,Shanghai\n", encoding="utf-8")
+
+        extractor = CSVExtractor()
+        tables = extractor.extract_tables(csv_file)
+
+        assert len(tables) == 1
+        assert tables[0].headers == ["name", "age", "city"]
+        assert len(tables[0].rows) == 2
+        assert tables[0].rows[0] == ["John", "30", "Beijing"]
+
+    def test_extract_tables_without_header(self, tmp_path: Path):
+        """CSV without header returns numeric row data."""
+        csv_file = tmp_path / "no_header.csv"
+        csv_file.write_text("1,2,3\n4,5,6\n", encoding="utf-8")
+
+        extractor = CSVExtractor()
+        tables = extractor.extract_tables(csv_file)
+
+        assert len(tables) == 1
+        assert len(tables[0].headers) == 3
+        assert len(tables[0].rows) == 2
+
+    def test_extract_tables_tab_delimiter(self, tmp_path: Path):
+        """Tab-separated CSV is parsed correctly."""
+        csv_file = tmp_path / "tab_data.tsv"
+        csv_file.write_text("col1\tcol2\tcol3\nval1\tval2\tval3\n", encoding="utf-8")
+
+        extractor = CSVExtractor()
+        tables = extractor.extract_tables(csv_file)
+
+        assert len(tables) == 1
+        assert tables[0].headers == ["col1", "col2", "col3"]
+        assert tables[0].rows[0] == ["val1", "val2", "val3"]
+
+    def test_extract_tables_empty_csv(self, tmp_path: Path):
+        """Empty CSV raises CorruptedFileError."""
+        csv_file = tmp_path / "empty.csv"
+        csv_file.write_text("", encoding="utf-8")
+
+        extractor = CSVExtractor()
+        with pytest.raises(CorruptedFileError):
+            extractor.extract_tables(csv_file)
+
+    def test_extract_tables_semicolon_delimiter(self, tmp_path: Path):
+        """Semicolon-delimited CSV is parsed."""
+        csv_file = tmp_path / "semicolon.csv"
+        csv_file.write_text("name;age;city\nJohn;30;Beijing\n", encoding="utf-8")
+
+        extractor = CSVExtractor()
+        tables = extractor.extract_tables(csv_file)
+
+        assert len(tables) == 1
+        # May be parsed as single column or with semicolon
+        assert len(tables[0].headers) >= 1

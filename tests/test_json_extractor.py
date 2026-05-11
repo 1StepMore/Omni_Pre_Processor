@@ -347,3 +347,89 @@ class TestJSONExtractor:
         """Verify supported file extensions."""
         extractor = JSONExtractor()
         assert ".json" in extractor.supported_extensions()
+
+class TestJSONExtractorKeyValues:
+    """Test JSONExtractor.extract_key_values() method - Phase 5."""
+
+    def test_extract_key_values_nested_objects(self, tmp_path: Path):
+        """Nested objects are flattened with dot notation."""
+        json_file = tmp_path / "nested.json"
+        json_file.write_text(
+            '{"user": {"name": "Alice", "address": {"city": "Beijing"}}}',
+            encoding="utf-8"
+        )
+
+        extractor = JSONExtractor()
+        result = extractor.extract_key_values(json_file)
+
+        assert result["user.name"] == "Alice"
+        assert result["user.address.city"] == "Beijing"
+        assert len(result) == 2
+
+    def test_extract_key_values_arrays(self, tmp_path: Path):
+        """Array elements use numeric indices."""
+        json_file = tmp_path / "arrays.json"
+        json_file.write_text(
+            '{"items": ["first", "second", "third"]}',
+            encoding="utf-8"
+        )
+
+        extractor = JSONExtractor()
+        result = extractor.extract_key_values(json_file)
+
+        assert result["items.0"] == "first"
+        assert result["items.1"] == "second"
+        assert result["items.2"] == "third"
+
+    def test_extract_key_values_mixed_types(self, tmp_path: Path):
+        """Mixed value types are preserved."""
+        json_file = tmp_path / "mixed.json"
+        json_file.write_text(
+            '{"str": "text", "int": 42, "float": 3.14, "bool": true}',
+            encoding="utf-8"
+        )
+
+        extractor = JSONExtractor()
+        result = extractor.extract_key_values(json_file)
+
+        assert result["str"] == "text"
+        assert result["int"] == 42
+        assert result["float"] == 3.14
+        assert result["bool"] == True
+
+    def test_extract_key_values_empty_string_skipped(self, tmp_path: Path):
+        """Empty string values are skipped."""
+        json_file = tmp_path / "empty_str.json"
+        json_file.write_text('{"name": "", "value": "valid"}', encoding="utf-8")
+
+        extractor = JSONExtractor()
+        result = extractor.extract_key_values(json_file)
+
+        assert "name" not in result
+        assert result["value"] == "valid"
+
+    def test_extract_key_values_null_skipped(self, tmp_path: Path):
+        """Null values are skipped."""
+        json_file = tmp_path / "nulls.json"
+        json_file.write_text('{"name": null, "value": "valid", "empty": null}', encoding="utf-8")
+
+        extractor = JSONExtractor()
+        result = extractor.extract_key_values(json_file)
+
+        assert "name" not in result
+        assert "empty" not in result
+        assert result["value"] == "valid"
+        assert len(result) == 1
+
+    def test_extract_key_values_deep_nesting(self, tmp_path: Path):
+        """Deeply nested structures are flattened."""
+        json_file = tmp_path / "deep.json"
+        json_file.write_text(
+            '{"a": {"b": {"c": {"d": "deep"}}}}',
+            encoding="utf-8"
+        )
+
+        extractor = JSONExtractor()
+        result = extractor.extract_key_values(json_file)
+
+        assert result["a.b.c.d"] == "deep"

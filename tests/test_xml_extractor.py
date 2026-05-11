@@ -356,3 +356,126 @@ class TestXMLExtractor:
         extractor = XMLExtractor()
         result = extractor.extract(xml_file)
         assert result.images == []
+
+class TestXMLExtractorNodes:
+    """Test XMLExtractor.extract_nodes() method - Phase 5."""
+
+    def test_extract_nodes_xpath_query(self, tmp_path: Path):
+        """XPath query selects correct nodes."""
+        xml_file = tmp_path / "items.xml"
+        xml_file.write_text(
+            '<?xml version="1.0"?>\n'
+            '<root>\n'
+            '  <item>First</item>\n'
+            '  <item>Second</item>\n'
+            '  <item>Third</item>\n'
+            '</root>\n'
+        )
+
+        extractor = XMLExtractor()
+        nodes = extractor.extract_nodes(xml_file, "//item")
+
+        assert len(nodes) == 3
+        assert nodes[0]["text"] == "First"
+        assert nodes[1]["text"] == "Second"
+        assert nodes[2]["text"] == "Third"
+
+    def test_extract_nodes_with_attributes(self, tmp_path: Path):
+        """Node attributes are extracted."""
+        xml_file = tmp_path / "attrs.xml"
+        xml_file.write_text(
+            '<?xml version="1.0"?>\n'
+            '<config>\n'
+            '  <server id="1" type="primary">Main</server>\n'
+            '  <server id="2" type="backup">Backup</server>\n'
+            '</config>\n'
+        )
+
+        extractor = XMLExtractor()
+        nodes = extractor.extract_nodes(xml_file, "//server")
+
+        assert len(nodes) == 2
+        assert nodes[0]["attributes"]["id"] == "1"
+        assert nodes[0]["attributes"]["type"] == "primary"
+        assert nodes[0]["text"] == "Main"
+
+    def test_extract_nodes_nested_elements(self, tmp_path: Path):
+        """Nested elements are captured in children."""
+        xml_file = tmp_path / "nested.xml"
+        xml_file.write_text(
+            '<?xml version="1.0"?>\n'
+            '<parent>\n'
+            '  <child>ChildText</child>\n'
+            '</parent>\n'
+        )
+
+        extractor = XMLExtractor()
+        nodes = extractor.extract_nodes(xml_file, "//parent")
+
+        assert len(nodes) == 1
+        assert nodes[0]["tag"] == "parent"
+        assert len(nodes[0]["children"]) == 1
+        assert nodes[0]["children"][0]["tag"] == "child"
+        assert nodes[0]["children"][0]["text"] == "ChildText"
+
+    def test_extract_nodes_empty_result(self, tmp_path: Path):
+        """XPath with no matches returns empty list."""
+        xml_file = tmp_path / "simple.xml"
+        xml_file.write_text(
+            '<?xml version="1.0"?>\n'
+            '<root>\n'
+            '  <item>Content</item>\n'
+            '</root>\n'
+        )
+
+        extractor = XMLExtractor()
+        nodes = extractor.extract_nodes(xml_file, "//nonexistent")
+
+        assert nodes == []
+
+    def test_extract_nodes_root_element(self, tmp_path: Path):
+        """Selecting root element works."""
+        xml_file = tmp_path / "root.xml"
+        xml_file.write_text(
+            '<?xml version="1.0"?>\n'
+            '<root>\n'
+            '  <child>Value</child>\n'
+            '</root>\n'
+        )
+
+        extractor = XMLExtractor()
+        nodes = extractor.extract_nodes(xml_file, "/root")
+
+        assert len(nodes) == 1
+        assert nodes[0]["tag"] == "root"
+
+    def test_extract_nodes_invalid_xpath(self, tmp_path: Path):
+        """Invalid XPath raises error."""
+        xml_file = tmp_path / "valid.xml"
+        xml_file.write_text(
+            '<?xml version="1.0"?>\n'
+            '<root>Content</root>\n'
+        )
+
+        extractor = XMLExtractor()
+        with pytest.raises(Exception):
+            extractor.extract_nodes(xml_file, "//[invalid")
+
+    def test_extract_nodes_wildcard_xpath(self, tmp_path: Path):
+        """Wildcard XPath selects matching nodes."""
+        xml_file = tmp_path / "wildcard.xml"
+        xml_file.write_text(
+            '<?xml version="1.0"?>\n'
+            '<root>\n'
+            '  <item id="1">A</item>\n'
+            '  <other id="2">B</other>\n'
+            '  <item id="3">C</item>\n'
+            '</root>\n'
+        )
+
+        extractor = XMLExtractor()
+        nodes = extractor.extract_nodes(xml_file, "//item")
+
+        assert len(nodes) == 2
+        assert nodes[0]["attributes"]["id"] == "1"
+        assert nodes[1]["attributes"]["id"] == "3"

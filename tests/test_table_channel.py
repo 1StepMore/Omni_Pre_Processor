@@ -74,3 +74,40 @@ class TestTableChannel:
         result = channel.convert(df)
         lines = [l for l in result.split("\n") if l.startswith("|") and "---" not in l]
         assert len(lines) == 6  # 1 header + 5 data rows
+    def test_empty_dataframe(self, channel):
+        """Test conversion of empty DataFrame."""
+        df = pd.DataFrame(columns=["A", "B", "C"])
+        result = channel.convert(df)
+        lines = result.split("\n")
+        assert len(lines) == 2  # header + separator only
+        assert lines[0] == "| A | B | C |"
+        assert lines[1] == "| --- | --- | --- |"
+
+    def test_single_row_dataframe(self, channel):
+        """Test DataFrame with exactly one data row."""
+        df = pd.DataFrame({"X": [42], "Y": ["hello"]})
+        result = channel.convert(df)
+        lines = result.split("\n")
+        assert len(lines) == 3  # header + separator + 1 data row
+        assert "| 42 | hello |" in result
+
+    def test_single_column_dataframe(self, channel):
+        """Test DataFrame with only one column."""
+        df = pd.DataFrame({"Only": [1, 2, 3]})
+        result = channel.convert(df)
+        lines = result.split("\n")
+        assert len(lines) == 5  # header + separator + 3 data rows
+        assert lines[0] == "| Only |"
+        assert lines[1] == "| --- |"
+
+    def test_unicode_content(self, channel):
+        """Test handling of Unicode characters in cells."""
+        df = pd.DataFrame({
+            "Name": ["张三", "日本語", "Ελληνικά"],
+            "Symbol": ["★ ☆", "→ ←", "🎉 🎊"],
+        })
+        result = channel.convert(df)
+        assert "张三" in result
+        assert "日本語" in result
+        assert "Ελληνικά" in result
+        assert "★ ☆" in result

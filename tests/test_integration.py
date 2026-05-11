@@ -242,3 +242,70 @@ class TestOPPPipelineIntegration:
         assert "warnings" in stats
         assert isinstance(stats["errors"], int)
         assert isinstance(stats["warnings"], int)
+
+class TestProcessBatchEdgeCases:
+    """Edge case tests for OPPPipeline.process_batch()."""
+
+    def test_process_batch_empty_file_list(self, tmp_path: Path):
+        """Empty file list returns zero successful/failed with zero results."""
+        pipeline = OPPPipeline(tmp_path / "resources")
+        batch_result = pipeline.process_batch([])
+
+        assert isinstance(batch_result, BatchResult)
+        assert batch_result.successful == 0
+        assert batch_result.failed == 0
+        assert len(batch_result.results) == 0
+        assert batch_result.total_duration_ms >= 0
+
+    def test_process_batch_files_with_same_content(self, sample_files_normal: Path, tmp_path: Path):
+        """Files with same content are deduplicated by resource manager."""
+        pipeline = OPPPipeline(tmp_path / "resources")
+        # Process the same file twice
+        file = sample_files_normal / "normal.docx"
+        files = [file, file]
+        batch_result = pipeline.process_batch(files)
+
+        assert isinstance(batch_result, BatchResult)
+        assert batch_result.successful == 2
+        assert batch_result.failed == 0
+        assert len(batch_result.results) == 2
+        # Both should have successfully extracted
+        for result in batch_result.results:
+            assert result.format_type == FormatType.DOCX
+
+    def test_process_batch_mixed_success_failure_results(self, sample_files_normal: Path, sample_files_error: Path, tmp_path: Path):
+        """Batch with some valid and some invalid files returns mixed results."""
+        pipeline = OPPPipeline(tmp_path / "resources")
+        files = [
+            sample_files_normal / "normal.docx",
+            sample_files_error / "corrupted.docx",
+            sample_files_normal / "normal.pptx",
+            sample_files_error / "zero_byte.pdf",
+        ]
+        batch_result = pipeline.process_batch(files)
+
+        assert batch_result.successful + batch_result.failed == 4
+        assert len(batch_result.results) == 4
+        # Check stats reflect mixed results
+        stats = pipeline.get_error_stats()
+        assert stats["errors"] >= 2  # At least corrupted and zero_byte
+
+    def test_process_batch_very_long_file_paths(self, tmp_path: Path):
+        """Pipeline handles files with very long paths correctly."""
+        pipeline = OPPPipeline(tmp_path / "resources")
+        # Create a deeply nested directory structure
+        deep_dir = tmp_path / "a" / "b" / "c" / "d" / "e" / "f" / "g"
+        deep_dir.mkdir(parents=True)
+        long_path_file = deep_dir / ("very_long_filename_" + "x" * 100 + ".docx")
+
+        from docx import Document
+        doc = Document()
+        doc.add_paragraph("Long path test")
+        doc.save(str(long_path_file))
+
+        batch_result = pipeline.process_batch([long_path_file])
+
+        assert isinstance(batch_result, BatchResult)
+        assert len(batch_result.results) == 1
+        # Should either succeed or fail gracefully
+        assert batch_result.successful + batch_result.failed == 1

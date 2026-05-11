@@ -198,3 +198,160 @@ class TestErrorHandler:
         report = handler.generate_html_report()
         assert 'error-count">0</span>' in report
         assert 'warning-count">0</span>' in report
+
+class TestErrorHandlerEdgeCases:
+    """Edge case tests for ErrorHandler report generation and statistics."""
+
+    def test_generate_html_report_with_errors_and_warnings(self):
+        """HTML report contains both errors and warnings formatted correctly."""
+        handler = ErrorHandler()
+        handler.add_error(
+            ErrorContext(
+                file_path="/path/to/file1.docx",
+                error_type="ExtractionError",
+                timestamp=datetime(2024, 1, 15, 10, 30, 0),
+                details="Failed to extract text from document",
+            )
+        )
+        handler.add_warning(
+            ErrorContext(
+                file_path="/path/to/file2.pdf",
+                error_type="ExtractionWarning",
+                timestamp=datetime(2024, 1, 15, 10, 31, 0),
+                details="Image extraction skipped",
+            )
+        )
+        report = handler.generate_html_report(file_count=5)
+
+        assert "<!DOCTYPE html>" in report
+        assert 'error-count">1</span>' in report
+        assert 'warning-count">1</span>' in report
+        assert "ExtractionError" in report
+        assert "Failed to extract text from document" in report
+        assert "ExtractionWarning" in report
+        assert "Image extraction skipped" in report
+        assert "file1.docx" in report
+        assert "file2.pdf" in report
+
+    def test_generate_text_report_with_warnings_only(self):
+        """Text report with only warnings shows correct counts."""
+        handler = ErrorHandler()
+        handler.add_warning(
+            ErrorContext(
+                file_path="/path/to/file.docx",
+                error_type="FormatWarning",
+                timestamp=datetime(2024, 1, 15, 10, 30, 0),
+                details="Non-standard format detected",
+            )
+        )
+        handler.add_warning(
+            ErrorContext(
+                file_path="/path/to/other.pdf",
+                error_type="ResourceWarning",
+                timestamp=datetime(2024, 1, 15, 10, 31, 0),
+                details="Large image resized",
+            )
+        )
+        report = handler.generate_text_report(file_count=2)
+
+        assert "Errors: 0" in report
+        assert "Warnings: 2" in report
+        assert "FormatWarning" in report
+        assert "ResourceWarning" in report
+        assert "<" not in report  # No HTML
+
+    def test_get_stats_with_no_errors_or_warnings(self):
+        """Stats returns zeros when no errors or warnings recorded."""
+        handler = ErrorHandler()
+        stats = handler.get_stats()
+
+        assert stats == {"errors": 0, "warnings": 0}
+        assert handler.has_errors() is False
+
+    def test_get_stats_with_multiple_error_types(self):
+        """Stats correctly counts multiple different error types."""
+        handler = ErrorHandler()
+        error_types = [
+            ("ExtractionError", "File1"),
+            ("DetectionError", "File2"),
+            ("ResourceError", "File3"),
+            ("ExportError", "File4"),
+            ("ExtractionError", "File5"),
+        ]
+        for err_type, path in error_types:
+            handler.add_error(
+                ErrorContext(
+                    file_path=f"/path/{path}",
+                    error_type=err_type,
+                    timestamp=datetime.now(),
+                    details="Test error",
+                )
+            )
+        stats = handler.get_stats()
+
+        assert stats["errors"] == 5
+        assert stats["warnings"] == 0
+
+    def test_get_errors_returns_copy(self):
+        """get_errors() returns a copy, not the original list."""
+        handler = ErrorHandler()
+        ctx = ErrorContext(
+            file_path="test.txt",
+            error_type="Err",
+            timestamp=datetime.now(),
+            details="Test",
+        )
+        handler.add_error(ctx)
+        errors = handler.get_errors()
+        errors.clear()
+
+        assert len(handler._errors) == 1  # Original unchanged
+
+    def test_get_warnings_returns_copy(self):
+        """get_warnings() returns a copy, not the original list."""
+        handler = ErrorHandler()
+        ctx = ErrorContext(
+            file_path="test.txt",
+            error_type="Warn",
+            timestamp=datetime.now(),
+            details="Test",
+        )
+        handler.add_warning(ctx)
+        warnings = handler.get_warnings()
+        warnings.clear()
+
+        assert len(handler._warnings) == 1  # Original unchanged
+
+    def test_generate_html_report_custom_template(self):
+        """HTML report uses custom template when provided."""
+        handler = ErrorHandler()
+        handler.add_error(
+            ErrorContext(
+                file_path="test.txt",
+                error_type="Err",
+                timestamp=datetime.now(),
+                details="Error details",
+            )
+        )
+        custom_template = "<html><body>Custom: {error_count} errors, {warning_count} warnings</body></html>"
+        report = handler.generate_html_report(template=custom_template)
+
+        assert "Custom: 1 errors, 0 warnings" in report
+
+    def test_generate_text_report_custom_template(self):
+        """Text report uses custom template when provided."""
+        handler = ErrorHandler()
+        handler.add_warning(
+            ErrorContext(
+                file_path="test.txt",
+                error_type="Warn",
+                timestamp=datetime.now(),
+                details="Warning details",
+            )
+        )
+        custom_template = "Custom Report\nErrors: {error_count}\nWarnings: {warning_count}"
+        report = handler.generate_text_report(template=custom_template)
+
+        assert "Custom Report" in report
+        assert "Errors: 0" in report
+        assert "Warnings: 1" in report
