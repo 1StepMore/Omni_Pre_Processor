@@ -150,7 +150,8 @@ class EPUBExtractor(ExtractorBase):
         paragraphs: List[ParagraphData] = []
         heading_tags = {'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}
 
-        for element in soup.body.children if soup.body else soup.descendants:
+        elements_to_check = soup.body.descendants if soup.body else soup.descendants
+        for element in elements_to_check:
             if isinstance(element, str):
                 text = element.strip()
                 if text:
