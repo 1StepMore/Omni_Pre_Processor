@@ -6,34 +6,52 @@ from opp.utils.dataclasses import ExtractionResult, ParagraphData, TableData, Im
 
 class MarkdownGenerator:
     def generate(self, result: ExtractionResult) -> str:
-        parts = []
-        headings = self.generate_headings(result.paragraphs)
-        if headings:
-            parts.append(headings)
+        output_lines = []
+        list_buffer: List[str] = []
+        list_type = None
 
-        non_structured = []
+        def flush_list():
+            nonlocal list_type
+            if list_buffer:
+                output_lines.append("")
+                output_lines.extend(list_buffer)
+                list_buffer.clear()
+                list_type = None
+
         for para in result.paragraphs:
+            level = para.level
             style = para.style or ""
-            is_heading = para.level is not None and para.level >= 1
-            if not is_heading and "Number" not in style and "List" not in style:
-                if para.text:
-                    non_structured.append(para.text)
-        if non_structured:
-            if parts:
-                parts.append("")
-            parts.append("\n".join(non_structured))
+            is_heading = level is not None and level >= 1
+            is_number = "Number" in style
+            is_bullet = "List" in style
 
-        lists = self.generate_lists(result.paragraphs)
-        if lists:
-            if parts:
-                parts.append("")
-            parts.append(lists)
+            if is_heading:
+                flush_list()
+                heading = "#" * min(level or 1, 6) + " " + para.text
+                output_lines.append(heading)
+            elif is_number or is_bullet:
+                if is_number:
+                    marker = "1. "
+                else:
+                    marker = "- "
+                if list_type is None:
+                    list_type = "ordered" if is_number else "bullet"
+                if list_type != ("ordered" if is_number else "bullet"):
+                    flush_list()
+                    list_type = "ordered" if is_number else "bullet"
+                list_buffer.append(marker + para.text)
+            else:
+                flush_list()
+                if para.text:
+                    output_lines.append(para.text)
+
+        flush_list()
         tables = self.generate_tables_md(result.tables)
         if tables:
-            if parts:
-                parts.append("")
-            parts.append(tables)
-        return "\n".join(parts)
+            output_lines.append("")
+            output_lines.append(tables)
+
+        return "\n".join(output_lines)
 
     def generate_to_file(self, result: ExtractionResult, output_path: Path, attachment_results=None) -> None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
