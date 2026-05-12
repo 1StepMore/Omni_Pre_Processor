@@ -14,7 +14,8 @@ class MarkdownGenerator:
         non_structured = []
         for para in result.paragraphs:
             style = para.style or ""
-            if "Heading" not in style and "Number" not in style and "List" not in style:
+            is_heading = para.level is not None and para.level >= 1
+            if not is_heading and "Number" not in style and "List" not in style:
                 if para.text:
                     non_structured.append(para.text)
         if non_structured:
