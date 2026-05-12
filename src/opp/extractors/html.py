@@ -9,6 +9,7 @@ from lxml import html
 from opp.extractors.base import ExtractorBase
 from opp.utils.dataclasses import DocumentMetadata, ExtractionResult, ImageData, ParagraphData
 from opp.utils.exceptions import CorruptedFileError
+from opp.logger import logger
 
 try:
     from markdownify import MarkdownConverter, markdownify
@@ -77,15 +78,25 @@ class HTMLExtractor(ExtractorBase):
         if self._detect_js_heavy(content):
             warnings.append("JS-rendered page detected")
 
-        extracted_text = self._extract_with_readability(content)
-        quality_ok, quality_reason = self._check_quality(extracted_text, content)
+        tool_choice = self._get_tool_choice()
+        logger.info(f"HTML提取: 模式={tool_choice}")
 
-        if not quality_ok:
+        if tool_choice == "complex":
             if DOCLING_AVAILABLE:
-                warnings.append(f"Low quality from readability ({quality_reason}), switching to docling")
+                logger.info("使用docling(AI)提取HTML")
                 extracted_text = self._extract_with_docling(content)
+                warnings.append("使用docling(AI)提取HTML")
             else:
-                warnings.append(f"Low quality detected ({quality_reason}), docling not available")
+                logger.warning("docling不可用，降级到readability")
+                warnings.append("docling不可用，降级到readability")
+                extracted_text = self._extract_with_readability(content)
+        else:
+            extracted_text = self._extract_with_readability(content)
+            quality_ok, quality_reason = self._check_quality(extracted_text, content)
+            if not quality_ok and DOCLING_AVAILABLE:
+                logger.info(f"readability质量较低 ({quality_reason})，切换到docling")
+                warnings.append(f"readability质量较低 ({quality_reason})，切换到docling")
+                extracted_text = self._extract_with_docling(content)
 
         md_content = self._html_to_markdown(extracted_text, input_path.parent)
         paragraphs = self._md_to_paragraphs(md_content)
@@ -99,6 +110,14 @@ class HTMLExtractor(ExtractorBase):
             metadata=metadata,
             warnings=warnings,
         )
+
+    def _get_tool_choice(self) -> str:
+        try:
+            from opp.config import get_config
+            config = get_config()
+            return config.get_extractor_mode("html")
+        except Exception:
+            return "simple"
 
     def _extract_with_readability(self, html_content: str) -> str:
         if not READABILITY_AVAILABLE:

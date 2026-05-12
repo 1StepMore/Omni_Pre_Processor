@@ -1,0 +1,9 @@
+# OPP 配置文件
+# 简单模式: 使用基础工具 (快速)
+# 复杂模式: 使用AI工具 (高质量，但可能较慢)
+
+# PDF 提取模式: simple / complex
+pdf: complex
+
+# HTML 提取模式: simple / complex
+html: complex

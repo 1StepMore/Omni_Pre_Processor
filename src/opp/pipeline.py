@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+import os
 
 from opp.detector import detect_format, FormatType
 from opp.error_handler import ErrorHandler, ErrorContext
@@ -42,7 +43,10 @@ class GenerationResult:
 
 
 class OPPPipeline:
-    def __init__(self, resource_storage_dir: Path) -> None:
+    def __init__(self, resource_storage_dir: Path, config_path: Optional[Path] = None) -> None:
+        from opp.config import load_config, get_config
+        load_config(config_path)
+
         self.resource_storage_dir = Path(resource_storage_dir)
         self.resource_manager = ResourceManager(self.resource_storage_dir)
         self.error_handler = ErrorHandler()

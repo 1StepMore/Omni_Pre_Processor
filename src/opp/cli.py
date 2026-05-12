@@ -10,7 +10,7 @@ from opp.detector import FormatType, detect_format
 from opp.error_handler import ErrorHandler, ErrorContext
 from opp.pipeline import OPPPipeline
 from opp.resource_manager import ResourceManager
-from opp.logger import logger, setup_logger
+from opp.logger import setup_logger, get_logger
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -131,6 +131,13 @@ def create_parser() -> argparse.ArgumentParser:
         help="Whisper model size for ASR (default: tiny)"
     )
 
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="Path to opp_config.yaml configuration file"
+    )
+
     return parser
 
 
@@ -177,12 +184,12 @@ def process_single_file(
         if proc_result.errors:
             stats["errors"] += 1
             for error in proc_result.errors:
-                logger.error(f"{file_path}: {error}")
+                get_logger().error(f"{file_path}: {error}")
             return False
 
         if proc_result.extraction_result is None:
             stats["errors"] += 1
-            logger.error(f"No extraction result for {file_path}")
+            get_logger().error(f"No extraction result for {file_path}")
             return False
 
         output_dir = args.output_dir if args.output_dir else file_path.parent
@@ -192,7 +199,7 @@ def process_single_file(
         if args.target_format in ("md", "both"):
             md_path = output_dir / f"{base_name}.md"
             pipeline.generate_markdown(proc_result.extraction_result, md_path, proc_result.attachment_results)
-            logger.info(f"Generated: {md_path}")
+            get_logger().info(f"Generated: {md_path}")
 
         if args.target_format in ("xlf", "both"):
             xliff_path = output_dir / f"{base_name}.xlf"
@@ -202,13 +209,13 @@ def process_single_file(
                 args.source_lang,
                 args.target_lang
             )
-            logger.info(f"Generated: {xliff_path}")
+            get_logger().info(f"Generated: {xliff_path}")
 
         return True
 
     except Exception as e:
         stats["errors"] += 1
-        logger.error(f"Error processing {file_path}: {e}")
+        get_logger().error(f"Error processing {file_path}: {e}")
         return False
 
 
@@ -219,7 +226,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.target_format in ("xlf", "both") and not args.target_lang:
         parser.error("--target-lang is required when --target-format is 'xlf' or 'both'")
 
-    setup_logger(args.verbose)
+    logger = setup_logger(args.verbose)
 
     if args.verbose:
         logger.info(f"OPP CLI v0.1.0")
@@ -248,7 +255,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         args.output_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f"Batch output directory: {args.output_dir}")
 
-    pipeline = OPPPipeline(resource_storage_dir=args.resource_dir or (Path.cwd() / "resources"))
+    pipeline = OPPPipeline(resource_storage_dir=args.resource_dir or (Path.cwd() / "resources"), config_path=args.config)
 
     for i, file_path in enumerate(all_files, 1):
         if args.verbose:
@@ -310,4 +317,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except Exception:
+        from opp.logger import get_logger
+        get_logger().exception("Uncaught exception in main")
+        sys.exit(1)

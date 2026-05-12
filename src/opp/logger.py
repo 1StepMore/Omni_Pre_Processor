@@ -14,13 +14,9 @@ def get_log_dir():
 def setup_logger(verbose: bool = False) -> logging.Logger:
     level = logging.DEBUG if verbose else logging.INFO
     log_dir = get_log_dir()
-    log_file = log_dir / f"opp_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
 
-    logging.basicConfig(
-        level=level,
-        format='[%(asctime)s] [%(levelname)s] %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:-3]
+    log_file = log_dir / f"opp_{timestamp}.log"
 
     logger = logging.getLogger('opp')
     logger.setLevel(level)
@@ -39,6 +35,10 @@ def setup_logger(verbose: bool = False) -> logging.Logger:
         logger.info(f"Log file: {log_file}")
 
     return logger
+
+
+def get_logger() -> logging.Logger:
+    return logging.getLogger('opp')
 
 
 logger = setup_logger()
