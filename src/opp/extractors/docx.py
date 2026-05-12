@@ -58,11 +58,20 @@ class DOCXExtractor(ExtractorBase):
                 continue
             style_name = para.style.name if para.style else None
             level = None
+
+            # Handle "Heading 1", "Heading 2", etc.
             if style_name and style_name.startswith("Heading"):
                 try:
-                    level = int(style_name.replace("Heading ", ""))
+                    level = int(style_name.replace("Heading ", "").replace("Heading", ""))
                 except ValueError:
                     level = 1
+            # Handle "Title" style -> level 1
+            elif style_name == "Title":
+                level = 1
+            # Handle "Subtitle" style -> level 2
+            elif style_name == "Subtitle":
+                level = 2
+
             result.append(ParagraphData(
                 text=text,
                 style=style_name,
