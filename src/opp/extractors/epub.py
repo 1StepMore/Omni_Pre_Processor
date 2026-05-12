@@ -163,9 +163,6 @@ class EPUBExtractor(ExtractorBase):
                 tag_name = getattr(element, 'name').lower()
                 element_text = element.get_text(separator=" ", strip=True)
 
-                if not element_text:
-                    continue
-
                 if tag_name in heading_tags:
                     level = int(tag_name[1])
                     paragraphs.append(ParagraphData(
