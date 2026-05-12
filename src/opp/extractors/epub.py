@@ -76,9 +76,7 @@ class EPUBExtractor(ExtractorBase):
         """Extract cover image from book manifest if present."""
         import ebooklib
 
-        # Check for cover-image relation in manifest
         for item in book.get_items():
-            # Check properties for cover-image rel
             item_props = getattr(item, 'properties', set()) or set()
             if 'cover-image' in item_props:
                 return ImageData(
@@ -86,12 +84,10 @@ class EPUBExtractor(ExtractorBase):
                     mime_type=self._get_mime_type(item.get_name()),
                 )
 
-        # Check item ID and name for cover patterns
         for item in book.get_items():
             item_id = item.get_id().lower() if item.get_id() else ""
             item_name = item.get_name().lower() if item.get_name() else ""
 
-            # Common cover naming patterns
             if "cover" in item_name or "cover-image" in item_id:
                 return ImageData(
                     data=item.get_content(),
@@ -148,15 +144,15 @@ class EPUBExtractor(ExtractorBase):
             ref.insert_after(soup.new_string(' [[footnote]]'))
 
         paragraphs: List[ParagraphData] = []
+        heading_tags = {'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}
 
-        if not soup.body:
-            return paragraphs
-
-        for tag in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p']:
-            for element in soup.body.find_all(tag, recursive=False):
+        for tag in heading_tags | {'p'}:
+            for element in soup.find_all(tag):
+                if not _should_process_element(element, heading_tags):
+                    continue
                 element_text = element.get_text(separator=" ", strip=True)
                 if element_text:
-                    if tag.startswith('h'):
+                    if tag in heading_tags:
                         level = int(tag[1])
                         paragraphs.append(ParagraphData(
                             text=element_text,
@@ -175,7 +171,7 @@ class EPUBExtractor(ExtractorBase):
     def _extract_images(
         self, image_items: List[epub.EpubItem], cover: Optional[ImageData]
     ) -> List[ImageData]:
-        """Extract all images from manifest."""
+        """Extract all images from book manifest."""
         images: List[ImageData] = []
 
         for item in image_items:
@@ -184,7 +180,6 @@ class EPUBExtractor(ExtractorBase):
                 if not content:
                     continue
 
-                # Skip if this is the cover (already added)
                 if cover and cover.data == content:
                     continue
 
@@ -209,3 +204,10 @@ class EPUBExtractor(ExtractorBase):
             ".webp": "image/webp",
         }
         return mime_types.get(ext, "application/octet-stream")
+
+
+def _should_process_element(element, heading_tags):
+    for child in element.children:
+        if hasattr(child, 'name') and child.name in heading_tags:
+            return False
+    return True
