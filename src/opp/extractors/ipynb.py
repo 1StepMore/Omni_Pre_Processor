@@ -41,11 +41,12 @@ class IPYNBExtractor(ExtractorBase):
                 source = "".join(source)
 
             if cell_type == "markdown":
+                # Markdown headings at root level = level 1
                 paragraphs.append(
                     ParagraphData(
                         text=source or "",
                         style="Markdown",
-                        level=0,
+                        level=1,
                     )
                 )
             elif cell_type == "code":

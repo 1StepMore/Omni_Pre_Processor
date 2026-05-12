@@ -169,19 +169,16 @@ class TestEPUBExtractor:
         extractor = EPUBExtractor()
         result = extractor.extract(epub_samples['multichapter.epub'])
 
-        assert len(result.paragraphs) == 3
+        # Each chapter has heading + body = 2 paragraphs, 3 chapters = 6 paragraphs
+        assert len(result.paragraphs) == 6
 
         # Verify content order matches spine order
-        content_text = "\n".join(p.text for p in result.paragraphs)
-        assert "Chapter 1" in content_text
-        assert "Chapter 2" in content_text
-        assert "Chapter 3" in content_text
+        # Paragraph order: h1, p, h1, p, h1, p
+        heading_texts = [p.text for p in result.paragraphs if p.style == "Heading 1"]
+        assert heading_texts == ["Chapter 1", "Chapter 2", "Chapter 3"], "Spine order not preserved"
 
-        # Check order: Chapter 1 should appear before Chapter 2, Chapter 2 before Chapter 3
-        idx1 = content_text.find("Chapter 1")
-        idx2 = content_text.find("Chapter 2")
-        idx3 = content_text.find("Chapter 3")
-        assert idx1 < idx2 < idx3, "Spine order not preserved"
+        body_texts = [p.text for p in result.paragraphs if p.style == "Normal"]
+        assert body_texts == ["First chapter content.", "Second chapter content.", "Third chapter content."]
 
     def test_images_extracted(self, epub_samples):
         """Test that all images are extracted from EPUB."""

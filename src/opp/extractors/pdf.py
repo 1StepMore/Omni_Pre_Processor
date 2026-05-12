@@ -234,3 +234,24 @@ class PDFExtractor(ExtractorBase):
                 except Exception:
                     continue
         return result
+
+    def extract_toc(self, input_path: Path) -> List[ParagraphData]:
+        try:
+            doc: fitz.Document = fitz.open(input_path)
+        except Exception:
+            return []
+
+        toc_entries = doc.get_toc()
+        doc.close()
+
+        if not toc_entries:
+            return []
+
+        return [
+            ParagraphData(
+                text=toc_entry[1],
+                style=f"Heading {toc_entry[0]}",
+                level=toc_entry[0],
+            )
+            for toc_entry in toc_entries
+        ]

@@ -107,7 +107,6 @@ class EPUBExtractor(ExtractorBase):
         import ebooklib
 
         paragraphs: List[ParagraphData] = []
-        nav_file_names = {"nav.xhtml", "toc.ncx", "nav.html"}
 
         for spine_ref in spine_items:
             if isinstance(spine_ref, tuple):
@@ -129,52 +128,59 @@ class EPUBExtractor(ExtractorBase):
             if isinstance(content, bytes):
                 content = content.decode("utf-8", errors="ignore")
 
-            content = self._clean_html(content)
-
-            if content:
-                paragraphs.append(ParagraphData(
-                    text=content,
-                    style="Normal",
-                    level=None,
-                ))
+            chapter_paragraphs = self._parse_html_elements(content)
+            paragraphs.extend(chapter_paragraphs)
 
         return paragraphs
 
-    def _clean_html(self, html_content: str) -> str:
-        """Parse HTML and extract text with structure preserved."""
+    def _parse_html_elements(self, html_content: str) -> List[ParagraphData]:
+        """Parse HTML and extract text elements as separate ParagraphData objects."""
         if not html_content:
-            return ""
+            return []
 
         soup = BeautifulSoup(html_content, "html.parser")
 
         for script in soup(["script", "style"]):
             script.decompose()
 
-        text_parts = []
-        for element in soup.body.children if soup.body else [soup]:
-            if isinstance(element, str):
-                text_parts.append(element.strip())
-            else:
-                element_text = element.get_text(separator=" ", strip=True)
-                if element_text:
-                    tag_name = getattr(element, 'name', None)
-                    if tag_name and tag_name.lower() in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6'):
-                        text_parts.append(f"\n## {element_text}\n")
-                    elif tag_name == 'p':
-                        text_parts.append(element_text)
-                    elif tag_name == 'br':
-                        text_parts.append("\n")
-                    else:
-                        text_parts.append(element_text)
-
-        result = re.sub(r'\n{3,}', '\n\n', ' '.join(text_parts))
-        result = re.sub(r'\[(\d+)\]', r'[\1]', result)
-
         footnote_refs = soup.find_all(['a', 'span'], attrs={'role': 'doc-noteref'})
         for ref in footnote_refs:
             ref.insert_after(soup.new_string(' [[footnote]]'))
 
-        return result.strip()
+        paragraphs: List[ParagraphData] = []
+        heading_tags = {'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}
+
+        for element in soup.body.children if soup.body else soup.descendants:
+            if isinstance(element, str):
+                text = element.strip()
+                if text:
+                    paragraphs.append(ParagraphData(
+                        text=text,
+                        style="Normal",
+                        level=None,
+                    ))
+            elif getattr(element, 'name', None):
+                tag_name = getattr(element, 'name').lower()
+                element_text = element.get_text(separator=" ", strip=True)
+
+                if not element_text:
+                    continue
+
+                if tag_name in heading_tags:
+                    level = int(tag_name[1])
+                    paragraphs.append(ParagraphData(
+                        text=element_text,
+                        style=f"Heading {level}",
+                        level=level,
+                    ))
+                elif tag_name == 'p':
+                    paragraphs.append(ParagraphData(
+                        text=element_text,
+                        style="Normal",
+                        level=None,
+                    ))
+
+        return paragraphs
 
     def _extract_images(
         self, image_items: List[epub.EpubItem], cover: Optional[ImageData]

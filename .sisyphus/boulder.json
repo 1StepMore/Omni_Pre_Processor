@@ -1,71 +1,23 @@
 {
-  "active_plan": "/mnt/d/贯维/Omni_Pre_Processor/.sisyphus/plans/phase-8-rich-media.md",
-  "started_at": "2026-05-11T09:09:22.342Z",
+  "active_plan": "/mnt/d/贯维/Omni_Pre_Processor/.sisyphus/plans/format-structure-fix.md",
+  "started_at": "2026-05-12T08:20:34.088Z",
   "session_ids": [
-    "ses_1e9c88bc9ffeD82NCQspxXsQ3j",
-    "ses_1e9b2f76fffeaJ0Ha4tm6MXemx",
-    "ses_1e9b2dbabffeNyWrxmTg3C3gMd",
-    "ses_1e9b2d38cffeyQ49CnwGcmNBVh",
-    "ses_1e9b2bdb8ffecCOiBFxNaj2yg9",
-    "ses_1e9b2b0f8ffepE6jQ3heL8KTsI",
-    "ses_1e9b24d6bffezzcKDuOkUmdPBm"
+    "ses_1e5aa9d78ffeq2c4dWtNt4UlIG"
   ],
   "session_origins": {
-    "ses_1e9c88bc9ffeD82NCQspxXsQ3j": "direct",
-    "ses_1e9b2f76fffeaJ0Ha4tm6MXemx": "appended",
-    "ses_1e9b2dbabffeNyWrxmTg3C3gMd": "appended",
-    "ses_1e9b2d38cffeyQ49CnwGcmNBVh": "appended",
-    "ses_1e9b2bdb8ffecCOiBFxNaj2yg9": "appended",
-    "ses_1e9b2b0f8ffepE6jQ3heL8KTsI": "appended",
-    "ses_1e9b24d6bffezzcKDuOkUmdPBm": "appended"
+    "ses_1e5aa9d78ffeq2c4dWtNt4UlIG": "direct"
   },
-  "plan_name": "phase-8-rich-media",
+  "plan_name": "format-structure-fix",
   "agent": "atlas",
   "task_sessions": {
     "todo:1": {
       "task_key": "todo:1",
       "task_label": "1",
-      "task_title": "Fix pyproject.toml extra organization",
-      "session_id": "ses_1e9af50d6ffeeH6E4VxUmxhoDx",
+      "task_title": "**Investigate EPUB data flow** — `quick`",
+      "session_id": "ses_1e4895fabffelWoeEUAZRcNm6P",
       "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-05-11T09:17:48.941Z"
-    },
-    "todo:3": {
-      "task_key": "todo:3",
-      "task_label": "3",
-      "task_title": "Create AudioTranscriber class with Whisper integration",
-      "session_id": "ses_1e9ab0793ffevTiluyO3OrQlLT",
-      "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-05-11T09:23:10.687Z"
-    },
-    "todo:6": {
-      "task_key": "todo:6",
-      "task_label": "6",
-      "task_title": "Implement AudioExtractor (WAV/MP3 → text)",
-      "session_id": "ses_1e9a1e670ffeI634O3UPw7KZEg",
-      "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-05-11T09:41:08.757Z"
-    },
-    "todo:9": {
-      "task_key": "todo:9",
-      "task_label": "9",
-      "task_title": "Implement CLI entry points for audio/notebook",
-      "session_id": "ses_1e9960ce1ffe8cEB4nwtsqScdG",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-05-11T09:43:18.922Z"
-    },
-    "final-wave:f1": {
-      "task_key": "final-wave:f1",
-      "task_label": "F1",
-      "task_title": "**Plan Compliance Audit** — `oracle`",
-      "session_id": "ses_1e97d4667ffep7kN1hD2Gw3Hm1",
-      "agent": "Sisyphus-Junior",
-      "category": "artistry",
-      "updated_at": "2026-05-11T10:11:15.908Z"
+      "category": "unspecified-high",
+      "updated_at": "2026-05-12T09:26:57.808Z"
     }
   }
 }

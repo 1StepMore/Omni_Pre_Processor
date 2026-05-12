@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List
 
 from pptx import Presentation
-from pptx.enum.shapes import MSO_SHAPE_TYPE
+from pptx.enum.shapes import MSO_SHAPE_TYPE, PP_PLACEHOLDER
 
 from opp.extractors.base import ExtractorBase
 from opp.utils.dataclasses import (
@@ -64,6 +64,14 @@ class PPTXExtractor(ExtractorBase):
             ))
         return result
 
+    def _is_title_shape(self, shape) -> bool:
+        if not shape.is_placeholder:
+            return False
+        try:
+            return shape.placeholder_format.type in (PP_PLACEHOLDER.TITLE, PP_PLACEHOLDER.CENTER_TITLE)
+        except (ValueError, AttributeError):
+            return False
+
     def extract_shapes(self, slide) -> List[ParagraphData]:
         result: List[ParagraphData] = []
         for shape in slide.shapes:
@@ -72,24 +80,40 @@ class PPTXExtractor(ExtractorBase):
             elif shape.has_text_frame:
                 text = shape.text_frame.text.strip()
                 if text:
-                    result.append(ParagraphData(
-                        text=text,
-                        style=shape.shape_type.name if hasattr(shape.shape_type, 'name') else None,
-                        level=None,
-                    ))
+                    if self._is_title_shape(shape):
+                        result.append(ParagraphData(
+                            text=text,
+                            style="Heading 1",
+                            level=1,
+                        ))
+                    else:
+                        result.append(ParagraphData(
+                            text=text,
+                            style=shape.shape_type.name if hasattr(shape.shape_type, 'name') else None,
+                            level=None,
+                        ))
         return result
 
     def _flatten_group(self, group) -> List[ParagraphData]:
         result: List[ParagraphData] = []
         for shape in group.shapes:
-            if shape.has_text_frame:
+            if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+                result.extend(self._flatten_group(shape))
+            elif shape.has_text_frame:
                 text = shape.text_frame.text.strip()
                 if text:
-                    result.append(ParagraphData(
-                        text=text,
-                        style=shape.shape_type.name if hasattr(shape.shape_type, 'name') else None,
-                        level=None,
-                    ))
+                    if self._is_title_shape(shape):
+                        result.append(ParagraphData(
+                            text=text,
+                            style="Heading 1",
+                            level=1,
+                        ))
+                    else:
+                        result.append(ParagraphData(
+                            text=text,
+                            style=shape.shape_type.name if hasattr(shape.shape_type, 'name') else None,
+                            level=None,
+                        ))
         return result
 
     def extract_notes(self, slide) -> str:
