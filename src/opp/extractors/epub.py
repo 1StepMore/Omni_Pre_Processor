@@ -148,35 +148,27 @@ class EPUBExtractor(ExtractorBase):
             ref.insert_after(soup.new_string(' [[footnote]]'))
 
         paragraphs: List[ParagraphData] = []
-        heading_tags = {'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}
 
-        elements_to_check = soup.body.descendants if soup.body else soup.descendants
-        for element in elements_to_check:
-            if isinstance(element, str):
-                text = element.strip()
-                if text:
-                    paragraphs.append(ParagraphData(
-                        text=text,
-                        style="Normal",
-                        level=None,
-                    ))
-            elif getattr(element, 'name', None):
-                tag_name = getattr(element, 'name').lower()
+        if not soup.body:
+            return paragraphs
+
+        for tag in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p']:
+            for element in soup.body.find_all(tag, recursive=False):
                 element_text = element.get_text(separator=" ", strip=True)
-
-                if tag_name in heading_tags:
-                    level = int(tag_name[1])
-                    paragraphs.append(ParagraphData(
-                        text=element_text,
-                        style=f"Heading {level}",
-                        level=level,
-                    ))
-                elif tag_name == 'p':
-                    paragraphs.append(ParagraphData(
-                        text=element_text,
-                        style="Normal",
-                        level=None,
-                    ))
+                if element_text:
+                    if tag.startswith('h'):
+                        level = int(tag[1])
+                        paragraphs.append(ParagraphData(
+                            text=element_text,
+                            style=f"Heading {level}",
+                            level=level,
+                        ))
+                    else:
+                        paragraphs.append(ParagraphData(
+                            text=element_text,
+                            style="Normal",
+                            level=None,
+                        ))
 
         return paragraphs
 
