@@ -1,9 +1,7 @@
 """XLIFF file generator for translation workflows."""
 
-import sys
 from pathlib import Path
 
-sys.path.insert(0, "/tmp/translate-toolkit")
 from translate.storage.xliff import xlifffile
 
 from opp.utils.dataclasses import ExtractionResult

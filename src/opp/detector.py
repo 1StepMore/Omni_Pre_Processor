@@ -3,6 +3,8 @@ from pathlib import Path
 import re
 from typing import Tuple, Union
 
+from opp.logger import logger
+
 
 class FormatType(Enum):
     DOCX = "docx"
@@ -78,8 +80,8 @@ def detect_format(path: Union[Path, str]) -> Tuple[FormatType, float]:
                 first_byte = f.read(1)
                 if first_byte in (b"{", b"["):
                     return (FormatType.JSON, 1.0)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"JSON detection failed: {e}")
     else:
         # No BOM, check if first byte is { or [
         if header[0:1] in (b"{", b"["):
@@ -98,8 +100,8 @@ def detect_format(path: Union[Path, str]) -> Tuple[FormatType, float]:
                 if ext in (".html", ".htm"):
                     return (FormatType.HTML, 1.0)
                 return (FormatType.HTML, 0.9)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"HTML detection failed: {e}")
 
     # Extension-based HTML fallback
     ext = path.suffix.lower()
@@ -120,20 +122,20 @@ def detect_format(path: Union[Path, str]) -> Tuple[FormatType, float]:
             header = f.read(12)
             if header.startswith(b"RIFF") and header[8:12] == b"WAVE":
                 return (FormatType.AUDIO, 1.0)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"AUDIO detection failed: {e}")
 
     # MP3 audio detection: ID3 prefix (ID3v2) or bytes 0-2 match ID3v2 pattern
     try:
         with open(path, "rb") as f:
             header = f.read(3)
-            if header.startswith(b"ID3") or (header[0] in (0xFF,) and header[1] in (0xE0, 0xE1, 0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7, 0xE8, 0xE9, 0xEA, 0xEB, 0xEC, 0xED, 0xEE, 0xEF, 0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF)):
+            if header.startswith(b"ID3") or (len(header) >= 2 and header[0] in (0xFF,) and header[1] in (0xE0, 0xE1, 0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7, 0xE8, 0xE9, 0xEA, 0xEB, 0xEC, 0xED, 0xEE, 0xEF, 0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF)):
                 ext = path.suffix.lower()
                 if ext in (".mp3", ".mp2", ".mp1"):
                     return (FormatType.AUDIO, 1.0)
                 return (FormatType.AUDIO, 0.8)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"MP3 detection failed: {e}")
 
     # MP4 video detection: ftyp box at start (bytes 4-7 = "ftyp")
     try:
@@ -141,8 +143,8 @@ def detect_format(path: Union[Path, str]) -> Tuple[FormatType, float]:
             header = f.read(12)
             if header[4:8] == b"ftyp":
                 return (FormatType.VIDEO, 1.0)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"VIDEO detection failed: {e}")
 
     # IPYNB detection: extension + JSON structure with ipynb nbformat mimetype
     if ext == ".ipynb":
@@ -154,8 +156,8 @@ def detect_format(path: Union[Path, str]) -> Tuple[FormatType, float]:
                 # Fallback: valid JSON with cells key
                 if b'"cells"' in content:
                     return (FormatType.IPYNB, 0.9)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"IPYNB detection failed: {e}")
         return (FormatType.IPYNB, 0.5)
 
     # YouTube URL detection

@@ -1,9 +1,17 @@
-# OPP 配置文件
-# 简单模式: 使用基础工具 (快速)
-# 复杂模式: 使用AI工具 (高质量，但可能较慢)
+# OPP Configuration
+# Simple mode: Use basic tools (fast)
+# Complex mode: Use AI tools (higher quality, may be slower)
 
-# PDF 提取模式: simple / complex
-pdf: complex
+# PDF extraction mode: simple / complex (reserved for future use)
+# pdf: complex
 
-# HTML 提取模式: simple / complex
+# HTML extraction mode: simple / complex
 html: complex
+
+# OCR Configuration (used by PDF and Image extractors)
+# OCR engine: tesseract / rapidocr (auto fallback to rapidocr if not available)
+# Environment variables override config:
+#   OPP_OCR_ENGINE - OCR engine choice (tesseract/rapidocr)
+#   OPP_OCR_LANG - OCR language (e.g., 'eng', 'chi_sim', 'chi_tra')
+#   OPP_ASR_ENGINE - ASR engine for audio/video (whisper)
+#   OPP_MODEL_SIZE - Whisper model size (tiny, base, small, medium, large)

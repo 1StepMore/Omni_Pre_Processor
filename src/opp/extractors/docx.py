@@ -27,7 +27,7 @@ class DOCXExtractor(ExtractorBase):
         warnings: List[str] = []
 
         try:
-            doc: DocxDocument = docx.Document(input_path)
+            doc: DocxDocument = docx.Document(str(input_path))
         except Exception as e:
             if "password" in str(e).lower():
                 raise PasswordProtectedError(f"文件受密码保护: {input_path}")

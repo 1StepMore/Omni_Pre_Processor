@@ -52,10 +52,9 @@ class KeyValueChannel:
 
             # Create trans-unit with key as id and value as source
             unit = store.addsourceunit(str(value))
-            unit.setid(str(key))
-
-            # Add note with full key path for context
-            unit.addnote(f"Context: {key}", origin="KeyValueChannel")
+            if unit is not None:
+                unit.setid(str(key))
+                unit.addnote(f"Context: {key}", origin="KeyValueChannel")
 
         # Return XLIFF 1.2 XML string
         return bytes(store).decode("utf-8")

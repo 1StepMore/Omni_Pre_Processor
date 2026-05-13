@@ -73,7 +73,7 @@ class OPPPipeline:
         self,
         result: ExtractionResult,
         output_path: Path,
-        attachment_results: Optional[List["ProcessingResult"]] = None,
+        _attachment_results: Optional[List["ProcessingResult"]] = None,
     ) -> Path:
         """Generate Markdown file from extraction result.
 
@@ -109,7 +109,7 @@ class OPPPipeline:
         Raises:
             ValueError: If the source format is PDF (XLIFF not supported for PDF)
         """
-        if result.metadata.format_type == "PDF":
+        if result.metadata and result.metadata.format_type == "PDF":
             error_msg = "XLIFF not supported for PDF format"
             self.error_handler.add_error(
                 ErrorContext(

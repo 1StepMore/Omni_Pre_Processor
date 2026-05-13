@@ -39,7 +39,7 @@ if MARKDOWNIFY_AVAILABLE:
             options.setdefault("strip", ["script", "style"])
             super().__init__(**options)
 
-        def convert_img(self, el, text, convert_as_inline=False, **_kwargs):
+        def convert_img(self, el, _text, _convert_as_inline=False, **_kwargs):
             alt = el.get("alt", "") or ""
             src = el.get("src", "") or el.get("data-src", "") or ""
             title = el.get("title", "") or ""
@@ -116,7 +116,8 @@ class HTMLExtractor(ExtractorBase):
             from opp.config import get_config
             config = get_config()
             return config.get_extractor_mode("html")
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Failed to get extractor mode config: {e}")
             return "simple"
 
     def _extract_with_readability(self, html_content: str) -> str:
@@ -128,7 +129,8 @@ class HTMLExtractor(ExtractorBase):
             summary = doc.summary()
             tree = html.fromstring(summary)
             return self._extract_text_from_tree(tree)
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Readability extraction failed: {e}")
             return self._strip_scripts_and_styles(html_content)
 
     def _extract_text_from_tree(self, tree) -> str:
@@ -183,7 +185,8 @@ class HTMLExtractor(ExtractorBase):
             if isinstance(result, DoclingDocument):
                 return result.export_to_markdown()
             return str(result)
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Docling extraction failed: {e}")
             return ""
 
     def _md_to_paragraphs(self, md_text: str) -> List[ParagraphData]:
@@ -224,7 +227,8 @@ class HTMLExtractor(ExtractorBase):
 
         try:
             soup = BeautifulSoup(html_content, "html.parser")
-        except Exception:
+        except Exception as e:
+            logger.warning(f"BeautifulSoup parsing failed: {e}")
             return result
 
         for img in soup.find_all("img"):
@@ -247,7 +251,8 @@ class HTMLExtractor(ExtractorBase):
                     data = img_path.read_bytes()
                     mime_type = self._guess_mime_type(src)
                     result.append(ImageData(data=data, mime_type=mime_type))
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Image extraction failed for {src}: {e}")
                 continue
 
         return result
@@ -263,7 +268,8 @@ class HTMLExtractor(ExtractorBase):
         try:
             data = base64.b64decode(data_str)
             return ImageData(data=data, mime_type=mime_type)
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Base64 decode failed: {e}")
             return None
 
     def _guess_mime_type(self, src: str) -> str:
@@ -336,7 +342,8 @@ class HTMLExtractor(ExtractorBase):
 
             md_content = self._fix_tables(md_content)
             return md_content
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Markdown conversion failed: {e}")
             return self._strip_scripts_and_styles(html_content)
 
     def _resolve_relative_paths(self, md_content: str, base_path: Path) -> str:
@@ -352,7 +359,8 @@ class HTMLExtractor(ExtractorBase):
                 img_path = base_path / src if not Path(src).is_absolute() else Path(src)
                 resolved = img_path.resolve().as_posix()
                 return f"![{alt}]({resolved}{title})"
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Path resolution failed for {src}: {e}")
                 return match.group(0)
 
         return re.sub(r"!\[([^\]]*)\]\(([^)]+)\)({[^}]*})?", replace_src, md_content)

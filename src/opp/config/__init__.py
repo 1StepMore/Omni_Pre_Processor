@@ -2,6 +2,8 @@ import os
 from pathlib import Path
 from typing import Dict, Any, Optional
 
+from opp.logger import logger
+
 
 class OPPConfig:
     _instance: Optional["OPPConfig"] = None
@@ -40,7 +42,8 @@ class OPPConfig:
             import yaml
             with open(self.config_path, "r", encoding="utf-8") as f:
                 self._config = yaml.safe_load(f) or {}
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to load config from {self.config_path}: {e}")
             self._config = self._default_config()
 
     def _default_config(self) -> Dict[str, Any]:

@@ -2,20 +2,11 @@
 
 from lxml import etree
 
+from opp.xliff.xliff_dataclasses import _VALID_LANGUAGE_CODES
+
 # XLIFF 1.1 namespace (translate-toolkit default)
 XLIFF_NAMESPACE = "urn:oasis:names:tc:xliff:document:1.1"
 XLIFF_NS = {"xlf": XLIFF_NAMESPACE}
-
-# Valid ISO 639-1 language codes (common subset for validation)
-_VALID_LANGUAGE_CODES = frozenset([
-    "en", "fr", "de", "es", "it", "pt", "ru", "zh", "ja", "ko",
-    "ar", "nl", "pl", "sv", "da", "fi", "no", "cs", "el", "he",
-    "hu", "tr", "bg", "hr", "sk", "sl", "uk", "ro", "lt", "lv",
-    "et", "sq", "mk", "be", "sr", "ka", "hy", "az", "kk",
-    "uz", "tg", "tk", "mn", "ps", "fa", "ur", "th", "vi", "my",
-    "km", "lo", "ne", "si", "bn", "ta", "te", "ml", "kn", "gu",
-    "pa", "mr", "hi", "as", "bo", "dz", "id", "ms", "tl", "sw",
-])
 
 # Minimal XLIFF 1.2 XSD schema (bundled locally - no network calls)
 # Based on OASIS XLIFF 1.2 specification

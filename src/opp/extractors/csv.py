@@ -13,6 +13,7 @@ from opp.utils.dataclasses import (
     TableData,
 )
 from opp.utils.exceptions import CorruptedFileError
+from opp.logger import logger
 
 
 class CSVExtractor(ExtractorBase):
@@ -93,7 +94,8 @@ class CSVExtractor(ExtractorBase):
             raw_first = f.readline()
         try:
             first_line = raw_first.decode("utf-8", errors="replace").strip()
-        except Exception:
+        except Exception as e:
+            logger.debug(f"CSV header decode failed: {e}")
             return 0
         sep = self._detect_separator(first_line)
         if not sep:
@@ -162,7 +164,8 @@ class CSVExtractor(ExtractorBase):
                     if len(df2) < len(df):
                         return df2
                 return df
-            except Exception:
+            except Exception as e:
+                logger.debug(f"CSV read with separator '{sep}' failed: {e}")
                 continue
 
         try:
@@ -175,7 +178,8 @@ class CSVExtractor(ExtractorBase):
                 encoding_errors="replace",
                 on_bad_lines="skip",
             )
-        except Exception:
+        except Exception as e:
+            logger.debug(f"CSV read with fallback encoding failed: {e}")
             df = pd.read_csv(
                 input_path,
                 sep=None,

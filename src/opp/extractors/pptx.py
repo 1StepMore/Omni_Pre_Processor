@@ -26,7 +26,7 @@ class PPTXExtractor(ExtractorBase):
         warnings: List[str] = []
 
         try:
-            prs = Presentation(input_path)
+            prs = Presentation(str(input_path))
         except Exception as e:
             if ".pptm" in str(input_path).lower():
                 raise UnsupportedFormatError(f"不支持的PPTX格式（宏已启用）: {input_path}")

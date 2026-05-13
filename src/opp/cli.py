@@ -164,7 +164,7 @@ def process_single_file(
     args: argparse.Namespace,
     pipeline: OPPPipeline,
     stats: dict,
-    error_handler: ErrorHandler
+    _error_handler: ErrorHandler
 ) -> bool:
     try:
         # Set OCR env vars for image processing

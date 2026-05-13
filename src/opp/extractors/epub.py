@@ -14,6 +14,7 @@ from opp.utils.dataclasses import (
     TableData,
 )
 from opp.utils.exceptions import CorruptedFileError
+from opp.logger import logger
 
 
 class EPUBExtractor(ExtractorBase):
@@ -30,6 +31,7 @@ class EPUBExtractor(ExtractorBase):
         try:
             book, spine_items, image_items = self._parse_epub(input_path)
         except Exception as e:
+            logger.warning(f"EPUB parsing failed: {e}")
             raise CorruptedFileError(f"EPUB文件损坏或无法解析: {input_path}")
 
         paragraphs = self._extract_chapters(book, spine_items)
@@ -187,7 +189,8 @@ class EPUBExtractor(ExtractorBase):
                     data=content,
                     mime_type=self._get_mime_type(item.get_name()),
                 ))
-            except Exception:
+            except Exception as e:
+                logger.debug(f"EPUB image extraction failed: {e}")
                 continue
 
         return images

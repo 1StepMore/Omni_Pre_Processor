@@ -1,7 +1,10 @@
 from email import policy
 from email.parser import BytesParser
+from posixpath import basename
 from pathlib import Path
 from typing import List, Optional, TYPE_CHECKING
+import logging
+import re
 import tempfile
 
 from opp.extractors.base import ExtractorBase
@@ -12,6 +15,7 @@ from opp.utils.dataclasses import (
     ParagraphData,
 )
 from opp.utils.exceptions import CorruptedFileError, PasswordProtectedError
+from opp.logger import logger
 
 if TYPE_CHECKING:
     from opp.pipeline import OPPPipeline
@@ -85,7 +89,8 @@ class EmailExtractor(ExtractorBase):
                 att_data = part.get_payload(decode=True)
                 if not isinstance(att_data, bytes):
                     att_data = b""
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Failed to decode email attachment: {e}")
                 att_data = b""
             attachments.append(
                 AttachmentData(
@@ -148,7 +153,8 @@ class EmailExtractor(ExtractorBase):
                 html_body_bytes = msg.htmlBody
                 if html_body_bytes:
                     body = html_body_bytes.decode("utf-8", errors="replace")
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Failed to decode HTML body: {e}")
                 body = ""
 
         paragraphs = [ParagraphData(text=body, level=0, style="Normal")]
@@ -186,12 +192,30 @@ class AttachmentHandler:
         self.pipeline = pipeline
         self.max_depth = max_depth
         self._current_depth = 0
+        self._logger = logging.getLogger(__name__)
+
+    @staticmethod
+    def _sanitize_filename(filename: str) -> str:
+        """Sanitize attachment filename to prevent path traversal."""
+        filename = basename(filename)
+        filename = re.sub(r"[^\w\s\-.]", "_", filename)
+        if not filename or filename.startswith("."):
+            filename = "attachment"
+        return filename
 
     def process_attachment(self, attachment_data: AttachmentData) -> Optional["ProcessingResult"]:
         if self._current_depth >= self.max_depth:
             return None
 
-        temp_path = Path(tempfile.gettempdir()) / attachment_data.filename
+        original_filename = attachment_data.filename
+        safe_filename = self._sanitize_filename(original_filename)
+        if safe_filename != original_filename:
+            self._logger.warning(
+                "Attachment filename sanitized to prevent path traversal: "
+                "%s -> %s", original_filename, safe_filename
+            )
+
+        temp_path = Path(tempfile.gettempdir()) / safe_filename
         try:
             with open(temp_path, "wb") as f:
                 f.write(attachment_data.data)
@@ -201,7 +225,8 @@ class AttachmentHandler:
             self._current_depth -= 1
 
             return result
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Attachment processing failed: {e}")
             return None
         finally:
             if temp_path.exists():

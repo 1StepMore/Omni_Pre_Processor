@@ -10,6 +10,7 @@ from opp.utils.dataclasses import (
     ParagraphData,
 )
 from opp.utils.exceptions import CorruptedFileError
+from opp.logger import logger
 
 
 TESSERACT_INSTALL_GUIDE = (
@@ -77,7 +78,8 @@ class ImageOCRExtractor(ExtractorBase):
     def _extract_tesseract(self, image_path: Path, lang: str = "eng") -> dict:
         try:
             img = Image.open(image_path)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Cannot open image for OCR: {e}")
             raise CorruptedFileError(f"Cannot open image: {image_path}")
 
         try:

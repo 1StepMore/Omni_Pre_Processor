@@ -55,23 +55,6 @@ class PDFExtractor(ExtractorBase):
             for b in text_blocks
         ]
 
-        # Pure image/scan PDF: automatic OCR fallback
-        # Trigger OCR when no text blocks found (regardless of embedded images)
-        if not text_blocks:
-            ocr_engine = os.environ.get("OPP_OCR_ENGINE", "tesseract")
-            ocr_lang = os.environ.get("OPP_OCR_LANG", "eng")
-            logger.info(f"PDF无文字，触发OCR: 引擎={ocr_engine}, 语言={ocr_lang}, 共{doc.page_count}页")
-            warnings.append(f"PDF为扫描件，使用{ocr_engine}引擎+{ocr_lang}语言进行OCR...")
-            ocr_result = self._extract_via_ocr(doc)
-            if ocr_result:
-                paragraphs = ocr_result
-                total_chars = sum(len(p.text) for p in ocr_result)
-                logger.info(f"OCR成功: {len(ocr_result)}段落, {total_chars}字符")
-                warnings.append(f"OCR提取成功，共{len(ocr_result)}段落")
-            else:
-                logger.warning("OCR未能提取到文字")
-                warnings.append("PDF为扫描件，OCR未能提取文本")
-
         metadata = replace(metadata, page_count=doc.page_count)
         doc.close()
 
@@ -82,54 +65,6 @@ class PDFExtractor(ExtractorBase):
             metadata=metadata,
             warnings=warnings,
         )
-
-    def _extract_via_ocr(self, doc: fitz.Document) -> Optional[List[ParagraphData]]:
-        """Extract text from PDF via OCR when no text is available.
-
-        This handles pure image/scan PDFs by rendering each page and running OCR.
-
-        Args:
-            doc: The PyMuPDF document
-
-        Returns:
-            List of ParagraphData if OCR succeeded, None if OCR failed
-        """
-        from PIL import Image
-        from io import BytesIO
-
-        all_paragraphs: List[ParagraphData] = []
-        ocr_engine = os.environ.get("OPP_OCR_ENGINE", "tesseract")
-        ocr_lang = os.environ.get("OPP_OCR_LANG", "eng")
-
-        rapidocr_engine = None
-        if ocr_engine == "rapidocr":
-            rapidocr_engine = self._init_rapidocr()
-
-        for page_num in range(doc.page_count):
-            page = doc[page_num]
-            try:
-                zoom = 300 / 72
-                mat = fitz.Matrix(zoom, zoom)
-                pix = page.get_pixmap(matrix=mat)
-
-                img_data = pix.tobytes("png")
-                img = Image.open(BytesIO(img_data))
-
-                if ocr_engine == "rapidocr" and rapidocr_engine:
-                    text = self._ocr_rapidocr(img, rapidocr_engine)
-                else:
-                    text = self._ocr_tesseract(img, ocr_lang)
-
-                if text:
-                    all_paragraphs.append(ParagraphData(
-                        text=text,
-                        style=None,
-                        level=None
-                    ))
-            except Exception:
-                continue
-
-        return all_paragraphs if all_paragraphs else None
 
     def _init_rapidocr(self):
         """Initialize RapidOCR engine once for reuse."""
@@ -150,7 +85,8 @@ class PDFExtractor(ExtractorBase):
                 img = img.convert("RGB")
             text = pytesseract.image_to_string(img, lang=lang)
             return text.strip() if text else None
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Tesseract OCR failed, falling back to RapidOCR: {e}")
             return self._ocr_rapidocr(img, None)
 
     def _ocr_rapidocr(self, img, engine) -> Optional[str]:
@@ -178,7 +114,8 @@ class PDFExtractor(ExtractorBase):
                 return None
             finally:
                 Path(tmp_path).unlink(missing_ok=True)
-        except Exception:
+        except Exception as e:
+            logger.debug(f"RapidOCR extraction failed: {e}")
             return None
 
     def extract_text_blocks(self, doc: fitz.Document) -> List[TextBlockData]:
@@ -231,14 +168,16 @@ class PDFExtractor(ExtractorBase):
                         data=image_bytes,
                         mime_type=mime_type,
                     ))
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"Image extraction failed: {e}")
                     continue
         return result
 
     def extract_toc(self, input_path: Path) -> List[ParagraphData]:
         try:
             doc: fitz.Document = fitz.open(input_path)
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Failed to open PDF for TOC extraction: {e}")
             return []
 
         toc_entries = doc.get_toc()

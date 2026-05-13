@@ -53,7 +53,7 @@ class MarkdownGenerator:
 
         return "\n".join(output_lines)
 
-    def generate_to_file(self, result: ExtractionResult, output_path: Path, attachment_results=None) -> None:
+    def generate_to_file(self, result: ExtractionResult, output_path: Path, _attachment_results=None) -> None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         content = self.generate(result)
         output_path.write_text(content, encoding="utf-8")
@@ -122,7 +122,7 @@ class MarkdownGenerator:
 
         return '\n'.join(result_lines)
 
-    def generate_tables_md(self, tables: List[TableData], alignment=None, has_header=True) -> str:
+    def generate_tables_md(self, tables: List[TableData], alignment=None, _has_header=True) -> str:
         result_parts = []
         for table in tables:
             num_cols = len(table.headers)

@@ -46,7 +46,7 @@ notebook = [
     "nbformat>=5.0.0",
 ]
 all = [
-    "opp[audio,notebook]",
+    "opp[audio,notebook,office,web,email,ocr]",
 ]
 
 [build-system]

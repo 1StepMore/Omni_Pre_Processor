@@ -25,7 +25,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install pytest pytest-cov openpyxl pandas chardet python-docx python-pptx pymupdf lxml translate-toolkit readability-lxml markdownify ebooklib beautifulsoup4 extract-msg pytesseract Pillow nbformat
+          uv pip install -e ".[all]"
 
       - name: Run tests
         env:
