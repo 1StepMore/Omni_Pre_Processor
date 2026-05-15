@@ -144,7 +144,7 @@ def html_sample_files(tmp_path: Path) -> Path:
 <body>
 <nav class="main-nav"><a href="/">Home</a> | <a href="/news">News</a></nav>
 <header><h1>Breaking News</h1></header>
-<aside class="sidebar"><h3>Related</h3><p>Sidebar content</p></aside>
+<aside class="widget"><h3>Recommended</h3><p>Widget info here</p></aside>
 <article>
     <h2>Article Title</h2>
     <p>This is the main article body content with important news information.</p>

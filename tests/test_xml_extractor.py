@@ -308,7 +308,8 @@ class TestXMLExtractor:
             '<?xml version="1.0" encoding="UTF-8"?>\n'
             '<root>\n'
             '  <text>Hello 你好</text>\n'
-            '</root>\n'
+            '</root>\n',
+            encoding="utf-8"
         )
         extractor = XMLExtractor()
         result = extractor.extract(xml_file)
