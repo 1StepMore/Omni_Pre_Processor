@@ -24,22 +24,9 @@ jobs:
         run: uv venv .venv
 
       - name: Install dependencies
-        run: |
-          echo "=== Installing base dependencies ==="
-          uv pip install python-docx pymupdf translate-toolkit lxml pytest pytest-cov || true
-          echo "=== Installing in dev mode ==="
-          uv pip install -e . || true
-          echo "=== Installing extra dependencies ==="
-          uv pip install openpyxl pandas chardet markdownify readability-lxml ebooklib beautifulsoup4 docling extract-msg rapidocr-onnxruntime pytesseract Pillow faster-whisper markitdown[youtube] pydub nbformat || true
-          echo "=== Installation complete ==="
-          .venv/bin/python -c "import sys; print(f'Python {sys.version}')"
-          .venv/bin/python -c "import opp; print('opp OK')" || echo "opp import FAILED"
+        run: uv pip install -e ".[all]"
 
       - name: Run tests
         env:
           PYTHONPATH: ${{ github.workspace }}/src
-        run: |
-          echo "=== Running tests ==="
-          .venv/bin/python -m pytest tests/ -v --tb=short 2>&1 | tee test_output.log
-          echo "=== Test exit code: $? ==="
-          tail -100 test_output.log
+        run: .venv/bin/python -m pytest tests/ -v
