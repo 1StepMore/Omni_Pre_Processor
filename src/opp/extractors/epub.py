@@ -64,7 +64,7 @@ class EPUBExtractor(ExtractorBase):
         """Parse EPUB and return book, spine items, and image items."""
         import ebooklib
 
-        book = epub.read_epub(epub_path)
+        book = epub.read_epub(epub_path, options={"ignore_ncx": True})
 
         # Get spine items in reading order
         spine_items = list(book.spine)
