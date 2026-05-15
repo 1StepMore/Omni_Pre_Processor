@@ -1,23 +1,50 @@
 {
-  "active_plan": "/mnt/d/贯维/Omni_Pre_Processor/.sisyphus/plans/format-structure-fix.md",
-  "started_at": "2026-05-12T08:20:34.088Z",
+  "active_plan": "/mnt/d/贯维/Omni_Pre_Processor/.sisyphus/plans/pdf-extractor-fix.md",
+  "started_at": "2026-05-15T03:42:41.268Z",
   "session_ids": [
-    "ses_1e5aa9d78ffeq2c4dWtNt4UlIG"
+    "ses_1d67f2865ffeSg5rXkvp218D98"
   ],
   "session_origins": {
-    "ses_1e5aa9d78ffeq2c4dWtNt4UlIG": "direct"
+    "ses_1d67f2865ffeSg5rXkvp218D98": "direct"
   },
-  "plan_name": "format-structure-fix",
+  "plan_name": "pdf-extractor-fix",
   "agent": "atlas",
   "task_sessions": {
     "todo:1": {
       "task_key": "todo:1",
       "task_label": "1",
-      "task_title": "**Investigate EPUB data flow** — `quick`",
-      "session_id": "ses_1e4895fabffelWoeEUAZRcNm6P",
+      "task_title": "Fix table duplication bug in `detect_tables()`",
+      "session_id": "ses_1d6432f12ffe8Ud1jsVKlYSKXo",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-15T03:51:05.234Z"
+    },
+    "todo:4": {
+      "task_key": "todo:4",
+      "task_label": "4",
+      "task_title": "Run PDF extractor tests",
+      "session_id": "ses_1d63ca93fffegsDNuZDXxB4V3B",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-15T03:53:31.860Z"
+    },
+    "todo:5": {
+      "task_key": "todo:5",
+      "task_label": "5",
+      "task_title": "Verify with sample PDF output",
+      "session_id": "ses_1d6332aedffeXqa1uG7Pd5i1ER",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-15T04:04:08.092Z"
+    },
+    "final-wave:f1": {
+      "task_key": "final-wave:f1",
+      "task_label": "F1",
+      "task_title": "**Plan Compliance Audit** — `oracle`",
+      "session_id": "ses_1d6315a31ffe4BFDo8g6tpGyk7",
       "agent": "Sisyphus-Junior",
       "category": "unspecified-high",
-      "updated_at": "2026-05-12T09:26:57.808Z"
+      "updated_at": "2026-05-15T04:06:40.127Z"
     }
   }
 }

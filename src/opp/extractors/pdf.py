@@ -2,6 +2,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import List, Optional
 import os
+import re
 
 import fitz
 
@@ -19,8 +20,34 @@ from opp.logger import logger
 
 
 class PDFExtractor(ExtractorBase):
+    CHINESE_NUMERALS = "一二三四五六七八九十百千万零两"
+
+    # Level 1 patterns
+    _LEVEL1_PATTERNS = [
+        re.compile(r"^[{}]+、".format(CHINESE_NUMERALS)),  # 一、二、三、
+        re.compile(r"^第[{}{}\d]+章".format(CHINESE_NUMERALS, "\\d")),  # 第一章, 第1章
+        re.compile(r"^\d+\.$"),  # 1. 2. 3.
+    ]
+    # Level 2 patterns
+    _LEVEL2_PATTERNS = [
+        re.compile(r"^第[{}{}\d]+节".format(CHINESE_NUMERALS, "\\d")),  # 第一节
+        re.compile(r"^\d+\.\d+$"),  # 1.1 2.1
+    ]
+
     def supported_extensions(self) -> List[str]:
         return [".pdf"]
+
+    def _detect_heading_level(self, text: str) -> Optional[int]:
+        """Detect if text is a Chinese heading and return its level."""
+        if not text:
+            return None
+        for pattern in self._LEVEL1_PATTERNS:
+            if pattern.match(text):
+                return 1
+        for pattern in self._LEVEL2_PATTERNS:
+            if pattern.match(text):
+                return 2
+        return None
 
     def extract(self, input_path: Path) -> ExtractionResult:
         self.validate_file(input_path)
@@ -50,10 +77,22 @@ class PDFExtractor(ExtractorBase):
         tables = self.detect_tables(doc)
         images = self.extract_images(doc)
 
-        paragraphs = [
-            ParagraphData(text=b.text, style=None, level=None)
-            for b in text_blocks
-        ]
+        paragraphs = []
+        for b in text_blocks:
+            level = self._detect_heading_level(b.text)
+            if level:
+                paragraphs.append(ParagraphData(text=b.text, style=f"Heading {level}", level=level))
+            else:
+                paragraphs.append(ParagraphData(text=b.text, style=None, level=None))
+
+        # Merge TOC entries with body paragraphs (dedupe by text+level)
+        toc_paragraphs = self._extract_toc_from_doc(doc)
+        existing_texts = {(p.text.strip(), p.level) for p in toc_paragraphs}
+        merged = toc_paragraphs.copy()
+        for p in paragraphs:
+            if (p.text.strip(), p.level) not in existing_texts:
+                merged.append(p)
+        paragraphs = merged
 
         metadata = replace(metadata, page_count=doc.page_count)
         doc.close()
@@ -146,9 +185,9 @@ class PDFExtractor(ExtractorBase):
                 continue
             for table in table_page:
                 extracted = table.extract()
-                if extracted:
+                if extracted and len(extracted) > 1:
                     headers = table.header.names if table.header else []
-                    rows = extracted
+                    rows = extracted[1:]
                     result.append(TableData(headers=headers, rows=rows))
         return result
 
@@ -172,6 +211,20 @@ class PDFExtractor(ExtractorBase):
                     logger.debug(f"Image extraction failed: {e}")
                     continue
         return result
+
+    def _extract_toc_from_doc(self, doc: fitz.Document) -> List[ParagraphData]:
+        """Extract TOC from already-open PDF document."""
+        toc_entries = doc.get_toc()
+        if not toc_entries:
+            return []
+        return [
+            ParagraphData(
+                text=toc_entry[1],
+                style=f"Heading {toc_entry[0]}",
+                level=toc_entry[0],
+            )
+            for toc_entry in toc_entries
+        ]
 
     def extract_toc(self, input_path: Path) -> List[ParagraphData]:
         try:
