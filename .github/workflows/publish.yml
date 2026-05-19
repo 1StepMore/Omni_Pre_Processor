@@ -62,7 +62,7 @@ jobs:
             VERSION=${GITHUB_REF#refs/tags/v}
             echo "is_tag=true" >> $GITHUB_OUTPUT
           else
-            VERSION=$(python -c "import sys; sys.path.insert(0, 'src'); from opp import __version__; print(__version__)")
+            VERSION="0.1.0"
             echo "is_tag=false" >> $GITHUB_OUTPUT
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
