@@ -157,3 +157,105 @@ Test files available in `batch_test/` covering all formats.
 ```bash
 opp --target-format=both --source-lang=en --target-lang=zh --output-dir=output batch_test/
 ```
+
+## MCP Server (Agent-Facing)
+
+The OPP MCP server provides document extraction capabilities to AI agents via the Model Context Protocol. AI assistants can use these tools to process documents without needing to understand OPP's internal architecture.
+
+### Why Use the MCP Server?
+
+- **Agent integration** - Connect OPP to any MCP-compatible AI assistant
+- ** stdio transport** - Communication over standard input/output for security
+- **5 extraction tools** - Cover all major document formats
+- **Path security** - Directory allowlist prevents unauthorized file access
+
+### Installation
+
+```bash
+# Install OPP with MCP server support
+pip install -e ".[mcp]"
+```
+
+### Quick Start
+
+**Start the server manually:**
+```bash
+python -m opp.mcp.server
+```
+
+**Auto-start with uvx:**
+```bash
+uvx opp-mcp-server
+```
+
+**Auto-start with npx:**
+```bash
+npx opp-mcp-server
+```
+
+### Hermes Configuration
+
+Add OPP to your Hermes agent configuration:
+
+```yaml
+agents:
+  my-agent:
+    tools:
+      - name: opp
+        type: code
+        config:
+          server_command: uvx opp-mcp-server
+          allowed_directories:
+            - /path/to/documents
+            - /path/to/output
+```
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `extract_document` | Extract content from a single document file. Supports DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPUB, EML, MSG, and images. Returns markdown or structured content. |
+| `batch_extract` | Process multiple files in one request. Takes an array of file paths and processes them sequentially. Returns extraction results for each file. |
+| `detect_format` | Identify the file format of a document using magic bytes detection. Works regardless of file extension. Returns format name and confidence score. |
+| `generate_markdown` | Convert a document to markdown format. Specify source and target languages for proper text processing. |
+| `generate_xliff` | Convert a document to XLIFF format for translation workflows. Requires source-lang and target-lang parameters. |
+
+### Security
+
+The MCP server enforces path validation to prevent unauthorized file access.
+
+**Allowlist configuration:**
+
+```bash
+# Via environment variable
+export OPP_ALLOWED_DIRECTORIES="/allowed/documents,/allowed/output"
+
+# Via configuration file
+```
+
+**Configuration file** (`opp_mcp_config.yaml`):
+
+```yaml
+security:
+  allowed_directories:
+    - /mnt/d/贯维/Documents
+    - /mnt/d/贯维/Output
+    - ./documents
+
+server:
+  host: localhost
+  port: 8765
+
+extraction:
+  default_target_format: md
+  ocr_engine: tesseract
+```
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OPP_ALLOWED_DIRECTORIES` | Comma-separated list of allowed directories | Required |
+| `OPP_RESOURCE_STORAGE_DIR` | Directory for extracted images | `./resources` |
+| `OPP_OCR_ENGINE` | OCR engine to use | `tesseract` |
+| `OPP_LOG_LEVEL` | Logging level | `INFO` |

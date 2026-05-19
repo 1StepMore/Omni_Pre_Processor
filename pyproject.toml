@@ -45,9 +45,18 @@ audio = [
 notebook = [
     "nbformat>=5.0.0",
 ]
-all = [
-    "opp[audio,notebook,office,web,email,ocr]",
+mcp = [
+    "mcp>=1.0.0",
 ]
+all = [
+    "opp[audio,notebook,office,web,email,ocr,mcp]",
+]
+
+[project.scripts]
+opp-mcp-server = "opp.mcp.server:main"
+
+[project.urls]
+MCP = "https://github.com/modelcontextprotocol/python-sdk"
 
 [build-system]
 requires = ["hatchling"]

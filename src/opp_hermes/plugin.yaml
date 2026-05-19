@@ -1,0 +1,7 @@
+name: opp
+version: 1.0.0
+description: Document content extraction for DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPUB, EML, MSG, Image OCR, Audio/Video transcription
+author: OPP Team
+provides_tools:
+  - opp_extract
+provides_hooks: []
