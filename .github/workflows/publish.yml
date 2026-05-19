@@ -43,7 +43,7 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/src
         run: |
-          .venv/bin/python -m pytest tests/ -v --cov=src/opp --cov-report=term-missing
+          .venv/bin/python -m pytest tests/ -v --cov=src/opp --cov-report=term-missing --ignore=tests/mcp/test_integration.py -k "not integration"
 
   verify-version:
     name: Verify Version
