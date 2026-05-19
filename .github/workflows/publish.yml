@@ -36,7 +36,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install --python .venv pytest pytest-cov
+          uv pip install --python .venv pytest pytest-cov pytest-asyncio
           uv pip install --python .venv mcp "fastmcp[cli]" beautifulsoup4 ebooklib python-docx python-pptx pymupdf lxml translate-toolkit openpyxl pandas chardet
 
       - name: Run tests
