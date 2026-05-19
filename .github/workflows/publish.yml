@@ -58,10 +58,17 @@ jobs:
       - name: Extract version from tag
         id: extract
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+            echo "is_tag=true" >> $GITHUB_OUTPUT
+          else
+            VERSION=$(python -c "import sys; sys.path.insert(0, 'src'); from opp import __version__; print(__version__)")
+            echo "is_tag=false" >> $GITHUB_OUTPUT
+          fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Verify version format
+        if: steps.extract.outputs.is_tag == 'true'
         run: |
           VERSION="${{ steps.extract.outputs.version }}"
           if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -71,6 +78,7 @@ jobs:
           echo "Version $VERSION is valid"
 
       - name: Verify version matches pyproject.toml
+        if: steps.extract.outputs.is_tag == 'true'
         run: |
           VERSION="${{ steps.extract.outputs.version }}"
           PROJECT_VERSION=$(python -c "import sys; sys.path.insert(0, 'src'); from opp import __version__; print(__version__)")
