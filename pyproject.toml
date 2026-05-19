@@ -1,9 +1,24 @@
 [project]
 name = "opp"
-dynamic = ["version"]
+version = "0.1.0"
 description = "Omni Pre-Processor: Document content extraction package"
 readme = "README.md"
 requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "OPP Contributors"}
+]
+keywords = ["document", "extraction", "pdf", "docx", "pptx", "markdown", "xliff", "translation", "ocr", "content-extraction"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Text Processing",
+    "Topic :: Text Processing :: General",
+]
 dependencies = [
     "python-docx>=1.0.0",
     "python-pptx>=1.0.0",
@@ -53,10 +68,15 @@ all = [
 ]
 
 [project.scripts]
+opp = "opp.cli:main"
 opp-mcp-server = "opp.mcp.server:main"
 
 [project.urls]
-MCP = "https://github.com/modelcontextprotocol/python-sdk"
+Homepage = "https://github.com/1StepMore/Omni_Pre_Processor"
+Repository = "https://github.com/1StepMore/Omni_Pre_Processor"
+Documentation = "https://github.com/1StepMore/Omni_Pre_Processor#readme"
+Changelog = "https://github.com/1StepMore/Omni_Pre_Processor/blob/main/CHANGELOG.md"
+Issues = "https://github.com/1StepMore/Omni_Pre_Processor/issues"
 
 [build-system]
 requires = ["hatchling"]
@@ -64,9 +84,6 @@ build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-
-[tool.hatch.version]
-path = "src/opp/__init__.py"
 
 [tool.coverage.run]
 source = ["src/opp"]

@@ -1,5 +1,10 @@
 # OPP - Omni Pre-Processor
 
+[![PyPI version](https://img.shields.io/pypi/v/opp.svg)](https://pypi.org/project/opp/)
+[![Python versions](https://img.shields.io/pypi/pyversions/opp.svg)](https://pypi.org/project/opp/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Downloads](https://img.shields.io/pypi/dm/opp.svg)](https://pypi.org/project/opp/)
+
 Document content extraction for DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPUB, EML, MSG, and Image (OCR).
 
 ## Features
