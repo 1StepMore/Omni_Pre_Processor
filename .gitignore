@@ -16,3 +16,11 @@ htmlcov/
 *.swp
 *.swo
 *~logs/
+.ci-venv/
+
+# Chinese documentation files - never commit
+OPP_DD_Vibe_Phase版.md
+OPP增补完整版.md
+增补.txt
+*.md.txt
+DD\ Vibe.txt
