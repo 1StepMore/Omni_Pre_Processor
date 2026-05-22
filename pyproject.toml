@@ -1,6 +1,6 @@
 [project]
 name = "Omni_Pre_Processor"
-version = "0.2.0"
+version = "0.2.1"
 description = "Omni Pre-Processor: Document content extraction package"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -56,12 +56,15 @@ audio = [
     "faster-whisper",
     "markitdown[youtube]",
     "pydub>=0.23.0",
+    "torch>=2.0.0",
 ]
 notebook = [
     "nbformat>=5.0.0",
 ]
 mcp = [
     "mcp>=1.0.0",
+    "fastmcp>=1.0.0",
+    "pyyaml>=5.0.0",
 ]
 all = [
     "opp[audio,notebook,office,web,email,ocr,mcp]",
@@ -87,7 +90,7 @@ packages = ["src/opp"]
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "/src/opp",
+    "src/opp",
 ]
 
 [tool.pytest.ini_options]

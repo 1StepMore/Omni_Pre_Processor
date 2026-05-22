@@ -233,7 +233,7 @@ The OPP MCP server provides document extraction capabilities to AI agents via th
 ### Why Use the MCP Server?
 
 - **Agent integration** - Connect OPP to any MCP-compatible AI assistant
-- ** stdio transport** - Communication over standard input/output for security
+- **stdio transport** - Communication over standard input/output for security
 - **5 extraction tools** - Cover all major document formats
 - **Path security** - Directory allowlist prevents unauthorized file access
 
@@ -296,10 +296,14 @@ The MCP server enforces path validation to prevent unauthorized file access.
 
 ```bash
 # Via environment variable
-export OPP_ALLOWED_DIRECTORIES="/allowed/documents,/allowed/output"
+export OPP_MCP_ALLOWED_DIRS="/allowed/documents,/allowed/output"
 
 # Via configuration file
-```
+# Create opp_mcp_config.yaml with:
+# security:
+#   allowed_directories:
+#     - /path/to/documents
+#     - /path/to/output
 
 **Configuration file** (`opp_mcp_config.yaml`):
 

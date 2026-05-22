@@ -9,7 +9,7 @@ from opp.pipeline import OPPPipeline
 from opp.extractors.docx import DOCXExtractor
 from opp.xliff import XLIFFFileGenerator
 
-VENV_PYTHON = "/mnt/d/贯维/Omni_Pre_Processor/.venv/bin/python"
+VENV_PYTHON = sys.executable
 
 
 def run_opp(args: list, tmp_path: Path) -> subprocess.CompletedProcess:

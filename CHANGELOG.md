@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-05-22
+
+### Fixed
+- **Build**: Fix sdist path from absolute `/src/opp` to relative `src/opp`
+- **Windows**: Replace `posixpath` import with `os.path` for cross-platform compatibility
+- **CLI**: Add file existence validation in `expand_directories()` to skip non-existent paths
+- **CLI**: Add try/catch for permission errors when reading file stats and computing MD5
+- **CLI**: Use `logger.exception()` instead of `logger.error()` for better stack traces
+- **Docs**: Fix `OPP_ALLOWED_DIRECTORIES` to `OPP_MCP_ALLOWED_DIRS` in README
+- **Docs**: Fix typo in README (` stdio` → `stdio`)
+
+### Dependencies
+- **MCP extra**: Add `fastmcp` dependency
+- **MCP extra**: Add `pyyaml` dependency
+- **Audio extra**: Add `torch` dependency for GPU detection
+
+## [0.2.0] - 2026-05-19
+
+### Added
+- **Manifest generation** - JSON manifest with source info, extraction stats, and image data
+- **Skeleton preservation** - Original DOCX/PPTX ZIP structure preserved for downstream XLIFF→DOCX/PPTX backfill
+  - Captures OOXML skeleton ZIP for DOCX and PPTX
+  - `save_skeleton()` method added to OPPPipeline
+  - `skeleton` and `skeleton_files` fields added to ExtractionResult
+
+### Features
+- Manifest.json generation with source file info, extraction outputs, and resource data
+- Skeleton.zip creation for DOCX/PPTX formats preserving key XML files
+
+### Tests
+- `test_manifest_generation.py` - 6 tests for manifest generation
+- `test_skeleton_preservation.py` - 6 tests for skeleton preservation
+
 ## [0.1.0] - 2024-05-19
 
 ### Added

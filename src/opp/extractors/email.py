@@ -1,6 +1,6 @@
 from email import policy
 from email.parser import BytesParser
-from posixpath import basename
+from os.path import basename
 from pathlib import Path
 from typing import List, Optional, TYPE_CHECKING
 import logging

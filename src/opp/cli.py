@@ -154,9 +154,9 @@ def expand_directories(paths: List[Path]) -> List[Path]:
             supported_exts = get_supported_extensions()
             for ext in supported_exts:
                 for f in path.rglob(f'*{ext}'):
-                    if not f.name.startswith('.'):
+                    if not f.name.startswith('.') and f.is_file():
                         files.append(f)
-        else:
+        elif path.is_file():
             files.append(path)
     return files
 
@@ -248,6 +248,14 @@ def process_single_file(
         md_path = output_dir / f"{base_name}.md"
         xliff_path = output_dir / f"{base_name}.xlf"
 
+        try:
+            file_size = file_path.stat().st_size
+            file_hash = _compute_file_md5(file_path)
+        except OSError as e:
+            stats["errors"] += 1
+            get_logger().error(f"Cannot access file {file_path}: {e}")
+            return False
+
         manifest = {
             "manifest_version": "1.0",
             "generated_at": datetime.now().isoformat() + "Z",
@@ -257,8 +265,8 @@ def process_single_file(
                 "file_path": str(file_path.resolve()),
                 "original_filename": file_path.name,
                 "format": _detect_format_from_extension(file_path),
-                "file_size_bytes": file_path.stat().st_size,
-                "file_hash_md5": _compute_file_md5(file_path),
+                "file_size_bytes": file_size,
+                "file_hash_md5": file_hash,
             },
             "extraction": {
                 "source_lang": args.source_lang or "en",
@@ -316,7 +324,7 @@ def process_single_file(
 
     except Exception as e:
         stats["errors"] += 1
-        get_logger().error(f"Error processing {file_path}: {e}")
+        get_logger().exception(f"Error processing {file_path}: {e}")
         return False
 
 

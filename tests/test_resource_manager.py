@@ -4,18 +4,6 @@ import uuid
 import pytest
 import importlib.util
 
-def createMinimalPNG(width=10, height=10):
-    import zlib, struct
-    def png_chunk(chunk_type, data):
-        chunk = chunk_type + data
-        crc = zlib.crc32(chunk) & 0xffffffff
-        return struct.pack('>I', len(data)) + chunk + struct.pack('>I', crc)
-    header = b'\x89PNG\r\n\x1a\n'
-    ihdr = struct.pack('>IIBBBBB', width, height, 8, 2, 0, 0, 0)
-    raw = b'RGB' * width * height
-    idat = zlib.compress(raw)
-    return header + png_chunk(b'IHDR', ihdr) + png_chunk(b'IDAT', idat) + png_chunk(b'IEND', b'')
-
 @pytest.fixture
 def createMinimalPNG():
     def _createMinimalPNG(width=10, height=10):

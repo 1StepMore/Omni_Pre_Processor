@@ -21,11 +21,6 @@ class TestPathValidator:
 
     @pytest.fixture
     def allowed_dir(self, tmp_path: Path) -> Path:
-        """Create a temporary allowed directory."""
-        return tmp_path
-
-    @pytest.fixture
-    def allowed_dir(self, tmp_path: Path) -> Path:
         nested = tmp_path / "allowed"
         nested.mkdir()
         return nested

@@ -74,8 +74,7 @@ class TestHTMLExtractor:
         if len(result.paragraphs) == 0:
             assert len(result.warnings) > 0 or "empty" in str(result).lower()
         else:
-            # If some content extracted, that's also acceptable
-            pass
+            assert len(result.paragraphs) > 0
 
     def test_large_file_performance(self, html_sample_files: Path):
         """Test large file processing."""
