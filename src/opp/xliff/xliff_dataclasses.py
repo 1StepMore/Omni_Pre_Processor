@@ -1,6 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 
 _VALID_LANGUAGE_CODES = frozenset([
     "en", "fr", "de", "es", "it", "pt", "ru", "zh", "ja", "ko",
@@ -21,6 +21,15 @@ class XLIFFUnitState(Enum):
 
 
 @dataclass
+class InlineElement:
+    """An inline formatting element in XLIFF."""
+    id: str
+    type: str
+    position: int
+    text_covered: Optional[str] = None
+
+
+@dataclass
 class XLIFFTransUnit:
     id: str
     source: str
@@ -31,6 +40,7 @@ class XLIFFTransUnit:
     context: Optional[str] = None
     state: Optional[XLIFFUnitState] = None
     translate: bool = True
+    inline_elements: List[InlineElement] = field(default_factory=list)
 
 
 @dataclass

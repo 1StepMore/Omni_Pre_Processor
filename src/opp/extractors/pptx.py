@@ -12,6 +12,7 @@ from opp.utils.dataclasses import (
     ExtractionResult,
     ImageData,
     ParagraphData,
+    RunData,
     SlideData,
 )
 from opp.utils.exceptions import CorruptedFileError, UnsupportedFormatError
@@ -87,6 +88,24 @@ class PPTXExtractor(ExtractorBase):
         except (ValueError, AttributeError):
             return False
 
+    def extract_runs(self, shape) -> List[RunData]:
+        runs = []
+        for para in shape.text_frame.paragraphs:
+            for run in para.runs:
+                text = run.text
+                if not text or not text.strip():
+                    continue
+                font = run.font
+                run_data = RunData(
+                    text=text,
+                    bold=bool(font.bold) if font.bold else False,
+                    italic=bool(font.italic) if font.italic else False,
+                    underline=bool(font.underline) if font.underline else False,
+                    strike=False,
+                )
+                runs.append(run_data)
+        return runs
+
     def extract_shapes(self, slide) -> List[ParagraphData]:
         result: List[ParagraphData] = []
         for shape in slide.shapes:
@@ -95,17 +114,21 @@ class PPTXExtractor(ExtractorBase):
             elif shape.has_text_frame:
                 text = shape.text_frame.text.strip()
                 if text:
+                    runs = self.extract_runs(shape)
+                    plain_text = ''.join(r.text for r in runs)
                     if self._is_title_shape(shape):
                         result.append(ParagraphData(
-                            text=text,
+                            text=plain_text,
                             style="Heading 1",
                             level=1,
+                            runs=runs,
                         ))
                     else:
                         result.append(ParagraphData(
-                            text=text,
+                            text=plain_text,
                             style=shape.shape_type.name if hasattr(shape.shape_type, 'name') else None,
                             level=None,
+                            runs=runs,
                         ))
         return result
 
@@ -117,17 +140,21 @@ class PPTXExtractor(ExtractorBase):
             elif shape.has_text_frame:
                 text = shape.text_frame.text.strip()
                 if text:
+                    runs = self.extract_runs(shape)
+                    plain_text = ''.join(r.text for r in runs)
                     if self._is_title_shape(shape):
                         result.append(ParagraphData(
-                            text=text,
+                            text=plain_text,
                             style="Heading 1",
                             level=1,
+                            runs=runs,
                         ))
                     else:
                         result.append(ParagraphData(
-                            text=text,
+                            text=plain_text,
                             style=shape.shape_type.name if hasattr(shape.shape_type, 'name') else None,
                             level=None,
+                            runs=runs,
                         ))
         return result
 

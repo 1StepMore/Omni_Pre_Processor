@@ -1,50 +1,138 @@
 {
-  "active_plan": "/mnt/d/贯维/Omni_Pre_Processor/.sisyphus/plans/pdf-extractor-fix.md",
-  "started_at": "2026-05-15T03:42:41.268Z",
+  "active_plan": "/mnt/d/贯维/Omni_Pre_Processor/.sisyphus/plans/agent-facing-mcp.md",
+  "started_at": "2026-05-19T09:00:49.417Z",
   "session_ids": [
-    "ses_1d67f2865ffeSg5rXkvp218D98"
+    "ses_1c0cf77f9ffeB7SQx0S36mtWi1",
+    "ses_1c003b193fferOxZyx071G5mEa",
+    "ses_1bff6a3afffecn1wGjaJ5foSPj",
+    "ses_1bfee6d83ffeR2q1ju71YUhjxn",
+    "ses_1bfee4007ffezpLxmBbPQEcxbs"
   ],
   "session_origins": {
-    "ses_1d67f2865ffeSg5rXkvp218D98": "direct"
+    "ses_1c0cf77f9ffeB7SQx0S36mtWi1": "direct",
+    "ses_1c003b193fferOxZyx071G5mEa": "appended",
+    "ses_1bff6a3afffecn1wGjaJ5foSPj": "appended",
+    "ses_1bfee6d83ffeR2q1ju71YUhjxn": "appended",
+    "ses_1bfee4007ffezpLxmBbPQEcxbs": "appended"
   },
-  "plan_name": "pdf-extractor-fix",
+  "plan_name": "agent-facing-mcp",
   "agent": "atlas",
   "task_sessions": {
     "todo:1": {
       "task_key": "todo:1",
       "task_label": "1",
-      "task_title": "Fix table duplication bug in `detect_tables()`",
-      "session_id": "ses_1d6432f12ffe8Ud1jsVKlYSKXo",
+      "task_title": "Create src/opp/mcp/ module structure",
+      "session_id": "ses_1c086dbe2ffejoClg2AKCWXgh2",
       "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-05-15T03:51:05.234Z"
+      "category": "unspecified-high",
+      "updated_at": "2026-05-19T09:13:24.763Z"
     },
-    "todo:4": {
-      "task_key": "todo:4",
-      "task_label": "4",
-      "task_title": "Run PDF extractor tests",
-      "session_id": "ses_1d63ca93fffegsDNuZDXxB4V3B",
+    "todo:6": {
+      "task_key": "todo:6",
+      "task_label": "6",
+      "task_title": "Implement extract_document tool (FastMCP)",
+      "session_id": "ses_1c078e9d0ffeApOrZ9X1CXoIAQ",
       "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-05-15T03:53:31.860Z"
+      "category": "deep",
+      "updated_at": "2026-05-19T09:27:18.810Z"
     },
-    "todo:5": {
-      "task_key": "todo:5",
-      "task_label": "5",
-      "task_title": "Verify with sample PDF output",
-      "session_id": "ses_1d6332aedffeXqa1uG7Pd5i1ER",
+    "todo:7": {
+      "task_key": "todo:7",
+      "task_label": "7",
+      "task_title": "Implement batch_extract tool",
+      "session_id": "ses_1c06d18bbffeWDFf07pxvICrDt",
       "agent": "Sisyphus-Junior",
       "category": "quick",
-      "updated_at": "2026-05-15T04:04:08.092Z"
+      "updated_at": "2026-05-19T09:44:48.391Z"
+    },
+    "todo:12": {
+      "task_key": "todo:12",
+      "task_label": "12",
+      "task_title": "Write TDD tests for security module",
+      "session_id": "ses_1c05daf43ffe5JY8gO2OYD6xOy",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-05-19T09:58:28.203Z"
+    },
+    "todo:13": {
+      "task_key": "todo:13",
+      "task_label": "13",
+      "task_title": "Write TDD tests for extract_document tool",
+      "session_id": "ses_1c0533a8dffeipT1ad63jgXqpd",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-19T10:50:26.619Z"
+    },
+    "todo:14": {
+      "task_key": "todo:14",
+      "task_label": "14",
+      "task_title": "Write integration tests (stdio transport)",
+      "session_id": "ses_1c0225f02ffe5ddsqNSyNhTPYC",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-05-19T10:58:53.293Z"
+    },
+    "todo:15": {
+      "task_key": "todo:15",
+      "task_label": "15",
+      "task_title": "Update README.md with MCP server documentation",
+      "session_id": "ses_1c013adf9ffeI8qXqXk41KDlVE",
+      "agent": "Sisyphus-Junior",
+      "category": "writing",
+      "updated_at": "2026-05-19T11:10:34.998Z"
+    },
+    "todo:16": {
+      "task_key": "todo:16",
+      "task_label": "16",
+      "task_title": "Add Hermes configuration example",
+      "session_id": "ses_1c0115f9effeITPAZ3AA4TDUY9",
+      "agent": "Sisyphus-Junior",
+      "category": "writing",
+      "updated_at": "2026-05-19T11:13:12.733Z"
+    },
+    "todo:17": {
+      "task_key": "todo:17",
+      "task_label": "17",
+      "task_title": "Create OpenCode SKILL.md for OPP",
+      "session_id": "ses_1c00f06b8ffezN5wtdjL1Ew32O",
+      "agent": "Sisyphus-Junior",
+      "category": "writing",
+      "updated_at": "2026-05-19T11:16:30.626Z"
+    },
+    "todo:18": {
+      "task_key": "todo:18",
+      "task_label": "18",
+      "task_title": "Create Hermes OPP plugin package",
+      "session_id": "ses_1c00bec48ffeWP0bb8oTFuN0EZ",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-05-19T11:20:16.840Z"
+    },
+    "todo:19": {
+      "task_key": "todo:19",
+      "task_label": "19",
+      "task_title": "Create Hermes SKILL.md for OPP usage guidance",
+      "session_id": "ses_1c0089037ffehGva6D897B8Vx6",
+      "agent": "Sisyphus-Junior",
+      "category": "writing",
+      "updated_at": "2026-05-19T11:22:24.413Z"
+    },
+    "todo:20": {
+      "task_key": "todo:20",
+      "task_label": "20",
+      "task_title": "Add install scripts and documentation for agent integrations",
+      "session_id": "ses_1c0067eefffeKU9ulTYB2OLFWw",
+      "agent": "Sisyphus-Junior",
+      "category": "writing",
+      "updated_at": "2026-05-19T11:25:09.850Z"
     },
     "final-wave:f1": {
       "task_key": "final-wave:f1",
       "task_label": "F1",
       "task_title": "**Plan Compliance Audit** — `oracle`",
-      "session_id": "ses_1d6315a31ffe4BFDo8g6tpGyk7",
-      "agent": "Sisyphus-Junior",
-      "category": "unspecified-high",
-      "updated_at": "2026-05-15T04:06:40.127Z"
+      "session_id": "ses_1bfe90c7cffeOJNXHZfAhg1HUF",
+      "agent": "oracle",
+      "updated_at": "2026-05-19T12:02:34.522Z"
     }
   }
 }

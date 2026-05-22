@@ -17,10 +17,24 @@ class DocumentMetadata:
 
 
 @dataclass
+class RunData:
+    """A text run with formatting properties."""
+    text: str
+    bold: bool = False
+    italic: bool = False
+    underline: bool = False
+    strike: bool = False
+    font_size: Optional[int] = None  # half-points
+    font_name: Optional[str] = None
+    color: Optional[str] = None      # hex color like "FF0000"
+
+
+@dataclass
 class ParagraphData:
     text: str
     style: Optional[str] = None
     level: Optional[int] = None
+    runs: List[RunData] = field(default_factory=list)
 
 
 @dataclass

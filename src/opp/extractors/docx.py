@@ -14,6 +14,7 @@ from opp.utils.dataclasses import (
     ExtractionResult,
     ImageData,
     ParagraphData,
+    RunData,
     TableData,
 )
 from opp.utils.exceptions import CorruptedFileError, PasswordProtectedError
@@ -95,10 +96,13 @@ class DOCXExtractor(ExtractorBase):
             elif style_name == "Subtitle":
                 level = 2
 
+            runs = self.extract_runs(para)
+
             result.append(ParagraphData(
                 text=text,
                 style=style_name,
                 level=level,
+                runs=runs,
             ))
         return result
 
@@ -138,3 +142,29 @@ class DOCXExtractor(ExtractorBase):
                 except Exception:
                     continue
         return result
+
+    def extract_runs(self, para) -> List[RunData]:
+        """Extract individual runs with formatting properties from a paragraph.
+
+        Args:
+            para: python-docx Paragraph object
+
+        Returns:
+            List of RunData with text and formatting
+        """
+        runs = []
+        for run in para.runs:
+            text = run.text
+            if not text or not text.strip():
+                continue
+
+            run_data = RunData(
+                text=text,
+                bold=bool(run.bold) if run.bold else False,
+                italic=bool(run.italic) if run.italic else False,
+                underline=bool(run.underline) if run.underline else False,
+                strike=bool(run.font.strike) if run.font.strike else False,
+            )
+            runs.append(run_data)
+
+        return runs

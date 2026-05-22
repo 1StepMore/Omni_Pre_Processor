@@ -11,6 +11,7 @@ from opp.utils.dataclasses import (
     ExtractionResult,
     ImageData,
     ParagraphData,
+    RunData,
     TableData,
 )
 from opp.utils.exceptions import CorruptedFileError
@@ -154,21 +155,64 @@ class EPUBExtractor(ExtractorBase):
                     continue
                 element_text = element.get_text(separator=" ", strip=True)
                 if element_text:
+                    runs = self.extract_runs(element)
+                    plain_text = ''.join(r.text for r in runs) if runs else element_text
                     if tag in heading_tags:
                         level = int(tag[1])
                         paragraphs.append(ParagraphData(
-                            text=element_text,
+                            text=plain_text,
                             style=f"Heading {level}",
                             level=level,
+                            runs=runs,
                         ))
                     else:
                         paragraphs.append(ParagraphData(
-                            text=element_text,
+                            text=plain_text,
                             style="Normal",
                             level=None,
+                            runs=runs,
                         ))
 
         return paragraphs
+
+    def extract_runs(self, element) -> List[RunData]:
+        runs = []
+        tag_name = element.name if hasattr(element, 'name') else None
+
+        if tag_name in ('strong', 'b', 'em', 'i', 'u', 's', 'del'):
+            text = element.get_text()
+            if text and text.strip():
+                runs.append(RunData(
+                    text=text,
+                    bold=tag_name in ('strong', 'b'),
+                    italic=tag_name in ('em', 'i'),
+                    underline=tag_name == 'u',
+                    strike=tag_name in ('s', 'del'),
+                ))
+            return runs
+
+        for child in element.children:
+            if hasattr(child, 'name') and child.name:
+                bold = child.name in ('strong', 'b')
+                italic = child.name in ('em', 'i')
+                underline = child.name == 'u'
+                strike = child.name in ('s', 'del')
+
+                text = child.get_text()
+                if text and text.strip():
+                    runs.append(RunData(
+                        text=text,
+                        bold=bold,
+                        italic=italic,
+                        underline=underline,
+                        strike=strike,
+                    ))
+
+                if child.name == 'span':
+                    child_runs = self.extract_runs(child)
+                    runs.extend(child_runs)
+
+        return runs
 
     def _extract_images(
         self, image_items: List[epub.EpubItem], cover: Optional[ImageData]

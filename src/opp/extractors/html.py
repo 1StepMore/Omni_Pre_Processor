@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 from lxml import html
 
 from opp.extractors.base import ExtractorBase
-from opp.utils.dataclasses import DocumentMetadata, ExtractionResult, ImageData, ParagraphData
+from opp.utils.dataclasses import DocumentMetadata, ExtractionResult, ImageData, ParagraphData, RunData
 from opp.utils.exceptions import CorruptedFileError
 from opp.logger import logger
 
@@ -214,13 +214,61 @@ class HTMLExtractor(ExtractorBase):
             elif re.match(r'^\d+\.\s+', line):
                 style = "Number"
 
+            # Parse the line as HTML to extract runs with formatting
+            soup = BeautifulSoup(f"<div>{line}</div>", "html.parser")
+            element = soup.find('div')
+            runs = self.extract_runs(element)
+            plain_text = ''.join(r.text for r in runs) if runs else line
+
             paragraphs.append(ParagraphData(
-                text=line,
+                text=plain_text,
                 style=style,
                 level=level,
+                runs=runs,
             ))
 
         return paragraphs
+
+    def extract_runs(self, element) -> List[RunData]:
+        from opp.utils.dataclasses import RunData
+
+        runs = []
+        tag_name = element.name if hasattr(element, 'name') else None
+
+        if tag_name in ('strong', 'b', 'em', 'i', 'u', 's', 'del'):
+            text = element.get_text()
+            if text and text.strip():
+                runs.append(RunData(
+                    text=text,
+                    bold=tag_name in ('strong', 'b'),
+                    italic=tag_name in ('em', 'i'),
+                    underline=tag_name == 'u',
+                    strike=tag_name in ('s', 'del'),
+                ))
+            return runs
+
+        for child in element.children:
+            if hasattr(child, 'name') and child.name:
+                bold = child.name in ('strong', 'b')
+                italic = child.name in ('em', 'i')
+                underline = child.name == 'u'
+                strike = child.name in ('s', 'del')
+
+                text = child.get_text()
+                if text and text.strip():
+                    runs.append(RunData(
+                        text=text,
+                        bold=bold,
+                        italic=italic,
+                        underline=underline,
+                        strike=strike,
+                    ))
+
+                if child.name == 'span':
+                    child_runs = self.extract_runs(child)
+                    runs.extend(child_runs)
+
+        return runs
 
     def _extract_images(self, html_content: str, base_dir: Path) -> List[ImageData]:
         result: List[ImageData] = []
