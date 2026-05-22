@@ -1,4 +1,6 @@
 import argparse
+import hashlib
+import json
 import os
 import sys
 import time
@@ -159,6 +161,38 @@ def expand_directories(paths: List[Path]) -> List[Path]:
     return files
 
 
+def _detect_format_from_extension(path: Path) -> str:
+    """Detect format type from file extension."""
+    ext = path.suffix.lower()
+    format_map = {
+        ".docx": "DOCX", ".pptx": "PPTX", ".pdf": "PDF",
+        ".xlsx": "XLSX", ".html": "HTML", ".xml": "XML",
+        ".json": "JSON", ".csv": "CSV", ".epub": "EPUB",
+        ".eml": "EML", ".msg": "MSG", ".md": "MARKDOWN",
+        ".xlf": "XLIFF", ".xliff": "XLIFF",
+    }
+    return format_map.get(ext, "UNKNOWN")
+
+def _compute_file_md5(path: Path) -> str:
+    """Compute MD5 hash of file using chunked reading."""
+    md5 = hashlib.md5()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            md5.update(chunk)
+    return md5.hexdigest()
+
+def _count_xliff_units(xliff_path: Path) -> int:
+    """Count trans-unit elements in XLIFF file."""
+    import re
+    content = xliff_path.read_text(encoding="utf-8")
+    return len(re.findall(r'<trans-unit[^>]*>', content))
+
+def get_opp_version() -> str:
+    """Return OPP version string."""
+    from opp import __version__
+    return __version__
+
+
 def process_single_file(
     file_path: Path,
     args: argparse.Namespace,
@@ -210,6 +244,73 @@ def process_single_file(
                 args.target_lang
             )
             get_logger().info(f"Generated: {xliff_path}")
+
+        md_path = output_dir / f"{base_name}.md"
+        xliff_path = output_dir / f"{base_name}.xlf"
+
+        manifest = {
+            "manifest_version": "1.0",
+            "generated_at": datetime.now().isoformat() + "Z",
+            "tool": "OPP",
+            "tool_version": get_opp_version(),
+            "source": {
+                "file_path": str(file_path.resolve()),
+                "original_filename": file_path.name,
+                "format": _detect_format_from_extension(file_path),
+                "file_size_bytes": file_path.stat().st_size,
+                "file_hash_md5": _compute_file_md5(file_path),
+            },
+            "extraction": {
+                "source_lang": args.source_lang or "en",
+                "target_lang": args.target_lang or "en",
+                "outputs": {
+                    "markdown": {
+                        "path": str(md_path.relative_to(output_dir)) if md_path.exists() else None,
+                        "paragraph_count": len(proc_result.extraction_result.paragraphs) if proc_result.extraction_result else 0,
+                        "table_count": len(proc_result.extraction_result.tables) if proc_result.extraction_result else 0,
+                    },
+                    "xliff": {
+                        "path": str(xliff_path.relative_to(output_dir)) if xliff_path.exists() else None,
+                        "trans_unit_count": _count_xliff_units(xliff_path) if xliff_path.exists() else 0,
+                    }
+                },
+                "images": [
+                    {
+                        "mime_type": img.mime_type,
+                        "width": img.width,
+                        "height": img.height,
+                        "data_size_bytes": len(img.data),
+                    }
+                    for img in (proc_result.extraction_result.images if proc_result.extraction_result else [])
+                ],
+                "warnings": proc_result.extraction_result.warnings if proc_result.extraction_result else [],
+            },
+            "resources": {
+                "storage_dir": str(args.resource_dir.resolve()) if args.resource_dir else str(Path.cwd() / "resources"),
+                "image_count": len(proc_result.extraction_result.images) if proc_result.extraction_result else 0,
+            },
+        }
+        manifest_path = output_dir / f"{base_name}_manifest.json"
+        with open(manifest_path, "w", encoding="utf-8") as f:
+            json.dump(manifest, f, indent=2, ensure_ascii=False)
+        get_logger().info(f"Manifest written: {manifest_path}")
+
+        # ========== Save skeleton.zip ==========
+        skeleton_path = pipeline.save_skeleton(
+            proc_result.extraction_result,
+            base_name,
+            output_dir
+        )
+        if skeleton_path:
+            get_logger().info(f"Skeleton saved: {skeleton_path}")
+            manifest["skeleton"] = {
+                "path": str(skeleton_path.relative_to(output_dir)),
+                "format": "ZIP",
+                "key_files": proc_result.extraction_result.skeleton_files,
+            }
+            # Re-write manifest with skeleton info
+            with open(manifest_path, "w", encoding="utf-8") as f:
+                json.dump(manifest, f, indent=2, ensure_ascii=False)
 
         return True
 
