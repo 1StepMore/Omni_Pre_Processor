@@ -18,6 +18,8 @@ Document content extraction for DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPU
 - **Pipeline orchestrator** - detect → extract → manage → report
 - **CLI interface** - Full command-line with batch support
 - **Output formats** - Markdown and XLIFF 1.2/2.0
+- **Manifest metadata** - JSON manifest with source info, extraction stats, and image data
+- **Skeleton preservation** - Original DOCX/PPTX ZIP structure preserved for downstream XLIFF→DOCX/PPTX backfill
 
 ## Installation
 
@@ -96,6 +98,65 @@ cn2en_xliff.bat "中文.docx"
 
 Supports drag-drop of files **and folders**. Logs saved to `logs/`.
 
+### Output Files
+
+Every extraction produces a `manifest.json` and optionally a `skeleton.zip`:
+
+```
+output_dir/
+├── document.md              # Extracted Markdown
+├── document.xlf             # Extracted XLIFF (translation-ready)
+├── document_manifest.json   # Metadata about source and extraction
+└── document.skeleton.zip    # Original DOCX/PPTX ZIP (for backfill)
+```
+
+#### manifest.json
+
+Records source file info, extraction outputs, and resources:
+
+```json
+{
+  "manifest_version": "1.0",
+  "generated_at": "2026-05-22T14:30:00Z",
+  "tool": "OPP",
+  "tool_version": "0.2.0",
+  "source": {
+    "file_path": "/path/to/spec.docx",
+    "original_filename": "spec.docx",
+    "format": "DOCX",
+    "file_size_bytes": 45824,
+    "file_hash_md5": "a1b2c3d4e5f6..."
+  },
+  "extraction": {
+    "source_lang": "en",
+    "target_lang": "zh",
+    "outputs": {
+      "markdown": { "path": "spec.md", "paragraph_count": 150, "table_count": 3 },
+      "xliff": { "path": "spec.xlf", "trans_unit_count": 42 }
+    },
+    "images": [
+      { "mime_type": "image/png", "width": 800, "height": 600, "data_size_bytes": 24580 }
+    ],
+    "warnings": []
+  },
+  "resources": { "storage_dir": "resources", "image_count": 5 },
+  "skeleton": {
+    "path": "spec.skeleton.zip",
+    "format": "ZIP",
+    "key_files": ["word/document.xml", "word/styles.xml", "[Content_Types].xml"]
+  }
+}
+```
+
+#### skeleton.zip
+
+Preserves the original OOXML ZIP structure for DOCX/PPTX files. This enables downstream ORF tools to perform XLIFF→DOCX/PPTX backfill by replacing content in the preserved skeleton.
+
+| Format | Key Files Preserved |
+|--------|---------------------|
+| DOCX | `word/document.xml`, `word/styles.xml`, `word/numbering.xml`, `word/settings.xml`, `[Content_Types].xml` |
+| PPTX | All files under `ppt/` prefix (slides, layouts, media)
+
 ## Project Structure
 
 ```
@@ -153,7 +214,9 @@ pytest tests/ -v --cov=src/opp --cov-report=term-missing
 | e2e | 52 |
 | xliff | 40+ |
 | extractors | 140+ |
-| **Total** | **479+** |
+| manifest generation | 6 |
+| skeleton preservation | 6 |
+| **Total** | **491+** |
 
 ## Batch Testing
 
