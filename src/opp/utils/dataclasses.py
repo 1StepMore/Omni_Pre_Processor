@@ -67,6 +67,8 @@ class ExtractionResult:
     metadata: Optional[DocumentMetadata] = None
     warnings: List[str] = field(default_factory=list)
     is_transcription: bool = False
+    skeleton: Optional[bytes] = None
+    skeleton_files: Optional[List[str]] = None
 
     def __post_init__(self):
         if self.metadata is None:
