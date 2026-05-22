@@ -1,6 +1,7 @@
 from dataclasses import replace
 from pathlib import Path
-from typing import List
+from typing import List, Optional
+import zipfile
 
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE, PP_PLACEHOLDER
@@ -35,6 +36,18 @@ class PPTXExtractor(ExtractorBase):
         slides = self.extract_slides(prs)
         images = self.extract_images(prs)
 
+        skeleton_bytes: Optional[bytes] = None
+        skeleton_files: Optional[List[str]] = None
+        try:
+            with open(input_path, 'rb') as f:
+                skeleton_bytes = f.read()
+            with zipfile.ZipFile(input_path, 'r') as zf:
+                skeleton_files = [f for f in zf.namelist() if f.startswith('ppt/')]
+        except zipfile.BadZipFile:
+            warnings.append("Skeleton extraction failed: not a valid ZIP/PPTX file")
+            skeleton_bytes = None
+            skeleton_files = None
+
         all_paragraphs: List[ParagraphData] = []
         for slide_data in slides:
             all_paragraphs.extend(slide_data.shapes)
@@ -50,6 +63,8 @@ class PPTXExtractor(ExtractorBase):
             images=images,
             metadata=metadata,
             warnings=warnings,
+            skeleton=skeleton_bytes,
+            skeleton_files=skeleton_files,
         )
 
     def extract_slides(self, prs: Presentation) -> List[SlideData]:

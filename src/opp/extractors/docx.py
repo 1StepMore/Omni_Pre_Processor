@@ -1,8 +1,10 @@
 from dataclasses import replace
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import docx
+import zipfile
+import warnings
 from docx.document import Document as DocxDocument
 from docx.table import Table as DocxTable
 
@@ -37,6 +39,25 @@ class DOCXExtractor(ExtractorBase):
         tables = self.extract_tables(doc)
         images = self.extract_images(doc)
 
+        skeleton_bytes: Optional[bytes] = None
+        skeleton_files: Optional[List[str]] = None
+        try:
+            with open(input_path, 'rb') as f:
+                skeleton_bytes = f.read()
+            with zipfile.ZipFile(input_path, 'r') as zf:
+                key_files = [
+                    'word/document.xml',      # Main document content
+                    'word/styles.xml',         # Style definitions
+                    'word/numbering.xml',     # Numbering definitions
+                    'word/settings.xml',      # Document settings
+                    '[Content_Types].xml',   # Content type declarations
+                ]
+                skeleton_files = [f for f in key_files if f in zf.namelist()]
+        except zipfile.BadZipFile:
+            warnings.append("Skeleton extraction failed: not a valid ZIP/DOCX file")
+            skeleton_bytes = None
+            skeleton_files = None
+
         if not paragraphs and not tables:
             warnings.append("文档为空")
 
@@ -48,6 +69,8 @@ class DOCXExtractor(ExtractorBase):
             images=images,
             metadata=metadata,
             warnings=warnings,
+            skeleton=skeleton_bytes,
+            skeleton_files=skeleton_files,
         )
 
     def extract_paragraphs(self, doc: DocxDocument) -> List[ParagraphData]:
