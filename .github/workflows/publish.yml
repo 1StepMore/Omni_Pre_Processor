@@ -77,11 +77,28 @@ jobs:
           fi
           echo "Version $VERSION is valid"
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Create virtual environment
+        run: uv venv .venv
+
+      - name: Install OPP package
+        run: |
+          uv pip install --python .venv python-docx python-pptx pymupdf lxml translate-toolkit openpyxl pandas chardet
+
       - name: Verify version matches pyproject.toml
         if: steps.extract.outputs.is_tag == 'true'
+        env:
+          PYTHONPATH: ${{ github.workspace }}/src
         run: |
           VERSION="${{ steps.extract.outputs.version }}"
-          PROJECT_VERSION=$(python -c "import sys; sys.path.insert(0, 'src'); from opp import __version__; print(__version__)")
+          PROJECT_VERSION=$(.venv/bin/python -c "import sys; sys.path.insert(0, 'src'); from opp import __version__; print(__version__)")
           if [[ "$VERSION" != "$PROJECT_VERSION" ]]; then
             echo "Error: Tag version '$VERSION' does not match project version '$PROJECT_VERSION'"
             exit 1
