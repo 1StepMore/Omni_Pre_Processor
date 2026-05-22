@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+import logging
 import os
 
 from opp.detector import detect_format, FormatType
@@ -50,6 +51,7 @@ class OPPPipeline:
         self.resource_storage_dir = Path(resource_storage_dir)
         self.resource_manager = ResourceManager(self.resource_storage_dir)
         self.error_handler = ErrorHandler()
+        self.logger = logging.getLogger(__name__)
         self.extractors: Dict[FormatType, ExtractorBase] = {
             FormatType.DOCX: DOCXExtractor(),
             FormatType.PPTX: PPTXExtractor(),
@@ -124,6 +126,36 @@ class OPPPipeline:
         generator = XLIFFFileGenerator.from_extraction_result(result, source_lang, target_lang)
         generator.write_to_file(output_path)
         return output_path
+
+    def save_skeleton(
+        self,
+        result: ExtractionResult,
+        base_name: str,
+        output_dir: Path,
+    ) -> Optional[Path]:
+        """Save skeleton ZIP file.
+
+        Args:
+            result: ExtractionResult containing skeleton bytes
+            base_name: Output file base name
+            output_dir: Output directory
+
+        Returns:
+            Path to skeleton file, or None if no skeleton
+        """
+        if not result or not result.skeleton:
+            return None
+
+        skeleton_path = output_dir / f"{base_name}.skeleton.zip"
+
+        try:
+            with open(skeleton_path, "wb") as f:
+                f.write(result.skeleton)
+            self.logger.info(f"Skeleton saved: {skeleton_path}")
+            return skeleton_path
+        except IOError as e:
+            self.logger.warning(f"Failed to save skeleton: {e}")
+            return None
 
     def process_file(self, file_path: Path) -> ProcessingResult:
         """Process a single file through the full extraction pipeline.
