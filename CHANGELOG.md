@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-05-23
+
+### Added
+- **Inline formatting tracking** — Bold, italic, underline, strikethrough preserved in XLIFF as `<bx>`/`<ex>` tags for downstream formatting restoration
+  - `extract_runs()` methods added to DOCX, PPTX, EPUB, HTML extractors
+  - XLIFF generator now preserves `<bx>`/`<ex>` tags as XML (not escaped) via DOM manipulation to bypass translate-toolkit escaping
+  - 53 unit/integration tests for inline formatting extraction and XLIFF generation
+
+### Fixed
+- **Concurrency**: Add `threading.Lock` to `OPPConfig` singleton with double-checked locking
+- **Resource Manager**: Add `RLock` to protect `_mapping` and `_cross_ref` dicts under concurrent access
+- **MCP Config**: Add `logger.warning()` for silent YAML load failures
+- **DOCX/PPTX**: Replace swallowed exceptions with `logger.warning()` in inline formatting extraction
+- **PDF**: Wrap `extract()` body in try/finally to ensure `doc.close()` on all exit paths
+- **Email**: Use `tempfile.mkstemp()` for atomic temp file creation (TOCTOU race fix)
+- **HTML**: Pre-compile 8+ regex patterns at module level (25 JS indicators) to avoid per-call recompilation
+- **Tests**: Add missing `import sys` in `test_docx_e2e.py`
+
+### Security
+- **TOCTOU**: Atomic temp file creation via `mkstemp()` in email extraction
+
+### Performance
+- **HTML**: Pre-compiled regex patterns eliminate per-call compilation overhead
+
 ## [0.2.1] - 2026-05-22
 
 ### Fixed
