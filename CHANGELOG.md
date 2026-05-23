@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **MCP `output_formats`**: Accept both string and list for ergonomic API (e.g., `"md"` or `["md"]`)
 - **MCP `generate_xliff`/`generate_markdown`**: Output path validation now works for non-existent files (previously required file to exist)
 - **MCP `xliff_units_count`**: Count `<trans-unit` elements instead of `<target>` (source XLIFF has no target elements)
+- **EPUB `extract_runs`**: Handle NavigableString plain text children (was only processing element nodes, discarding plain text fragments between formatted elements)
 - **DOCX/PPTX**: Replace swallowed exceptions with `logger.warning()` in inline formatting extraction
 - **PDF**: Wrap `extract()` body in try/finally to ensure `doc.close()` on all exit paths
 - **Email**: Use `tempfile.mkstemp()` for atomic temp file creation (TOCTOU race fix)
