@@ -369,7 +369,7 @@ async def generate_markdown(
     if output_path is None:
         output_path = str(input_p.with_stem(f"{input_p.stem}_generated").with_suffix(".md"))
     else:
-output_validation = _validator.validate_path(output_path, allow_missing=True)
+        output_validation = _validator.validate_path(output_path, allow_missing=True)
         if not output_validation.success:
             return {
                 "success": False,
