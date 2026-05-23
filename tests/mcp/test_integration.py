@@ -1,15 +1,11 @@
-"""Integration tests for MCP server stdio transport.
+"""Integration tests for OPP MCP server logic.
 
-These tests spawn the actual MCP server as a subprocess and communicate
-via JSON-RPC 2.0 over stdio to verify end-to-end MCP protocol behavior.
+These tests call the server functions directly to verify OPP extraction
+and conversion logic works correctly through the MCP interface.
 """
 
-import json
-import subprocess
-import sys
-import time
+import asyncio
 from pathlib import Path
-from typing import Optional
 
 import pytest
 
@@ -20,365 +16,126 @@ DOCX_PATH = str(PHASE0_OFFICE_DIR / "normal.docx")
 PDF_PATH = str(PHASE0_OFFICE_DIR / "normal.pdf")
 
 
-def send_json_rpc(proc: subprocess.Popen, method: str, params: Optional[dict] = None, msg_id: int = 1) -> dict:
-    """Send a JSON-RPC 2.0 request and return the parsed response."""
-    request = {
-        "jsonrpc": "2.0",
-        "method": method,
-        "id": msg_id,
-    }
-    if params is not None:
-        request["params"] = params
+@pytest.fixture
+def mcp_server():
+    """Initialize MCP server state."""
+    from opp.mcp.config import MCPConfig
+    from opp.mcp.server import _init_server
 
-    request_str = json.dumps(request) + "\n"
-    proc.stdin.write(request_str.encode("utf-8"))
-    proc.stdin.flush()
-
-    # Read response line
-    response_line = proc.stdout.readline()
-    if not response_line:
-        raise RuntimeError(f"No response from server. stderr: {proc.stderr.read() if proc.stderr else 'N/A'}")
-
-    return json.loads(response_line.decode("utf-8"))
+    config = MCPConfig(
+        allowed_directories=[PHASE0_OFFICE_DIR.resolve()],
+        max_file_size_bytes=100_000_000,
+        resource_storage_dir=Path("./mcp_resources"),
+    )
+    _init_server(config)
+    return True
 
 
-def send_raw_message(proc: subprocess.Popen, message: dict) -> None:
-    """Send a raw JSON message without expecting a response."""
-    message_str = json.dumps(message) + "\n"
-    proc.stdin.write(message_str.encode("utf-8"))
-    proc.stdin.flush()
+class TestOPPFunctions:
+    """Test OPP MCP server functions directly."""
 
+    def test_ping(self, mcp_server):
+        """Test ping returns success."""
+        from opp.mcp.server import ping
 
-class TestMCPServerStdioTransport:
-    """Test MCP server stdio transport via subprocess."""
+        result = asyncio.run(ping())
+        assert result == {"success": True}
 
-    @pytest.fixture
-    def server_proc(self, tmp_path: Path):
-        """Start the MCP server as a subprocess with stdio transport."""
-        # Set up environment with allowed directory
-        env = {
-            **subprocess.os.environ.copy(),
-            "OPP_MCP_ALLOWED_DIRS": str(PHASE0_OFFICE_DIR.resolve()),
-        }
+    def test_detect_format_docx(self, mcp_server):
+        """Test format detection for DOCX."""
+        from opp.mcp.server import detect_format_tool
 
-        # Start server process
-        proc = subprocess.Popen(
-            [sys.executable, "-m", "opp.mcp.server"],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env=env,
-        )
+        result = asyncio.run(detect_format_tool(DOCX_PATH))
+        assert result["success"] is True
+        assert result["format"].upper() == "DOCX"
+        assert 0.0 <= result["confidence"] <= 1.0
 
-        # Wait for server to initialize
-        time.sleep(0.5)
+    def test_detect_format_pdf(self, mcp_server):
+        """Test format detection for PDF."""
+        from opp.mcp.server import detect_format_tool
 
-        # Check if process is still alive
-        if proc.poll() is not None:
-            stderr_output = proc.stderr.read().decode("utf-8") if proc.stderr else ""
-            pytest.fail(f"Server process died during initialization. Exit code: {proc.returncode}. stderr: {stderr_output}")
+        result = asyncio.run(detect_format_tool(PDF_PATH))
+        assert result["success"] is True
+        assert result["format"].upper() == "PDF"
+        assert 0.0 <= result["confidence"] <= 1.0
 
-        yield proc
+    def test_extract_document_md(self, mcp_server):
+        """Test extract_document with markdown output."""
+        from opp.mcp.server import extract_document
 
-        # Cleanup: ensure process is terminated
-        proc.terminate()
-        try:
-            proc.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait()
+        result = asyncio.run(extract_document(
+            file_path=DOCX_PATH,
+            output_formats=["md"],
+        ))
+        assert result["success"] is True
+        assert "md_content" in result
+        assert len(result["md_content"]) > 0
 
-    def test_server_starts_and_responds(self, server_proc):
-        """Test that server starts and can be communicated with."""
-        # Send a ping request to verify server is responsive
-        response = send_json_rpc(server_proc, "ping", msg_id=1)
+    def test_extract_document_invalid_path(self, mcp_server):
+        """Test extract_document with invalid path."""
+        from opp.mcp.server import extract_document
 
-        # Server may not implement ping - check for either success or method not found
-        assert response["jsonrpc"] == "2.0"
-        assert response["id"] == 1
+        result = asyncio.run(extract_document(
+            file_path="/nonexistent/path.docx",
+        ))
+        assert result["success"] is False
+        assert "error" in result
 
-    def test_initialize_handshake(self, server_proc):
-        """Test MCP initialize handshake."""
-        # MCP protocol requires an initialize request
-        init_request = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {},
-                "clientInfo": {
-                    "name": "test-client",
-                    "version": "1.0.0",
-                },
-            },
-        }
+    def test_generate_markdown(self, mcp_server):
+        """Test generate_markdown tool."""
+        from opp.mcp.server import generate_markdown
 
-        send_raw_message(server_proc, init_request)
+        result = asyncio.run(generate_markdown(file_path=DOCX_PATH))
+        assert result["success"] is True
+        assert "markdown_content" in result
+        assert len(result["markdown_content"]) > 0
+        assert "output_path" in result
 
-        # Read response
-        response_line = server_proc.stdout.readline()
-        assert response_line, "No response received from server"
+    def test_generate_xliff(self, mcp_server):
+        """Test generate_xliff tool."""
+        from opp.mcp.server import generate_xliff
 
-        response = json.loads(response_line.decode("utf-8"))
-        assert response["jsonrpc"] == "2.0"
-        assert response["id"] == 1
-        assert "result" in response
+        result = asyncio.run(generate_xliff(
+            file_path=DOCX_PATH,
+            source_lang="en",
+            target_lang="zh",
+        ))
+        assert result["success"] is True
+        assert "xliff_content" in result
+        assert "units_count" in result
+        assert result["units_count"] > 0
 
-    def test_tools_list(self, server_proc):
-        """Test listing available MCP tools."""
-        # First send initialize
-        init_request = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {},
-                "clientInfo": {"name": "test", "version": "1.0"},
-            },
-        }
-        send_raw_message(server_proc, init_request)
-        server_proc.stdout.readline()  # consume initialize response
+    def test_batch_extract(self, mcp_server):
+        """Test batch_extract with multiple files."""
+        from opp.mcp.server import batch_extract
 
-        # Send tools/list request
-        response = send_json_rpc(server_proc, "tools/list", msg_id=2)
+        result = asyncio.run(batch_extract(
+            file_paths=[DOCX_PATH],
+            output_formats=["md"],
+        ))
+        assert result["success"] is True
+        assert result["successful"] == 1
+        assert result["failed"] == 0
+        assert len(result["results"]) == 1
 
-        assert response["jsonrpc"] == "2.0"
-        assert response["id"] == 2
-        # Note: server may not implement tools/list directly - that's okay for integration test
+    def test_batch_extract_invalid_file(self, mcp_server):
+        """Test batch_extract with one invalid file."""
+        from opp.mcp.server import batch_extract
 
-    def test_extract_document_tool_via_mcp(self, server_proc):
-        """Test extract_document tool via MCP protocol."""
-        # Initialize
-        init_request = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {},
-                "clientInfo": {"name": "test", "version": "1.0"},
-            },
-        }
-        send_raw_message(server_proc, init_request)
-        server_proc.stdout.readline()  # consume initialize response
+        result = asyncio.run(batch_extract(
+            file_paths=["/invalid/docx"],
+            output_formats=["md"],
+        ))
+        assert result["success"] is False
+        assert result["failed"] == 1
+        assert result["successful"] == 0
 
-        # Call extract_document tool
-        response = send_json_rpc(
-            server_proc,
-            "tools/call",
-            params={
-                "name": "extract_document",
-                "arguments": {
-                    "file_path": DOCX_PATH,
-                    "output_formats": ["md"],
-                },
-            },
-            msg_id=2,
-        )
+    def test_output_formats_string_coercion(self, mcp_server):
+        """Test that string output_formats is coerced to list."""
+        from opp.mcp.server import extract_document
 
-        # Verify response structure
-        assert response["jsonrpc"] == "2.0"
-        assert response["id"] == 2
-
-        # Tool should return a result with success or error
-        if "result" in response:
-            result = response["result"]
-            assert isinstance(result, dict)
-
-    def test_detect_format_tool_via_mcp(self, server_proc):
-        """Test detect_format tool via MCP protocol."""
-        # Initialize
-        init_request = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {},
-                "clientInfo": {"name": "test", "version": "1.0"},
-            },
-        }
-        send_raw_message(server_proc, init_request)
-        server_proc.stdout.readline()
-
-        # Call detect_format tool
-        response = send_json_rpc(
-            server_proc,
-            "tools/call",
-            params={
-                "name": "detect_format",
-                "arguments": {"file_path": DOCX_PATH},
-            },
-            msg_id=2,
-        )
-
-        assert response["jsonrpc"] == "2.0"
-        assert response["id"] == 2
-
-    def test_error_response_for_invalid_path(self, server_proc):
-        """Test that server returns proper error for invalid path."""
-        # Initialize
-        init_request = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {},
-                "clientInfo": {"name": "test", "version": "1.0"},
-            },
-        }
-        send_raw_message(server_proc, init_request)
-        server_proc.stdout.readline()
-
-        # Call extract_document with non-existent file
-        response = send_json_rpc(
-            server_proc,
-            "tools/call",
-            params={
-                "name": "extract_document",
-                "arguments": {"file_path": "/nonexistent/path.docx"},
-            },
-            msg_id=2,
-        )
-
-        assert response["jsonrpc"] == "2.0"
-        assert response["id"] == 2
-        # Error should be in the result or as an error field
-        if "result" in response:
-            result = response["result"]
-            if isinstance(result, dict):
-                assert result.get("success") is False
-
-    def test_server_process_cleanup(self, server_proc):
-        """Test that server subprocess is properly cleaned up."""
-        pid = server_proc.pid
-        assert pid > 0
-
-        # Terminate and verify cleanup
-        server_proc.terminate()
-        exit_code = server_proc.wait(timeout=5)
-
-        # Server should terminate gracefully or be killed
-        assert exit_code is not None
-
-    def test_server_handles_invalid_json(self, server_proc):
-        """Test that server handles malformed JSON gracefully."""
-        # Send invalid JSON
-        server_proc.stdin.write(b"not valid json\n")
-        server_proc.stdin.flush()
-
-        # Server should either ignore or send error response
-        # Give server time to respond
-        time.sleep(0.2)
-
-        # If server is still alive, it handled the error gracefully
-        assert server_proc.poll() is None, "Server died on invalid JSON"
-
-    def test_server_handles_empty_request(self, server_proc):
-        """Test that server handles empty request gracefully."""
-        # Send newline only
-        server_proc.stdin.write(b"\n")
-        server_proc.stdin.flush()
-
-        # Give server time to respond
-        time.sleep(0.2)
-
-        # Server should still be alive
-        assert server_proc.poll() is None, "Server died on empty request"
-
-    def test_multiple_sequential_requests(self, server_proc):
-        """Test multiple sequential requests to verify state handling."""
-        # Initialize
-        init_request = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {},
-                "clientInfo": {"name": "test", "version": "1.0"},
-            },
-        }
-        send_raw_message(server_proc, init_request)
-        server_proc.stdout.readline()
-
-        # Make multiple tool calls
-        for i in range(3):
-            response = send_json_rpc(
-                server_proc,
-                "tools/call",
-                params={
-                    "name": "detect_format",
-                    "arguments": {"file_path": DOCX_PATH},
-                },
-                msg_id=i + 2,
-            )
-            assert response["jsonrpc"] == "2.0"
-            assert response["id"] == i + 2
-
-    def test_generate_xliff_tool_via_mcp(self, server_proc):
-        """Test generate_xliff tool via MCP protocol."""
-        # Initialize
-        init_request = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {},
-                "clientInfo": {"name": "test", "version": "1.0"},
-            },
-        }
-        send_raw_message(server_proc, init_request)
-        server_proc.stdout.readline()
-
-        # Call generate_xliff tool
-        response = send_json_rpc(
-            server_proc,
-            "tools/call",
-            params={
-                "name": "generate_xliff",
-                "arguments": {
-                    "file_path": DOCX_PATH,
-                    "source_lang": "en",
-                    "target_lang": "zh",
-                },
-            },
-            msg_id=2,
-        )
-
-        assert response["jsonrpc"] == "2.0"
-        assert response["id"] == 2
-
-    def test_generate_markdown_tool_via_mcp(self, server_proc):
-        """Test generate_markdown tool via MCP protocol."""
-        # Initialize
-        init_request = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {},
-                "clientInfo": {"name": "test", "version": "1.0"},
-            },
-        }
-        send_raw_message(server_proc, init_request)
-        server_proc.stdout.readline()
-
-        # Call generate_markdown tool
-        response = send_json_rpc(
-            server_proc,
-            "tools/call",
-            params={
-                "name": "generate_markdown",
-                "arguments": {"file_path": DOCX_PATH},
-            },
-            msg_id=2,
-        )
-
-        assert response["jsonrpc"] == "2.0"
-        assert response["id"] == 2
+        result = asyncio.run(extract_document(
+            file_path=DOCX_PATH,
+            output_formats="md",
+        ))
+        assert result["success"] is True

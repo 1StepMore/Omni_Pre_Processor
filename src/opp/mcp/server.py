@@ -347,6 +347,11 @@ async def generate_xliff(
         }
 
 
+async def ping() -> dict:
+    """Health check endpoint."""
+    return {"success": True}
+
+
 async def generate_markdown(
     file_path: str,
     output_path: Optional[str] = None,
@@ -413,6 +418,7 @@ def main() -> None:
     config = load_config()
     _init_server(config)
 
+    _mcp.add_tool(ping)
     _mcp.add_tool(extract_document)
     _mcp.add_tool(batch_extract)
     _mcp.add_tool(detect_format_tool)
