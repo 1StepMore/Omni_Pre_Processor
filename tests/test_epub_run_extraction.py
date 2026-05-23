@@ -75,11 +75,14 @@ class TestEPUBExtractRuns:
         element = soup.find('span')
         extractor = EPUBExtractor()
         runs = extractor.extract_runs(element)
-        assert len(runs) == 2
+        assert len(runs) == 3
         assert runs[0].text == "Bold"
         assert runs[0].bold is True
-        assert runs[1].text == "Italic"
-        assert runs[1].italic is True
+        assert runs[1].text == "and"
+        assert runs[1].bold is False
+        assert runs[1].italic is False
+        assert runs[2].text == "Italic"
+        assert runs[2].italic is True
 
     def test_extract_runs_empty_text(self):
         soup = self._make_soup('<span></span>')

@@ -2,7 +2,7 @@ import re
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
 from ebooklib import epub
 
 from opp.extractors.base import ExtractorBase
@@ -211,6 +211,16 @@ class EPUBExtractor(ExtractorBase):
                 if child.name == 'span':
                     child_runs = self.extract_runs(child)
                     runs.extend(child_runs)
+            elif isinstance(child, NavigableString):
+                text = str(child).strip()
+                if text:
+                    runs.append(RunData(
+                        text=text,
+                        bold=False,
+                        italic=False,
+                        underline=False,
+                        strike=False,
+                    ))
 
         return runs
 
