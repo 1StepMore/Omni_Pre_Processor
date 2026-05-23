@@ -61,41 +61,42 @@ class PDFExtractor(ExtractorBase):
                 raise PasswordProtectedError(f"文件受密码保护: {input_path}")
             raise CorruptedFileError(f"文件损坏或无法解析: {input_path}")
 
-        if doc.page_count == 0:
-            warnings.append("PDF为空")
+        try:
+            if doc.page_count == 0:
+                warnings.append("PDF为空")
+                metadata = replace(metadata, page_count=0)
+                return ExtractionResult(
+                    paragraphs=[],
+                    tables=[],
+                    images=[],
+                    metadata=metadata,
+                    warnings=warnings,
+                )
+
+            text_blocks = self.extract_text_blocks(doc)
+            tables = self.detect_tables(doc)
+            images = self.extract_images(doc)
+
+            paragraphs = []
+            for b in text_blocks:
+                level = self._detect_heading_level(b.text)
+                if level:
+                    paragraphs.append(ParagraphData(text=b.text, style=f"Heading {level}", level=level))
+                else:
+                    paragraphs.append(ParagraphData(text=b.text, style=None, level=None))
+
+            # Merge TOC entries with body paragraphs (dedupe by text+level)
+            toc_paragraphs = self._extract_toc_from_doc(doc)
+            existing_texts = {(p.text.strip(), p.level) for p in toc_paragraphs}
+            merged = toc_paragraphs.copy()
+            for p in paragraphs:
+                if (p.text.strip(), p.level) not in existing_texts:
+                    merged.append(p)
+            paragraphs = merged
+
+            metadata = replace(metadata, page_count=doc.page_count)
+        finally:
             doc.close()
-            metadata = replace(metadata, page_count=0)
-            return ExtractionResult(
-                paragraphs=[],
-                tables=[],
-                images=[],
-                metadata=metadata,
-                warnings=warnings,
-            )
-
-        text_blocks = self.extract_text_blocks(doc)
-        tables = self.detect_tables(doc)
-        images = self.extract_images(doc)
-
-        paragraphs = []
-        for b in text_blocks:
-            level = self._detect_heading_level(b.text)
-            if level:
-                paragraphs.append(ParagraphData(text=b.text, style=f"Heading {level}", level=level))
-            else:
-                paragraphs.append(ParagraphData(text=b.text, style=None, level=None))
-
-        # Merge TOC entries with body paragraphs (dedupe by text+level)
-        toc_paragraphs = self._extract_toc_from_doc(doc)
-        existing_texts = {(p.text.strip(), p.level) for p in toc_paragraphs}
-        merged = toc_paragraphs.copy()
-        for p in paragraphs:
-            if (p.text.strip(), p.level) not in existing_texts:
-                merged.append(p)
-        paragraphs = merged
-
-        metadata = replace(metadata, page_count=doc.page_count)
-        doc.close()
 
         return ExtractionResult(
             paragraphs=paragraphs,

@@ -11,6 +11,45 @@ from opp.utils.dataclasses import DocumentMetadata, ExtractionResult, ImageData,
 from opp.utils.exceptions import CorruptedFileError
 from opp.logger import logger
 
+# Pre-compiled regex patterns for performance
+_RE_SCRIPT_TAG = re.compile(r'<script[^>]*>.*?</script>', re.DOTALL | re.IGNORECASE)
+_RE_STYLE_TAG = re.compile(r'<style[^>]*>.*?</style>', re.DOTALL | re.IGNORECASE)
+_RE_HEADING = re.compile(r'^(#{1,6})\s+(.*)')
+_RE_BULLET_LIST = re.compile(r'^[\-\*]\s+')
+_RE_ORDERED_LIST = re.compile(r'^\d+\.\s+')
+_RE_DATA_URI = re.compile(r"data:([^;]+);base64,(.+)$")
+_RE_SCRIPT_TAG_SIMPLE = re.compile(r"<script[^>]*>")
+_RE_MARKDOWN_IMAGE = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)({[^}]*})?")
+_RE_JS_PATTERNS = [
+    re.compile(r"react"),
+    re.compile(r"vue"),
+    re.compile(r"angular"),
+    re.compile(r"ember\.js"),
+    re.compile(r"mithril\.js"),
+    re.compile(r"preact"),
+    re.compile(r"solid\.js"),
+    re.compile(r"svelte"),
+    re.compile(r"jquery"),
+    re.compile(r"prototype\.js"),
+    re.compile(r"dojo"),
+    re.compile(r"ext\.js"),
+    re.compile(r" mootools"),
+    re.compile(r"scriptaculous"),
+    re.compile(r"node_modules"),
+    re.compile(r"webpack"),
+    re.compile(r"vite"),
+    re.compile(r"next\.js"),
+    re.compile(r"nuxt"),
+    re.compile(r"gatsby"),
+    re.compile(r"11ty"),
+    re.compile(r"jekyll"),
+    re.compile(r"hugo"),
+    re.compile(r"angular\.js"),
+    re.compile(r"underscore\.js"),
+    re.compile(r"lazy\.js"),
+    re.compile(r" lodash"),
+]
+
 try:
     from markdownify import MarkdownConverter, markdownify
     MARKDOWNIFY_AVAILABLE = True
@@ -150,8 +189,8 @@ class HTMLExtractor(ExtractorBase):
         return "\n".join(text_parts)
 
     def _strip_scripts_and_styles(self, html_content: str) -> str:
-        result = re.sub(r'<script[^>]*>.*?</script>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
-        result = re.sub(r'<style[^>]*>.*?</style>', '', result, flags=re.DOTALL | re.IGNORECASE)
+        result = _RE_SCRIPT_TAG.sub('', html_content)
+        result = _RE_STYLE_TAG.sub('', result)
         return result
 
     def _check_quality(self, extracted_text: str, original_html: str) -> tuple[bool, str]:
@@ -203,18 +242,17 @@ class HTMLExtractor(ExtractorBase):
 
             level = None
             if line.startswith("#"):
-                match = re.match(r'^(#{1,6})\s+(.*)', line)
+                match = _RE_HEADING.match(line)
                 if match:
                     level = len(match.group(1))
                     line = match.group(2)
 
             style = None
-            if re.match(r'^[\-\*]\s+', line):
+            if _RE_BULLET_LIST.match(line):
                 style = "List"
-            elif re.match(r'^\d+\.\s+', line):
+            elif _RE_ORDERED_LIST.match(line):
                 style = "Number"
 
-            # Parse the line as HTML to extract runs with formatting
             soup = BeautifulSoup(f"<div>{line}</div>", "html.parser")
             element = soup.find('div')
             runs = self.extract_runs(element)
@@ -306,7 +344,7 @@ class HTMLExtractor(ExtractorBase):
         return result
 
     def _parse_data_uri(self, src: str) -> Optional[ImageData]:
-        match = re.match(r"data:([^;]+);base64,(.+)$", src)
+        match = _RE_DATA_URI.match(src)
         if not match:
             return None
 
@@ -366,11 +404,11 @@ class HTMLExtractor(ExtractorBase):
         ]
 
         content_lower = html_content.lower()
-        for pattern in js_indicators:
-            if re.search(pattern, content_lower):
+        for pattern in _RE_JS_PATTERNS:
+            if pattern.search(content_lower):
                 return True
 
-        script_tags = re.findall(r"<script[^>]*>", html_content)
+            script_tags = _RE_SCRIPT_TAG_SIMPLE.findall(html_content)
         for tag in script_tags:
             if "src=" in tag and len(tag) > 50:
                 return True
@@ -411,7 +449,7 @@ class HTMLExtractor(ExtractorBase):
                 logger.debug(f"Path resolution failed for {src}: {e}")
                 return match.group(0)
 
-        return re.sub(r"!\[([^\]]*)\]\(([^)]+)\)({[^}]*})?", replace_src, md_content)
+        return _RE_MARKDOWN_IMAGE.sub(replace_src, md_content)
 
     def _fix_tables(self, md_content: str) -> str:
         lines = md_content.split("\n")

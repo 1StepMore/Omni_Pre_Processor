@@ -215,7 +215,11 @@ class AttachmentHandler:
                 "%s -> %s", original_filename, safe_filename
             )
 
-        temp_path = Path(tempfile.gettempdir()) / safe_filename
+        import tempfile
+        import os as _os
+        fd, temp_path_str = tempfile.mkstemp(suffix=_os.path.splitext(safe_filename)[1], prefix="opp_email_")
+        _os.close(fd)
+        temp_path = Path(temp_path_str)
         try:
             with open(temp_path, "wb") as f:
                 f.write(attachment_data.data)

@@ -1,4 +1,5 @@
 import os
+import threading
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -7,6 +8,7 @@ from opp.logger import logger
 
 class OPPConfig:
     _instance: Optional["OPPConfig"] = None
+    _lock = threading.Lock()
 
     def __init__(self, config_path: Optional[Path] = None):
         self.config_path = config_path or self._find_config()
@@ -16,12 +18,15 @@ class OPPConfig:
     @classmethod
     def get_instance(cls) -> "OPPConfig":
         if cls._instance is None:
-            cls._instance = cls()
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = cls()
         return cls._instance
 
     @classmethod
     def reset_instance(cls):
-        cls._instance = None
+        with cls._lock:
+            cls._instance = None
 
     def _find_config(self) -> Path:
         candidates = [

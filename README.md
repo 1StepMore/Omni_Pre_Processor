@@ -10,6 +10,7 @@ Document content extraction for DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPU
 ## Features
 
 - **Multi-format extraction** - DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPUB, EML, MSG, Image, IPYNB, YouTube URL
+- **Inline formatting tracking** - Bold, italic, underline, strikethrough preserved in XLIFF as `<bx>`/`<ex>` tags for downstream formatting restoration
 - **Image OCR** - Tesseract and RapidOCR with graceful fallback
 - **Email extraction** - EML (RFC 822) and MSG (Outlook) with attachment recursion
 - **Audio/Video transcription** - Whisper-based ASR
@@ -214,9 +215,10 @@ pytest tests/ -v --cov=src/opp --cov-report=term-missing
 | e2e | 52 |
 | xliff | 40+ |
 | extractors | 140+ |
+| inline formatting | 53 |
 | manifest generation | 6 |
 | skeleton preservation | 6 |
-| **Total** | **491+** |
+| **Total** | **544+** |
 
 ## Batch Testing
 

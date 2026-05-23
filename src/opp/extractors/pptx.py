@@ -177,6 +177,6 @@ class PPTXExtractor(ExtractorBase):
                             width=image.size.width if hasattr(image.size, 'width') else None,
                             height=image.size.height if hasattr(image.size, 'height') else None,
                         ))
-                    except Exception:
-                        continue
+                    except Exception as e:
+                        logger.warning(f"Failed to extract image from PPTX: {e}")
         return result

@@ -139,8 +139,8 @@ class DOCXExtractor(ExtractorBase):
                         data=image_bytes,
                         mime_type=content_type,
                     ))
-                except Exception:
-                    continue
+                except Exception as e:
+                    logger.warning(f"Failed to extract image from DOCX: {e}")
         return result
 
     def extract_runs(self, para) -> List[RunData]:

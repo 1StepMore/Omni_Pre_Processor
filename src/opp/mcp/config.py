@@ -39,7 +39,8 @@ def _load_from_yaml(config_path: Path) -> Optional[dict]:
     try:
         with open(config_path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to load MCP config from {config_path}: {e}")
         return None
 
 
