@@ -1,0 +1,378 @@
+[2026-05-15 18:18:50] [INFO] Log file: D:\贯维\Omni_Pre_Processor\logs\opp_20260515_181850_525.log
+[2026-05-15 18:19:17] [ERROR] Audio transcription failed for test.wav
+Traceback (most recent call last):
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connection.py", line 174, in _new_conn
+    conn = connection.create_connection(
+        (self._dns_host, self.port), self.timeout, **extra_kw
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\util\connection.py", line 95, in create_connection
+    raise err
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\util\connection.py", line 85, in create_connection
+    sock.connect(sa)
+    ~~~~~~~~~~~~^^^^
+TimeoutError: [WinError 10060] 由于连接方在一段时间后没有正确答复或连接的主机没有反应，连接尝试失败。
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connectionpool.py", line 716, in urlopen
+    httplib_response = self._make_request(
+        conn,
+    ...<5 lines>...
+        chunked=chunked,
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connectionpool.py", line 404, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connectionpool.py", line 1061, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connection.py", line 363, in connect
+    self.sock = conn = self._new_conn()
+                       ~~~~~~~~~~~~~~^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connection.py", line 179, in _new_conn
+    raise ConnectTimeoutError(
+    ...<3 lines>...
+    )
+urllib3.exceptions.ConnectTimeoutError: (<urllib3.connection.HTTPSConnection object at 0x0000021589258830>, 'Connection to huggingface.co timed out. (connect timeout=None)')
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\adapters.py", line 645, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connectionpool.py", line 802, in urlopen
+    retries = retries.increment(
+        method, url, error=e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\util\retry.py", line 594, in increment
+    raise MaxRetryError(_pool, url, error or ResponseError(cause))
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='huggingface.co', port=443): Max retries exceeded with url: /api/models/Systran/faster-whisper-tiny/revision/main (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x0000021589258830>, 'Connection to huggingface.co timed out. (connect timeout=None)'))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\_snapshot_download.py", line 165, in snapshot_download
+    repo_info = api.repo_info(repo_id=repo_id, repo_type=repo_type, revision=revision)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\utils\_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\hf_api.py", line 2867, in repo_info
+    return method(
+        repo_id,
+    ...<4 lines>...
+        files_metadata=files_metadata,
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\utils\_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\hf_api.py", line 2660, in model_info
+    r = get_session().get(path, headers=headers, timeout=timeout, params=params)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\sessions.py", line 605, in get
+    return self.request("GET", url, **kwargs)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\sessions.py", line 592, in request
+    resp = self.send(prep, **send_kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\sessions.py", line 706, in send
+    r = adapter.send(request, **kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\utils\_http.py", line 96, in send
+    return super().send(request, *args, **kwargs)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\adapters.py", line 666, in send
+    raise ConnectTimeout(e, request=request)
+requests.exceptions.ConnectTimeout: (MaxRetryError("HTTPSConnectionPool(host='huggingface.co', port=443): Max retries exceeded with url: /api/models/Systran/faster-whisper-tiny/revision/main (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x0000021589258830>, 'Connection to huggingface.co timed out. (connect timeout=None)'))"), '(Request ID: 113594b6-a758-4a76-9300-f5d0cf5ceae1)')
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\贯维\Omni_Pre_Processor\src\opp\extractors\audio.py", line 37, in extract
+    transcription_result = transcriber.transcribe(str(input_path))
+  File "D:\贯维\Omni_Pre_Processor\src\opp\transcriber.py", line 123, in transcribe
+    model_instance = self._get_model()
+  File "D:\贯维\Omni_Pre_Processor\src\opp\transcriber.py", line 89, in _get_model
+    self._model = WhisperModel(
+                  ~~~~~~~~~~~~^
+        self.model_name,
+        ^^^^^^^^^^^^^^^^
+        device=self._device,
+        ^^^^^^^^^^^^^^^^^^^^
+        compute_type=self._compute_type,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\faster_whisper\transcribe.py", line 681, in __init__
+    model_path = download_model(
+        model_size_or_path,
+    ...<3 lines>...
+        use_auth_token=use_auth_token,
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\faster_whisper\utils.py", line 116, in download_model
+    return huggingface_hub.snapshot_download(repo_id, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\utils\_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\_snapshot_download.py", line 248, in snapshot_download
+    raise LocalEntryNotFoundError(
+    ...<3 lines>...
+    ) from api_call_error
+huggingface_hub.errors.LocalEntryNotFoundError: An error happened while trying to locate the files on the Hub and we cannot find the appropriate snapshot folder for the specified revision on the local disk. Please check your internet connection and try again.
+[2026-05-15 18:19:38] [ERROR] Audio transcription failed for test.wav
+Traceback (most recent call last):
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connection.py", line 174, in _new_conn
+    conn = connection.create_connection(
+        (self._dns_host, self.port), self.timeout, **extra_kw
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\util\connection.py", line 95, in create_connection
+    raise err
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\util\connection.py", line 85, in create_connection
+    sock.connect(sa)
+    ~~~~~~~~~~~~^^^^
+TimeoutError: [WinError 10060] 由于连接方在一段时间后没有正确答复或连接的主机没有反应，连接尝试失败。
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connectionpool.py", line 716, in urlopen
+    httplib_response = self._make_request(
+        conn,
+    ...<5 lines>...
+        chunked=chunked,
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connectionpool.py", line 404, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connectionpool.py", line 1061, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connection.py", line 363, in connect
+    self.sock = conn = self._new_conn()
+                       ~~~~~~~~~~~~~~^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connection.py", line 179, in _new_conn
+    raise ConnectTimeoutError(
+    ...<3 lines>...
+    )
+urllib3.exceptions.ConnectTimeoutError: (<urllib3.connection.HTTPSConnection object at 0x000002158925C550>, 'Connection to huggingface.co timed out. (connect timeout=None)')
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\adapters.py", line 645, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connectionpool.py", line 802, in urlopen
+    retries = retries.increment(
+        method, url, error=e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\util\retry.py", line 594, in increment
+    raise MaxRetryError(_pool, url, error or ResponseError(cause))
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='huggingface.co', port=443): Max retries exceeded with url: /api/models/Systran/faster-whisper-tiny/revision/main (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x000002158925C550>, 'Connection to huggingface.co timed out. (connect timeout=None)'))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\_snapshot_download.py", line 165, in snapshot_download
+    repo_info = api.repo_info(repo_id=repo_id, repo_type=repo_type, revision=revision)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\utils\_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\hf_api.py", line 2867, in repo_info
+    return method(
+        repo_id,
+    ...<4 lines>...
+        files_metadata=files_metadata,
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\utils\_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\hf_api.py", line 2660, in model_info
+    r = get_session().get(path, headers=headers, timeout=timeout, params=params)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\sessions.py", line 605, in get
+    return self.request("GET", url, **kwargs)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\sessions.py", line 592, in request
+    resp = self.send(prep, **send_kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\sessions.py", line 706, in send
+    r = adapter.send(request, **kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\utils\_http.py", line 96, in send
+    return super().send(request, *args, **kwargs)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\adapters.py", line 666, in send
+    raise ConnectTimeout(e, request=request)
+requests.exceptions.ConnectTimeout: (MaxRetryError("HTTPSConnectionPool(host='huggingface.co', port=443): Max retries exceeded with url: /api/models/Systran/faster-whisper-tiny/revision/main (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x000002158925C550>, 'Connection to huggingface.co timed out. (connect timeout=None)'))"), '(Request ID: 565e5a69-5158-4a99-a0e7-07e94e733539)')
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\贯维\Omni_Pre_Processor\src\opp\extractors\audio.py", line 37, in extract
+    transcription_result = transcriber.transcribe(str(input_path))
+  File "D:\贯维\Omni_Pre_Processor\src\opp\transcriber.py", line 123, in transcribe
+    model_instance = self._get_model()
+  File "D:\贯维\Omni_Pre_Processor\src\opp\transcriber.py", line 89, in _get_model
+    self._model = WhisperModel(
+                  ~~~~~~~~~~~~^
+        self.model_name,
+        ^^^^^^^^^^^^^^^^
+        device=self._device,
+        ^^^^^^^^^^^^^^^^^^^^
+        compute_type=self._compute_type,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\faster_whisper\transcribe.py", line 681, in __init__
+    model_path = download_model(
+        model_size_or_path,
+    ...<3 lines>...
+        use_auth_token=use_auth_token,
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\faster_whisper\utils.py", line 116, in download_model
+    return huggingface_hub.snapshot_download(repo_id, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\utils\_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\_snapshot_download.py", line 248, in snapshot_download
+    raise LocalEntryNotFoundError(
+    ...<3 lines>...
+    ) from api_call_error
+huggingface_hub.errors.LocalEntryNotFoundError: An error happened while trying to locate the files on the Hub and we cannot find the appropriate snapshot folder for the specified revision on the local disk. Please check your internet connection and try again.
+[2026-05-15 18:20:00] [ERROR] Audio transcription failed for test.wav
+Traceback (most recent call last):
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connection.py", line 174, in _new_conn
+    conn = connection.create_connection(
+        (self._dns_host, self.port), self.timeout, **extra_kw
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\util\connection.py", line 95, in create_connection
+    raise err
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\util\connection.py", line 85, in create_connection
+    sock.connect(sa)
+    ~~~~~~~~~~~~^^^^
+TimeoutError: [WinError 10060] 由于连接方在一段时间后没有正确答复或连接的主机没有反应，连接尝试失败。
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connectionpool.py", line 716, in urlopen
+    httplib_response = self._make_request(
+        conn,
+    ...<5 lines>...
+        chunked=chunked,
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connectionpool.py", line 404, in _make_request
+    self._validate_conn(conn)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connectionpool.py", line 1061, in _validate_conn
+    conn.connect()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connection.py", line 363, in connect
+    self.sock = conn = self._new_conn()
+                       ~~~~~~~~~~~~~~^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connection.py", line 179, in _new_conn
+    raise ConnectTimeoutError(
+    ...<3 lines>...
+    )
+urllib3.exceptions.ConnectTimeoutError: (<urllib3.connection.HTTPSConnection object at 0x000002158925ED50>, 'Connection to huggingface.co timed out. (connect timeout=None)')
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\adapters.py", line 645, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\connectionpool.py", line 802, in urlopen
+    retries = retries.increment(
+        method, url, error=e, _pool=self, _stacktrace=sys.exc_info()[2]
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\urllib3\util\retry.py", line 594, in increment
+    raise MaxRetryError(_pool, url, error or ResponseError(cause))
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='huggingface.co', port=443): Max retries exceeded with url: /api/models/Systran/faster-whisper-tiny/revision/main (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x000002158925ED50>, 'Connection to huggingface.co timed out. (connect timeout=None)'))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\_snapshot_download.py", line 165, in snapshot_download
+    repo_info = api.repo_info(repo_id=repo_id, repo_type=repo_type, revision=revision)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\utils\_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\hf_api.py", line 2867, in repo_info
+    return method(
+        repo_id,
+    ...<4 lines>...
+        files_metadata=files_metadata,
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\utils\_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\hf_api.py", line 2660, in model_info
+    r = get_session().get(path, headers=headers, timeout=timeout, params=params)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\sessions.py", line 605, in get
+    return self.request("GET", url, **kwargs)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\sessions.py", line 592, in request
+    resp = self.send(prep, **send_kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\sessions.py", line 706, in send
+    r = adapter.send(request, **kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\utils\_http.py", line 96, in send
+    return super().send(request, *args, **kwargs)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\requests\adapters.py", line 666, in send
+    raise ConnectTimeout(e, request=request)
+requests.exceptions.ConnectTimeout: (MaxRetryError("HTTPSConnectionPool(host='huggingface.co', port=443): Max retries exceeded with url: /api/models/Systran/faster-whisper-tiny/revision/main (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x000002158925ED50>, 'Connection to huggingface.co timed out. (connect timeout=None)'))"), '(Request ID: 860d94ed-6c85-4b84-9daa-68cfa62d192f)')
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\贯维\Omni_Pre_Processor\src\opp\extractors\audio.py", line 37, in extract
+    transcription_result = transcriber.transcribe(str(input_path))
+  File "D:\贯维\Omni_Pre_Processor\src\opp\transcriber.py", line 123, in transcribe
+    model_instance = self._get_model()
+  File "D:\贯维\Omni_Pre_Processor\src\opp\transcriber.py", line 89, in _get_model
+    self._model = WhisperModel(
+                  ~~~~~~~~~~~~^
+        self.model_name,
+        ^^^^^^^^^^^^^^^^
+        device=self._device,
+        ^^^^^^^^^^^^^^^^^^^^
+        compute_type=self._compute_type,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\faster_whisper\transcribe.py", line 681, in __init__
+    model_path = download_model(
+        model_size_or_path,
+    ...<3 lines>...
+        use_auth_token=use_auth_token,
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\faster_whisper\utils.py", line 116, in download_model
+    return huggingface_hub.snapshot_download(repo_id, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\utils\_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\_snapshot_download.py", line 248, in snapshot_download
+    raise LocalEntryNotFoundError(
+    ...<3 lines>...
+    ) from api_call_error
+huggingface_hub.errors.LocalEntryNotFoundError: An error happened while trying to locate the files on the Hub and we cannot find the appropriate snapshot folder for the specified revision on the local disk. Please check your internet connection and try again.
+[2026-05-15 18:21:42] [WARNING] EPUB parsing failed: 'Bad Zip file'
+[2026-05-15 18:21:42] [WARNING] EPUB parsing failed: 'Can not find container file'
+[2026-05-15 18:21:42] [INFO] HTML提取: 模式=complex
+[2026-05-15 18:21:42] [WARNING] docling不可用，降级到readability
+[2026-05-15 18:21:42] [INFO] HTML提取: 模式=complex
+[2026-05-15 18:21:42] [WARNING] docling不可用，降级到readability
+[2026-05-15 18:21:42] [INFO] HTML提取: 模式=complex
+[2026-05-15 18:21:42] [WARNING] docling不可用，降级到readability
+[2026-05-15 18:21:42] [INFO] HTML提取: 模式=complex
+[2026-05-15 18:21:42] [WARNING] docling不可用，降级到readability
+[2026-05-15 18:21:42] [INFO] HTML提取: 模式=complex
+[2026-05-15 18:21:42] [WARNING] docling不可用，降级到readability
+[2026-05-15 18:21:42] [INFO] HTML提取: 模式=complex
+[2026-05-15 18:21:42] [WARNING] docling不可用，降级到readability
+[2026-05-15 18:22:16] [INFO] HTML提取: 模式=complex
+[2026-05-15 18:22:16] [WARNING] docling不可用，降级到readability
+[2026-05-15 18:22:16] [INFO] HTML提取: 模式=complex
+[2026-05-15 18:22:16] [WARNING] docling不可用，降级到readability
+[2026-05-15 18:22:17] [WARNING] Cannot open image for OCR: cannot identify image file 'C:\\Users\\RenAnZai\\AppData\\Local\\Temp\\pytest-of-RenAnZai\\pytest-14\\test_corrupted_image0\\corrupted.png'
+[2026-05-15 18:23:15] [WARNING] YouTube extraction failed for https://www.youtube.com/watch?v=dQw4w9WgXcQ: HTTPSConnectionPool(host='www.youtube.com', port=443): Max retries exceeded with url: /watch?v=dQw4w9WgXcQ (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x000002159083AD50>, 'Connection to www.youtube.com timed out. (connect timeout=None)'))

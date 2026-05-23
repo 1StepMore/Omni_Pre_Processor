@@ -1,0 +1,28 @@
+============================================================
+Task 1 - detector.py QA Scenarios
+============================================================
+
+SCENARIO: DOCX magic bytes detection
+  Expected: (<FormatType.DOCX: 'docx'>, 1.0)
+  Actual:   (<FormatType.DOCX: 'docx'>, 1.0)
+  PASSED:   True
+
+SCENARIO: PDF magic bytes detection
+  Expected: (<FormatType.PDF: 'pdf'>, 1.0)
+  Actual:   (<FormatType.PDF: 'pdf'>, 1.0)
+  PASSED:   True
+
+SCENARIO: PPTX magic bytes detection
+  Expected: (<FormatType.PPTX: 'pptx'>, 1.0)
+  Actual:   (<FormatType.PPTX: 'pptx'>, 1.0)
+  PASSED:   True
+
+SCENARIO: Unknown format handling
+  Expected: (<FormatType.UNKNOWN: 'unknown'>, 0.0)
+  Actual:   (<FormatType.UNKNOWN: 'unknown'>, 0.0)
+  PASSED:   True
+
+============================================================
+SUMMARY: 4/4 scenarios passed
+VERDICT: PASS
+============================================================

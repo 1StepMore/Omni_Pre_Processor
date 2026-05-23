@@ -1,0 +1,81 @@
+# T1 - EPUB Data Flow Investigation
+
+## Investigation Summary
+
+### 1. `_clean_html` at line 162
+
+Location: `/mnt/d/贯维/Omni_Pre_Processor/src/opp/extractors/epub.py`, lines 143-177
+
+Line 162 performs h1-h6 to Markdown heading conversion:
+```python
+if tag_name and tag_name.lower() in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6'):
+    text_parts.append(f"\n## {element_text}\n")
+```
+
+This converts HTML headings directly into `## text` Markdown format WITHIN the HTML content string.
+
+### 2. ParagraphData created at lines 135-139
+
+```python
+paragraphs.append(ParagraphData(
+    text=content,      # Already contains "## text" from _clean_html
+    style="Normal",    # Fixed string
+    level=None,        # Fixed as None
+))
+```
+
+The ParagraphData carries the PRE-FORMATTED text (with `##` already embedded).
+
+### 3. Data Flow Path
+
+```
+EPUBExtractor.extract()
+  └── _extract_chapters()
+        └── _clean_html()      ← ## conversion happens HERE (line 162)
+        └── ParagraphData(text=content, style="Normal", level=None)
+  └── returns List[ParagraphData]
+
+pipeline.process_file()
+  └── OPPPipeline.extractors[FormatType.EPUB].extract()
+  └── returns ExtractionResult (contains paragraphs with ## already in text)
+
+MarkdownGenerator.generate()
+  └── generate_headings() checks para.level
+  └── BUT level=None, so headings are SKIPPED
+  └── non-structured text includes paragraphs with literal "## text"
+```
+
+### 4. Key Finding: DOUBLE encoding risk
+
+The EPUB extractor:
+- Converts h1-h6 HTML tags to `## text` format in `_clean_html` (line 162)
+- Stores result in `ParagraphData.text` with `style="Normal", level=None`
+
+When MarkdownGenerator receives this:
+- `generate_headings()` at line 42-54 skips paragraphs where `level is None` (line 48)
+- The text containing literal `## text` is NOT recognized as a heading
+- It falls through to `non_structured` text (lines 14-23), which joins text with newlines
+
+Result: The literal string `## text` appears in Markdown output instead of proper heading.
+
+## Conclusion
+
+**`## text` is created by the EXTRACTOR** (specifically in `_clean_html` at line 162).
+
+MarkdownGenerator receives ParagraphData where:
+- `text` field already contains the literal string `## Chapter 1\n`
+- `style="Normal"` 
+- `level=None`
+
+The MarkdownGenerator cannot render proper headings because:
+1. It expects `level` to be set (1-6) for heading detection
+2. It relies on `para.style` containing "Heading" for heading detection
+3. EPUB extractor sets `style="Normal"` and `level=None`
+
+## Test Coverage
+
+Tests exist at `/mnt/d/贯维/Omni_Pre_Processor/tests/test_epub_extractor.py`:
+- `test_multichapter_order`: Verifies order but not heading format
+- `test_footnotes_preserved`: Checks footnote markers
+- No test verifies actual Markdown heading output format
+

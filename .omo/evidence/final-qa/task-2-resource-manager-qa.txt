@@ -1,0 +1,24 @@
+============================================================
+Task 2 - resource_manager.py QA Scenarios
+============================================================
+
+SCENARIO: MD5 deduplication prevents duplicate storage
+  Image 1 path returned: 4fece29b-ce32-483d-a346-49afa92f4e0f.jpg
+  Image 2 path returned: 4fece29b-ce32-483d-a346-49afa92f4e0f.jpg
+  Paths equal: True
+  Files in storage: 1
+  PASSED: True
+
+SCENARIO: UUID naming for unique images
+  Path A: 67fe407b-d09d-4921-ad85-4a2e3584a66e.jpg
+  Path B: 6b2ae3c4-1ee6-4e22-b501-7b6d1d5d5093.jpg
+  Path C: 6803e75a-88b6-4958-9824-0dde68551b16.jpg
+  All unique: True
+  UUID format valid: True
+  Files stored: 3
+  PASSED: True
+
+============================================================
+SUMMARY: 2/2 scenarios passed
+VERDICT: PASS
+============================================================

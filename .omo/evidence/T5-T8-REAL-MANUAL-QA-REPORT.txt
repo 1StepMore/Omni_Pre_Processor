@@ -1,0 +1,232 @@
+================================================================================
+REAL MANUAL QA REPORT - Tasks T5-T8
+================================================================================
+
+EXECUTIVE SUMMARY
+-----------------
+Total QA Scenarios: 9
+PASSED: 7
+FAILED: 2
+PASS Rate: 77.8%
+
+================================================================================
+DETAILED RESULTS
+================================================================================
+
+=== T5 - EPUB EXTRACTION ===
+
+[T5-S1] EPUB with h1, h2, body text
+--------------------------------------
+STATUS: PASS
+Evidence: .sisyphus/evidence/task-5-epub-headings.txt
+
+Assertions:
+  ✓ paragraphs[0].level == 1         PASS (got 1)
+  ✓ paragraphs[0].style contains      PASS (got 'Heading 1')
+       'Heading 1'
+  ✓ paragraphs[1].level == 2         PASS (got 2)
+  ✓ body paragraphs level is None    PASS
+
+Extracted paragraphs:
+  [0] h1: 'Main Title' level=1 style='Heading 1'
+  [1] h2: 'Subheading Level 2' level=2 style='Heading 2'
+  [2] body: 'First paragraph body text' level=None style='Normal'
+  [3] body: 'Second paragraph body text' level=None style='Normal'
+
+
+[T5-S2] EPUB with empty heading <h3></h3> or <h3/>
+-----------------------------------------------------
+STATUS: FAIL
+Evidence: .sisyphus/evidence/task-5-epub-empty-heading.txt
+
+Assertions:
+  ✗ h3 with empty text and level=3  FAIL (not found in output)
+
+ROOT CAUSE:
+  epub.py lines 166-167 skip elements with empty text:
+    if not element_text:
+        continue
+  This causes empty headings to be silently discarded.
+
+EXPECTED BEHAVIOR:
+  ParagraphData(text='', style='Heading 3', level=3)
+
+ACTUAL BEHAVIOR:
+  Empty h3 is skipped, not included in paragraphs.
+
+
+[T5-S3] EPUB with footnote <span role="doc-noteref">[1]</span>
+--------------------------------------------------------------
+STATUS: PASS
+Evidence: .sisyphus/evidence/task-5-epub-footnote.txt
+
+Assertions:
+  ✓ text contains '[[footnote]]'    PASS
+
+Extracted paragraphs:
+  [0] h1: 'Title with footnote marker [1] [[footnote]]' level=1
+  [1] body: 'Body text with footnote. [1] [[footnote]]' level=None
+
+
+=== T6 - PDF EXTRACTION ===
+
+[T6-S1] PDF with 2-level TOC bookmarks
+-------------------------------------
+STATUS: PASS
+Evidence: .sisyphus/evidence/task-6-pdf-toc.txt
+
+Assertions:
+  ✓ first TOC level == 1            PASS (got 1)
+  ✓ first TOC text == 'Chapter 1'  PASS (got 'Chapter 1')
+  ✓ second TOC level == 2          PASS (got 2)
+  ✓ second TOC text == 'Section 1.1' PASS (got 'Section 1.1')
+
+Extracted TOC entries:
+  [0] level=1 text='Chapter 1'
+  [1] level=2 text='Section 1.1'
+
+
+[T6-S2] Plain PDF with no TOC/bookmarks
+--------------------------------------
+STATUS: PASS
+Evidence: .sisyphus/evidence/task-6-pdf-no-toc.txt
+
+Assertions:
+  ✓ no TOC paragraphs              PASS (toc_entries == 0)
+  ✓ text blocks extracted          PASS (paragraphs == 1)
+
+Notes:
+  Plain PDF 'Hello PDF' text is correctly extracted even without TOC.
+
+
+=== T7 - PPTX EXTRACTION ===
+
+[T7-S1] PPTX with TITLE 'Introduction'
+-------------------------------------
+STATUS: PASS
+Evidence: .sisyphus/evidence/task-7-pptx-title.txt
+
+Assertions:
+  ✓ level == 1                     PASS (got 1)
+  ✓ style contains 'Heading'       PASS (got 'Heading 1')
+
+Extracted paragraphs:
+  [0] 'Introduction' level=1 style='Heading 1'
+  [1] 'Body text content' level=None style='PLACEHOLDER'
+
+
+[T7-S2] PPTX with body text shape (not TITLE)
+---------------------------------------------
+STATUS: PASS
+Evidence: .sisyphus/evidence/task-7-pptx-body.txt
+
+Assertions:
+  ✓ level is None (not a heading)  PASS (got None)
+
+Extracted paragraphs:
+  [0] 'Body only text' level=None style='PLACEHOLDER'
+
+
+[T7-S3] PPTX with grouped shapes including TITLE
+-------------------------------------------------
+STATUS: FAIL
+Evidence: .sisyphus/evidence/task-7-pptx-group.txt
+
+Assertions:
+  ✗ TITLE inside GROUP level == 1  FAIL (got None)
+
+ROOT CAUSE:
+  Test creation limitation - python-pptx cannot easily create
+  GROUP shapes containing actual TITLE placeholder shapes.
+  The implementation code (pptx.py _flatten_group) appears correct
+  and does check _is_title_shape() for shapes within groups.
+
+EXPECTED BEHAVIOR:
+  TITLE shape inside GROUP should get level=1, style='Heading 1'
+
+ACTUAL BEHAVIOR:
+  Test creates TEXT_BOX (not TITLE placeholder), so it gets level=None.
+
+Note:
+  The implementation logic is correct per inspection. QA fails due to
+  inability to programmatically create proper grouped TITLE shapes.
+
+
+=== T8 - IPYNB (Jupyter Notebook) EXTRACTION ===
+
+[T8-S1] Notebook with markdown cell "## Section Title"
+-----------------------------------------------------
+STATUS: PASS
+Evidence: .sisyphus/evidence/task-8-ipynb-markdown.txt
+
+Assertions:
+  ✓ level == 1                     PASS (got 1)
+  ✓ style == 'Markdown'            PASS (got 'Markdown')
+
+Extracted paragraphs:
+  [0] '## Section Title' level=1 style='Markdown'
+
+
+[T8-S2] Notebook with code cell `print("hello")`
+------------------------------------------------
+STATUS: PASS
+Evidence: .sisyphus/evidence/task-8-ipynb-code.txt
+
+Assertions:
+  ✓ level == 0                     PASS (got 0)
+  ✓ style == 'Code'                PASS (got 'Code')
+
+Extracted paragraphs:
+  [0] 'print("hello")' level=0 style='Code'
+
+
+================================================================================
+FAILURE ANALYSIS
+================================================================================
+
+T5-S2 (EPUB Empty Heading):
+  Bug Location: src/opp/extractors/epub.py:166-167
+  Issue: Empty headings (<h3></h3>) are skipped due to:
+           if not element_text:
+               continue
+  Fix Required: Modify condition to preserve empty headings with level and style.
+
+T7-S3 (PPTX Grouped TITLE):
+  Test Limitation: Cannot create proper GROUP shape with TITLE placeholder
+  using python-pptx API. The implementation code appears correct.
+  Implementation: src/opp/extractors/pptx.py _flatten_group() method
+
+
+================================================================================
+RECOMMENDATIONS
+================================================================================
+
+1. T5-S2: Fix epub.py to preserve empty headings:
+   - Modify the empty text check to not skip headings
+   - Empty headings should be preserved with their level and style
+
+2. T7-S3: This QA scenario is valid but test creation is blocked by
+   python-pptx API limitations. The implementation code should be verified
+   manually with a properly created PPTX file containing GROUP > TITLE.
+
+
+================================================================================
+EVIDENCE FILES
+================================================================================
+All evidence saved to: .sisyphus/evidence/
+
+task-5-epub-headings.txt      - T5-S1 PASS
+task-5-epub-empty-heading.txt - T5-S2 FAIL
+task-5-epub-footnote.txt      - T5-S3 PASS
+task-6-pdf-toc.txt            - T6-S1 PASS
+task-6-pdf-no-toc.txt         - T6-S2 PASS
+task-7-pptx-title.txt         - T7-S1 PASS
+task-7-pptx-body.txt          - T7-S2 PASS
+task-7-pptx-group.txt         - T7-S3 FAIL
+task-8-ipynb-markdown.txt     - T8-S1 PASS
+task-8-ipynb-code.txt         - T8-S2 PASS
+task-5-8-qa-summary.txt       - This summary file
+
+================================================================================
+END OF REPORT
+================================================================================

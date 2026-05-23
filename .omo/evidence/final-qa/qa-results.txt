@@ -1,0 +1,18 @@
+QA SCENARIO RESULTS
+========================================
+[S1] H1: '# Title' | Expected '# Title' | PASS
+[S2] Level 7 capped: '###### Deep' | Expected contains '###### Deep' | PASS
+[S3] level=None skip: '' | Expected '' | PASS
+[S4] Unordered list: '- Item' | Expected '- Item' | PASS
+[S5] Ordered list: '1. First' | Expected '1. First' | PASS
+[S6] Deep nest level 12: '- Deep' | Expected '- Deep' | PASS
+[S7] Basic table: '| A | B |\n| --- | --- |\n| 1 | 2 |' | Expected '| A | B |\n|---|---|\n| 1 | 2 |' | FAIL
+[S8] Pipe escape: '| A\\|B |\n| --- |\n| C\\|D |' | Expected contains '\|' | PASS
+[S9] Special char protection: '\\*bold\\*' | Expected contains '\*' | PASS
+[S10] Code block preserved: '```\n*bold*\n```' | Expected '\*' NOT in code content | PASS
+[E1] Empty paragraphs: '' | Expected '' | PASS
+[E2] Empty tables: '' | Expected '' | PASS
+[E3] Only special chars: '\\*\\*\\*\\#\\#\\#' | Expected non-empty | PASS
+========================================
+Scenarios: [9/10 pass]
+Edge Cases: [3/3 pass]

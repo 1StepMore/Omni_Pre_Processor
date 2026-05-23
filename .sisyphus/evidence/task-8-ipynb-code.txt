@@ -1,0 +1,9 @@
+T8 Scenario 2: Notebook with code cell
+==================================================
+
+Extracted 1 paragraphs:
+  [0] text='print("hello")' style='Code' level=0
+Assertion: level == 0: PASS (got 0)
+Assertion: style == 'Code': PASS (got 'Code')
+
+OVERALL: PASS

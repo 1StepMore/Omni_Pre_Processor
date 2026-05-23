@@ -1,0 +1,9 @@
+T8 Scenario 1: Notebook with markdown cell
+==================================================
+
+Extracted 1 paragraphs:
+  [0] text='## Section Title' style='Markdown' level=1
+Assertion: level == 1: PASS (got 1)
+Assertion: style == 'Markdown': PASS (got 'Markdown')
+
+OVERALL: PASS

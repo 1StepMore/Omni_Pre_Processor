@@ -1,0 +1,2 @@
+[2026-05-15 16:45:08] [INFO] Log file: D:\贯维\Omni_Pre_Processor\logs\opp_20260515_164508_833.log
+[2026-05-15 16:45:13] [WARNING] EPUB parsing failed: 'NoneType' object has no attribute 'get_name'

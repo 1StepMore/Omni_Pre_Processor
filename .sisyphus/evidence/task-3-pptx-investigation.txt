@@ -1,0 +1,15 @@
+PPTX TITLE Investigation:
+1. Line 78 sets level=None for all shapes: CONFIRMED
+   - Both extract_shapes() line 78 and _flatten_group() line 91 set level=None unconditionally
+2. MSO_SHAPE_TYPE.TITLE exists: NO
+   - MSO_SHAPE_TYPE is an enum containing: mso3DModel, msoAutoShape, msoCallout, msoCanvas, msoChart, msoComment, msoContentApp, msoDiagram, msoEmbeddedOLEObject, msoFormControl, msoFreeform, msoGraphic, msoGroup, msoIgxGraphic, msoInk, msoInkComment, msoLine, msoLinked3DModel, msoLinkedGraphic, msoLinkedOLEObject, msoLinkedPicture, msoMedia, msoOLEControlObject, msoPicture, msoPlaceholder, msoScriptAnchor, msoShapeTypeMixed, msoSlicer, msoTable, msoTextBox, msoTextEffect, msoWebVideo
+   - No TITLE or SUBTITLE constant exists in MSO_SHAPE_TYPE
+3. MSO_SHAPE_TYPE.SUBTITLE exists: NO
+   - Same enum as above, no SUBTITLE constant
+4. _flatten_group recursive GROUP handling: NO - BUG CONFIRMED
+   - _flatten_group() at lines 82-93 iterates over group.shapes but only checks has_text_frame
+   - It does NOT check if a shape is itself a GROUP (shape.shape_type == MSO_SHAPE_TYPE.GROUP)
+   - If a GROUP contains nested GROUPs, those inner GROUPs are not recursively flattened
+5. Test PPTX files: YES
+   - /mnt/d/贯维/Omni_Pre_Processor/batch_test/phase0_office/empty.pptx
+   - /mnt/d/贯维/Omni_Pre_Processor/batch_test/phase0_office/normal.pptx

@@ -1,0 +1,13 @@
+IPYNB Cell Level Investigation:
+1. Line 48: level=0 for markdown cells: CONFIRMED
+2. Code cells: level=0, style="Code"
+3. Why level=0 is wrong: MarkdownGenerator.generate() at line 14 filters headings using `p.level >= 1`. 
+   Level 0 paragraphs are excluded from heading processing and will NOT be rendered as headings 
+   in the markdown output, even if they contain markdown heading syntax (e.g., "# Title").
+4. Existing IPYNB tests: YES - /mnt/d/贯维/Omni_Pre_Processor/tests/test_ipynb_extractor.py
+5. MarkdownGenerator threshold: level >= 1
+
+Evidence:
+- src/opp/extractors/ipynb.py lines 43-50: markdown cells get level=0
+- src/opp/extractors/ipynb.py lines 51-70: code cells get level=0, style="Code"
+- src/opp/markdown.py line 14: `headings_paragraphs = [p for p in result.paragraphs if p.level is not None and p.level >= 1]`

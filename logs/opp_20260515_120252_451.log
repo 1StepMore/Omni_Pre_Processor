@@ -1,0 +1,4 @@
+[2026-05-15 12:02:52] [INFO] Log file: /mnt/d/贯维/Omni_Pre_Processor/logs/opp_20260515_120252_451.log
+[2026-05-15 12:02:57] [WARNING] Failed to load config from /mnt/d/贯维/Omni_Pre_Processor/opp_config.yaml: No module named 'yaml'
+[2026-05-15 12:03:17] [INFO] Generated: batch_files_converted/AI赋能公版儿童绘本创业方向建议书.md
+[2026-05-15 12:03:17] [INFO] Completed: 1 succeeded, 0 failed

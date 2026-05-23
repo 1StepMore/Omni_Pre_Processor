@@ -1,0 +1,11 @@
+T5 Scenario 2: EPUB with empty heading <h3></h3>
+==================================================
+
+Extracted 2 paragraphs:
+  [0] text='Title' style='Heading 1' level=1
+  [1] text='Some text' style='Normal' level=None
+
+Assertion: h3 with empty text: FAIL (not found)
+
+OVERALL: FAIL
+FAIL: Could not find empty h3 paragraph

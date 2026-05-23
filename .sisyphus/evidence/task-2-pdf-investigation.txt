@@ -1,0 +1,19 @@
+PDF Library Investigation:
+1. fitz import: YES at line 6
+2. get_toc() usage: NOT FOUND
+3. get_toc() return format: [[level, title, page], ...]
+   - level: int (1 = top-level, 2 = sub-item, etc.)
+   - title: str (TOC entry text)
+   - page: int (1-indexed page number)
+4. Test PDFs available: YES
+   - batch_test/edge_cases/wrong_ext.pdf
+   - batch_test/edge_cases/zero_byte.pdf
+   - batch_test/edge_cases/corrupted.pdf
+   - batch_test/phase0_office/multipage.pdf
+   - batch_test/phase0_office/normal.pdf
+
+Notes:
+- fitz (PyMuPDF) is properly imported at line 6 of src/opp/extractors/pdf.py
+- doc.get_toc() is NOT currently used anywhere in the codebase
+- The get_toc() method is available on fitz.Document objects (line 31 opens doc with fitz.open())
+- Test PDFs are available for validation, but none of them appear to be TOC test cases

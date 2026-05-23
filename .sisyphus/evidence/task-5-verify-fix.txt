@@ -1,0 +1,46 @@
+# Task 5 - Verify PDF Extractor Fix
+
+## Date: 2026-05-15
+
+## Test Command
+```
+.venv312/bin/python -m opp --target-format=md "batch_files/AI赋能公版儿童绘本创业方向建议书.pdf" --output-dir batch_files_converted
+```
+
+## Result: SUCCESS
+
+## Evidence Checklist
+
+| Check | Status | Details |
+|-------|--------|---------|
+| Output file created | ✓ | `batch_files_converted/AI赋能公版儿童绘本创业方向建议书.md` |
+| File non-empty | ✓ | 477 lines, significant content |
+| Contains headings | ✓ | Lines 3-28 show TOC entries like `# 一、项目背景`, `# 二、市场分析` |
+| Contains body content | ✓ | Lines 29+ contain full paragraph content |
+| Markdown formatting | ✓ | Proper `#` heading syntax used |
+
+## Sample Content (first 30 lines)
+
+```
+AI赋能公版儿童绘本创业方向建议书
+目录
+# 一、项目背景
+# 二、市场分析
+需求端：下沉市场的儿童阅读需求
+供给端：公版绘本市场现状与机遇
+AI技术赋能：内容创作与运营
+# 三、创业方向定位
+# 四、产品与服务设计
+AI内容生成
+AI翻译与本地化
+AI自动化运营
+AI排版与设计
+产品形态
+...
+```
+
+## Conclusion
+The TOC merge bug is FIXED. The PDF extractor now correctly:
+1. Extracts content from the PDF
+2. Preserves markdown heading structure from the original document's TOC
+3. Outputs non-empty, well-formatted markdown

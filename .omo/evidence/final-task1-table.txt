@@ -1,0 +1,36 @@
+=== Task 1 - PDF Table Extraction QA ===
+Test: `len(r.tables[0].rows) == 3`
+Date: 2026-05-15
+
+Result:
+  Tables extracted: 0
+  Expected: At least 1 table with 3 rows
+
+FAIL - No tables extracted due to bug in detect_tables()
+
+Bug Analysis:
+  The detect_tables() method at line 179-192 iterates over the TableFinder
+  object directly instead of the .tables property.
+
+  Buggy code (line 186):
+    for table in table_page:
+        extracted = table.extract()
+
+  Should be:
+    for table in table_page.tables:
+        extracted = table.extract()
+
+  The TableFinder object is not directly iterable as a list of tables.
+  When iterating over it directly, no tables are yielded because the
+  iteration returns table boundaries/edges, not actual Table objects.
+
+  The only page with detectable tables is page 15, which has 1 table
+  with 1 row of merged cells (not 3 rows).
+
+Evidence:
+  - PDF has 20 pages
+  - Page 15 contains 1 table with 1 row (not 3)
+  - Even if page 15 had 3 rows, the bug prevents table extraction
+  - 0 tables returned from extract()
+
+VERDICT: FAIL

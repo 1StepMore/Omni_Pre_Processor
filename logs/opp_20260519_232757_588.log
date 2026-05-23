@@ -1,0 +1,20 @@
+[2026-05-19 23:27:57] [INFO] Log file: /mnt/d/贯维/Omni_Pre_Processor/logs/opp_20260519_232757_588.log
+[2026-05-19 23:30:05] [WARNING] EPUB parsing failed: 'Bad Zip file'
+[2026-05-19 23:30:05] [WARNING] EPUB parsing failed: 'Can not find container file'
+[2026-05-19 23:30:05] [INFO] HTML提取: 模式=complex
+[2026-05-19 23:30:05] [WARNING] docling不可用，降级到readability
+[2026-05-19 23:30:05] [INFO] HTML提取: 模式=complex
+[2026-05-19 23:30:05] [WARNING] docling不可用，降级到readability
+[2026-05-19 23:30:05] [INFO] HTML提取: 模式=complex
+[2026-05-19 23:30:05] [WARNING] docling不可用，降级到readability
+[2026-05-19 23:30:05] [INFO] HTML提取: 模式=complex
+[2026-05-19 23:30:05] [WARNING] docling不可用，降级到readability
+[2026-05-19 23:30:05] [INFO] HTML提取: 模式=complex
+[2026-05-19 23:30:05] [WARNING] docling不可用，降级到readability
+[2026-05-19 23:30:05] [INFO] HTML提取: 模式=complex
+[2026-05-19 23:30:05] [WARNING] docling不可用，降级到readability
+[2026-05-19 23:30:35] [INFO] HTML提取: 模式=complex
+[2026-05-19 23:30:35] [WARNING] docling不可用，降级到readability
+[2026-05-19 23:30:35] [INFO] HTML提取: 模式=complex
+[2026-05-19 23:30:35] [WARNING] docling不可用，降级到readability
+[2026-05-19 23:30:36] [WARNING] Cannot open image for OCR: cannot identify image file '/tmp/pytest-of-renanzai/pytest-33/test_corrupted_image0/corrupted.png'

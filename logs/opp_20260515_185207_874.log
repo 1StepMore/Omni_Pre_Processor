@@ -1,0 +1,3 @@
+[2026-05-15 18:52:07] [INFO] Log file: /mnt/d/贯维/Omni_Pre_Processor/logs/opp_20260515_185207_874.log
+[2026-05-15 18:52:13] [WARNING] Failed to load config from /mnt/d/贯维/Omni_Pre_Processor/opp_config.yaml: No module named 'yaml'
+[2026-05-15 18:52:13] [INFO] HTML提取: 模式=simple

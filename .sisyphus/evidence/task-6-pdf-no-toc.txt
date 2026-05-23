@@ -1,0 +1,10 @@
+T6 Scenario 2: Plain PDF with no TOC/bookmarks
+==================================================
+
+TOC entries: 0
+Text paragraphs: 1
+  [0] text='Hello PDF...'
+Assertion: no TOC paragraphs: PASS
+Assertion: text blocks extracted: PASS
+
+OVERALL: PASS

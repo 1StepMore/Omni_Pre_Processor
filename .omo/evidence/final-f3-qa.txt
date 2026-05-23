@@ -1,0 +1,68 @@
+======================================================================
+REAL MANUAL QA - FINAL EXECUTION (F3)
+======================================================================
+Generated: 2026-05-15
+
+=== QA SCENARIO EXECUTION ===
+
+--- Task 1: Table with multiple data rows ---
+Command: python -c "from src.opp.extractors.pdf import PDFExtractor; e = PDFExtractor(); r = e.extract(Path('batch_files/AI赋能公版儿童绘本创业方向建议书.pdf')); len(r.tables[0].rows) == 3"
+Expected: True (tables[0].rows == 3)
+Actual: FAIL - 0 tables extracted
+Evidence: .sisyphus/evidence/final-task1-table.txt
+VERDICT: FAIL
+
+Bug Found: detect_tables() at src/opp/extractors/pdf.py:186
+  - Iterates over TableFinder object directly: "for table in table_page:"
+  - Should iterate over .tables property: "for table in table_page.tables:"
+
+--- Task 2: Chinese heading detection ---
+Command: python -c "from src.opp.extractors.pdf import PDFExtractor; e = PDFExtractor(); level = e._detect_heading_level('一、项目背景'); level == 1"
+Expected: True (level == 1)
+Actual: PASS
+Evidence: .sisyphus/evidence/final-task2-heading.txt
+VERDICT: PASS
+
+--- Task 5: Sample PDF output ---
+Command: Extract PDF to markdown, check for headings
+Expected: Headings present ("# 一、项目背景" in markdown)
+Actual: PASS
+Evidence: .sisyphus/evidence/final-task5-output.txt
+VERDICT: PASS
+
+=== INTEGRATION CHECKS ===
+
+PDF text extraction: PASS
+  - 477 paragraphs extracted
+  - 8 level-1 headings detected
+  - Chinese headings correctly identified via _detect_heading_level()
+
+PDF to Markdown conversion: PASS
+  - 13620 characters generated
+  - All 8 headings properly formatted with "# " prefix
+  - TOC and body text present
+
+=== SUMMARY ===
+
+Scenarios:       2/3 pass (66.7%)
+Integration:    2/2 pass (100%)
+Edge Cases:     1 tested
+
+=== FAILURE DETAILS ===
+
+Task 1 Failure - PDF Table Detection Bug:
+  File: src/opp/extractors/pdf.py
+  Method: detect_tables()
+  Line: 186
+
+  Current (buggy):
+    for table in table_page:
+        extracted = table.extract()
+
+  Fix required:
+    for table in table_page.tables:
+        extracted = table.extract()
+
+VERDICT: FAIL (due to Task 1 table extraction bug)
+
+======================================================================

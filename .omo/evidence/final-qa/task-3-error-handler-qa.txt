@@ -1,0 +1,52 @@
+============================================================
+Task 3 - error_handler.py QA Scenarios
+============================================================
+
+SCENARIO: Error context recording
+  get_stats() returned: {'errors': 1, 'warnings': 0}
+  errors=1: True
+  warnings=0: True
+  PASSED: True
+
+SCENARIO: Warning tracking
+  has_errors() returned: False
+  get_stats() returned: {'errors': 0, 'warnings': 1}
+  has_errors()=False: True
+  warnings=1: True
+  PASSED: True
+
+SCENARIO: HTML report generation
+  Contains DOCTYPE: True
+  Contains error info: True
+  Contains warning info: True
+  Report preview (first 200 chars):
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OPP Error Report</title>
+    <style>
+        bo...
+  PASSED: True
+
+SCENARIO: Text report generation
+  Is plain text (no HTML tags): True
+  Contains error info: True
+  Report content:
+    OPP Error Report
+    ================
+    
+    Files Processed: 1
+    Errors: 1
+    Warnings: 0
+    Timestamp: 2026-05-10 10:45:44
+    
+    Errors and Warnings:
+    --------------------
+  PASSED: True
+
+============================================================
+SUMMARY: 4/4 scenarios passed
+VERDICT: PASS
+============================================================

@@ -1,0 +1,3 @@
+[2026-05-15 18:40:56] [INFO] Log file: D:\贯维\Omni_Pre_Processor\logs\opp_20260515_184056_888.log
+[2026-05-15 18:41:01] [ERROR] C:\Users\RenAnZai\AppData\Local\Temp\pytest-of-RenAnZai\pytest-15\test_target_lang_works_when_pr0\test.docx: Extraction failed: 文件损坏或无法解析: C:\Users\RenAnZai\AppData\Local\Temp\pytest-of-RenAnZai\pytest-15\test_target_lang_works_when_pr0\test.docx
+[2026-05-15 18:41:01] [INFO] Completed: 0 succeeded, 1 failed

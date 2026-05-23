@@ -1,0 +1,12 @@
+T6 Scenario 1: PDF with 2-level TOC bookmarks
+==================================================
+
+Extracted 2 TOC entries:
+  [0] text='Chapter 1' style='Heading 1' level=1
+  [1] text='Section 1.1' style='Heading 2' level=2
+Assertion: first TOC level == 1: PASS (got 1)
+Assertion: first TOC text == 'Chapter 1': PASS (got 'Chapter 1')
+Assertion: second TOC level == 2: PASS (got 2)
+Assertion: second TOC text == 'Section 1.1': PASS (got 'Section 1.1')
+
+OVERALL: PASS

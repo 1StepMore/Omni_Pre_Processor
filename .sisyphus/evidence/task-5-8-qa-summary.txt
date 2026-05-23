@@ -1,0 +1,24 @@
+QA SCENARIO RESULTS
+==================================================
+T5-S1: PASS
+  Evidence: .sisyphus/evidence/task-5-epub-headings.txt
+T5-S2: FAIL
+  Evidence: .sisyphus/evidence/task-5-epub-empty-heading.txt
+T5-S3: PASS
+  Evidence: .sisyphus/evidence/task-5-epub-footnote.txt
+T6-S1: PASS
+  Evidence: .sisyphus/evidence/task-6-pdf-toc.txt
+T6-S2: PASS
+  Evidence: .sisyphus/evidence/task-6-pdf-no-toc.txt
+T7-S1: PASS
+  Evidence: .sisyphus/evidence/task-7-pptx-title.txt
+T7-S2: PASS
+  Evidence: .sisyphus/evidence/task-7-pptx-body.txt
+T7-S3: FAIL
+  Evidence: .sisyphus/evidence/task-7-pptx-group.txt
+T8-S1: PASS
+  Evidence: .sisyphus/evidence/task-8-ipynb-markdown.txt
+T8-S2: PASS
+  Evidence: .sisyphus/evidence/task-8-ipynb-code.txt
+
+OVERALL: SOME FAILED

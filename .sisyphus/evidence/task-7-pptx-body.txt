@@ -1,0 +1,8 @@
+T7 Scenario 2: PPTX with body text shape
+==================================================
+
+Extracted 1 paragraphs:
+  [0] text='Body only text' style='PLACEHOLDER' level=None
+Assertion: level is None (not a heading): PASS (got None)
+
+OVERALL: PASS

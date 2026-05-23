@@ -1,0 +1,31 @@
+[2026-05-12 17:16:35] [INFO] Log file: /mnt/d/贯维/Omni_Pre_Processor/logs/opp_20260512_171635_549.log
+[2026-05-12 17:16:44] [WARNING] Audio transcription unavailable - faster-whisper not installed
+[2026-05-12 17:16:44] [WARNING] Audio transcription unavailable - faster-whisper not installed
+[2026-05-12 17:18:32] [INFO] HTML提取: 模式=simple
+[2026-05-12 17:18:32] [INFO] HTML提取: 模式=simple
+[2026-05-12 17:18:32] [INFO] HTML提取: 模式=simple
+[2026-05-12 17:18:32] [INFO] HTML提取: 模式=simple
+[2026-05-12 17:18:32] [INFO] HTML提取: 模式=simple
+[2026-05-12 17:18:33] [INFO] HTML提取: 模式=simple
+[2026-05-12 17:18:59] [INFO] HTML提取: 模式=simple
+[2026-05-12 17:18:59] [INFO] HTML提取: 模式=simple
+[2026-05-12 17:19:01] [INFO] PDF无文字，触发OCR: 引擎=tesseract, 语言=eng, 共1页
+[2026-05-12 17:19:01] [WARNING] OCR未能提取到文字
+[2026-05-12 17:19:03] [INFO] PDF无文字，触发OCR: 引擎=tesseract, 语言=eng, 共1页
+[2026-05-12 17:19:03] [WARNING] OCR未能提取到文字
+[2026-05-12 17:19:04] [INFO] PDF无文字，触发OCR: 引擎=tesseract, 语言=eng, 共1页
+[2026-05-12 17:19:04] [WARNING] OCR未能提取到文字
+[2026-05-12 17:19:04] [INFO] PDF无文字，触发OCR: 引擎=tesseract, 语言=eng, 共1页
+[2026-05-12 17:19:05] [WARNING] OCR未能提取到文字
+[2026-05-12 17:19:05] [INFO] PDF无文字，触发OCR: 引擎=tesseract, 语言=eng, 共1页
+[2026-05-12 17:19:05] [WARNING] OCR未能提取到文字
+[2026-05-12 17:19:05] [INFO] PDF无文字，触发OCR: 引擎=tesseract, 语言=eng, 共1页
+[2026-05-12 17:19:05] [WARNING] OCR未能提取到文字
+[2026-05-12 17:19:06] [INFO] PDF无文字，触发OCR: 引擎=tesseract, 语言=eng, 共1页
+[2026-05-12 17:19:06] [WARNING] OCR未能提取到文字
+[2026-05-12 17:19:07] [INFO] PDF无文字，触发OCR: 引擎=tesseract, 语言=eng, 共1页
+[2026-05-12 17:19:07] [WARNING] OCR未能提取到文字
+[2026-05-12 17:19:07] [INFO] PDF无文字，触发OCR: 引擎=tesseract, 语言=eng, 共1页
+[2026-05-12 17:19:07] [WARNING] OCR未能提取到文字
+[2026-05-12 17:19:08] [INFO] PDF无文字，触发OCR: 引擎=tesseract, 语言=eng, 共1页
+[2026-05-12 17:19:08] [WARNING] OCR未能提取到文字

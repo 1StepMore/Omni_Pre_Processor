@@ -1,0 +1,4 @@
+Script started on 2026-05-19 19:07:33+08:00 [COMMAND=" .venv/bin/python -c " from opp.mcp.server import main main() " <not executed on terminal>]
+bash: -c: line 2: unexpected EOF while looking for matching `"'
+
+Script done on 2026-05-19 19:07:33+08:00 [COMMAND_EXIT_CODE="2"]

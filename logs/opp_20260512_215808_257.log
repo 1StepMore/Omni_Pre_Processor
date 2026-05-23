@@ -1,0 +1,35 @@
+[2026-05-12 21:58:08] [INFO] Log file: D:\贯维\Omni_Pre_Processor\logs\opp_20260512_215808_257.log
+[2026-05-12 21:58:09] [INFO] Expanded 1 input(s) to 25 file(s)
+[2026-05-12 21:58:09] [INFO] Batch output directory: D:\贯维\Omni_Pre_Processor\batch_test_converted
+[2026-05-12 21:58:09] [ERROR] D:\贯维\Omni_Pre_Processor\batch_test\edge_cases\corrupted.docx: Extraction failed: 文件损坏或无法解析: D:\贯维\Omni_Pre_Processor\batch_test\edge_cases\corrupted.docx
+[2026-05-12 21:58:09] [ERROR] D:\贯维\Omni_Pre_Processor\batch_test\edge_cases\file with spaces.docx: Extraction failed: 文件损坏或无法解析: D:\贯维\Omni_Pre_Processor\batch_test\edge_cases\file with spaces.docx
+[2026-05-12 21:58:09] [ERROR] D:\贯维\Omni_Pre_Processor\batch_test\edge_cases\zero_byte.docx: Extraction failed: 文件为空: D:\贯维\Omni_Pre_Processor\batch_test\edge_cases\zero_byte.docx
+[2026-05-12 21:58:09] [ERROR] D:\贯维\Omni_Pre_Processor\batch_test\edge_cases\文档测试.docx: Extraction failed: 文件损坏或无法解析: D:\贯维\Omni_Pre_Processor\batch_test\edge_cases\文档测试.docx
+[2026-05-12 21:58:09] [INFO] Generated: D:\贯维\Omni_Pre_Processor\batch_test_converted\empty.md
+[2026-05-12 21:58:09] [INFO] Generated: D:\贯维\Omni_Pre_Processor\batch_test_converted\normal.md
+[2026-05-12 21:58:09] [INFO] Generated: D:\贯维\Omni_Pre_Processor\batch_test_converted\single_paragraph.md
+[2026-05-12 21:58:09] [INFO] Generated: D:\贯维\Omni_Pre_Processor\batch_test_converted\with_lists.md
+[2026-05-12 21:58:09] [INFO] Generated: D:\贯维\Omni_Pre_Processor\batch_test_converted\empty.md
+[2026-05-12 21:58:09] [INFO] Generated: D:\贯维\Omni_Pre_Processor\batch_test_converted\normal.md
+[2026-05-12 21:58:09] [ERROR] D:\贯维\Omni_Pre_Processor\batch_test\edge_cases\corrupted.pdf: Extraction failed: 文件损坏或无法解析: D:\贯维\Omni_Pre_Processor\batch_test\edge_cases\corrupted.pdf
+[2026-05-12 21:58:09] [ERROR] D:\贯维\Omni_Pre_Processor\batch_test\edge_cases\wrong_ext.pdf: Extraction failed: 文件损坏或无法解析: D:\贯维\Omni_Pre_Processor\batch_test\edge_cases\wrong_ext.pdf
+[2026-05-12 21:58:09] [ERROR] D:\贯维\Omni_Pre_Processor\batch_test\edge_cases\zero_byte.pdf: Extraction failed: 文件为空: D:\贯维\Omni_Pre_Processor\batch_test\edge_cases\zero_byte.pdf
+[2026-05-12 21:58:09] [INFO] Generated: D:\贯维\Omni_Pre_Processor\batch_test_converted\multipage.md
+[2026-05-12 21:58:09] [INFO] Generated: D:\贯维\Omni_Pre_Processor\batch_test_converted\normal.md
+[2026-05-12 21:58:09] [INFO] HTML提取: 模式=complex
+[2026-05-12 21:58:09] [WARNING] docling不可用，降级到readability
+[2026-05-12 21:58:09] [INFO] Generated: D:\贯维\Omni_Pre_Processor\batch_test_converted\normal.md
+[2026-05-12 21:58:09] [INFO] HTML提取: 模式=complex
+[2026-05-12 21:58:09] [WARNING] docling不可用，降级到readability
+[2026-05-12 21:58:09] [INFO] Generated: D:\贯维\Omni_Pre_Processor\batch_test_converted\simple.md
+[2026-05-12 21:58:09] [INFO] HTML提取: 模式=complex
+[2026-05-12 21:58:09] [WARNING] docling不可用，降级到readability
+[2026-05-12 21:58:09] [INFO] Generated: D:\贯维\Omni_Pre_Processor\batch_test_converted\with_code.md
+[2026-05-12 21:58:09] [INFO] Generated: D:\贯维\Omni_Pre_Processor\batch_test_converted\normal.md
+[2026-05-12 21:58:09] [INFO] Generated: D:\贯维\Omni_Pre_Processor\batch_test_converted\simple.md
+[2026-05-12 21:58:09] [INFO] Generated: D:\贯维\Omni_Pre_Processor\batch_test_converted\html.md
+[2026-05-12 21:58:09] [INFO] Generated: D:\贯维\Omni_Pre_Processor\batch_test_converted\plain.md
+[2026-05-12 21:58:09] [ERROR] D:\贯维\Omni_Pre_Processor\batch_test\phase7_email_image\large.png: Extraction failed: OCR extraction failed: unrecognized data stream contents when reading image file
+[2026-05-12 21:58:09] [ERROR] D:\贯维\Omni_Pre_Processor\batch_test\phase7_email_image\normal.png: Extraction failed: OCR extraction failed: unrecognized data stream contents when reading image file
+[2026-05-12 21:58:09] [ERROR] D:\贯维\Omni_Pre_Processor\batch_test\phase7_email_image\simple.png: Extraction failed: OCR extraction failed: unrecognized data stream contents when reading image file
+[2026-05-12 21:58:09] [INFO] Completed: 15 succeeded, 10 failed

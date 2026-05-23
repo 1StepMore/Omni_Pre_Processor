@@ -1,0 +1,390 @@
+[2026-05-15 16:05:22] [INFO] Log file: D:\贯维\Omni_Pre_Processor\logs\opp_20260515_160522_466.log
+[2026-05-15 16:05:24] [WARNING] EPUB parsing failed: 'NoneType' object has no attribute 'get_name'
+[2026-05-15 16:05:25] [WARNING] EPUB parsing failed: 'NoneType' object has no attribute 'get_name'
+[2026-05-15 16:05:25] [WARNING] EPUB parsing failed: 'NoneType' object has no attribute 'get_name'
+[2026-05-15 16:05:25] [WARNING] EPUB parsing failed: 'NoneType' object has no attribute 'get_name'
+[2026-05-15 16:05:25] [WARNING] EPUB parsing failed: 'NoneType' object has no attribute 'get_name'
+[2026-05-15 16:05:25] [WARNING] EPUB parsing failed: 'NoneType' object has no attribute 'get_name'
+[2026-05-15 16:05:48] [ERROR] Audio transcription failed for test.wav
+Traceback (most recent call last):
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_transports\default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_transports\default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_sync\connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_sync\connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+        pool_request.request
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_sync\connection.py", line 101, in handle_request
+    raise exc
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_sync\connection.py", line 78, in handle_request
+    stream = self._connect(request)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_sync\connection.py", line 124, in _connect
+    stream = self._network_backend.connect_tcp(**kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_backends\sync.py", line 207, in connect_tcp
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ConnectTimeout: [WinError 10060] 由于连接方在一段时间后没有正确答复或连接的主机没有反应，连接尝试失败。
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\_snapshot_download.py", line 240, in snapshot_download
+    repo_info = api.repo_info(repo_id=repo_id, repo_type=repo_type, revision=revision)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\utils\_validators.py", line 89, in _inner_fn
+    return fn(*args, **kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\hf_api.py", line 3146, in repo_info
+    return method(
+        repo_id,
+    ...<4 lines>...
+        files_metadata=files_metadata,
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\utils\_validators.py", line 89, in _inner_fn
+    return fn(*args, **kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\hf_api.py", line 2939, in model_info
+    r = get_session().get(path, headers=headers, timeout=timeout, params=params)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 1053, in get
+    return self.request(
+           ~~~~~~~~~~~~^
+        "GET",
+        ^^^^^^
+    ...<7 lines>...
+        extensions=extensions,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 825, in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 914, in send
+    response = self._send_handling_auth(
+        request,
+    ...<2 lines>...
+        history=[],
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+        request,
+        follow_redirects=follow_redirects,
+        history=history,
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_transports\default.py", line 249, in handle_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_transports\default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectTimeout: [WinError 10060] 由于连接方在一段时间后没有正确答复或连接的主机没有反应，连接尝试失败。
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\贯维\Omni_Pre_Processor\src\opp\extractors\audio.py", line 37, in extract
+    transcription_result = transcriber.transcribe(str(input_path))
+  File "D:\贯维\Omni_Pre_Processor\src\opp\transcriber.py", line 123, in transcribe
+    model_instance = self._get_model()
+  File "D:\贯维\Omni_Pre_Processor\src\opp\transcriber.py", line 89, in _get_model
+    self._model = WhisperModel(
+                  ~~~~~~~~~~~~^
+        self.model_name,
+        ^^^^^^^^^^^^^^^^
+        device=self._device,
+        ^^^^^^^^^^^^^^^^^^^^
+        compute_type=self._compute_type,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\faster_whisper\transcribe.py", line 681, in __init__
+    model_path = download_model(
+        model_size_or_path,
+    ...<3 lines>...
+        use_auth_token=use_auth_token,
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\faster_whisper\utils.py", line 116, in download_model
+    return huggingface_hub.snapshot_download(repo_id, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\utils\_validators.py", line 89, in _inner_fn
+    return fn(*args, **kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\_snapshot_download.py", line 324, in snapshot_download
+    raise LocalEntryNotFoundError(
+    ...<4 lines>...
+    ) from api_call_error
+huggingface_hub.errors.LocalEntryNotFoundError: Got: ConnectTimeout: [WinError 10060] 由于连接方在一段时间后没有正确答复或连接的主机没有反应，连接尝试失败。
+An error happened while trying to locate the files on the Hub and we cannot find the appropriate snapshot folder for the specified revision on the local disk. Please check your internet connection and try again.
+[2026-05-15 16:06:09] [ERROR] Audio transcription failed for test.wav
+Traceback (most recent call last):
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_transports\default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_transports\default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_sync\connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_sync\connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+        pool_request.request
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_sync\connection.py", line 101, in handle_request
+    raise exc
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_sync\connection.py", line 78, in handle_request
+    stream = self._connect(request)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_sync\connection.py", line 124, in _connect
+    stream = self._network_backend.connect_tcp(**kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_backends\sync.py", line 207, in connect_tcp
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ConnectTimeout: [WinError 10060] 由于连接方在一段时间后没有正确答复或连接的主机没有反应，连接尝试失败。
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\_snapshot_download.py", line 240, in snapshot_download
+    repo_info = api.repo_info(repo_id=repo_id, repo_type=repo_type, revision=revision)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\utils\_validators.py", line 89, in _inner_fn
+    return fn(*args, **kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\hf_api.py", line 3146, in repo_info
+    return method(
+        repo_id,
+    ...<4 lines>...
+        files_metadata=files_metadata,
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\utils\_validators.py", line 89, in _inner_fn
+    return fn(*args, **kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\hf_api.py", line 2939, in model_info
+    r = get_session().get(path, headers=headers, timeout=timeout, params=params)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 1053, in get
+    return self.request(
+           ~~~~~~~~~~~~^
+        "GET",
+        ^^^^^^
+    ...<7 lines>...
+        extensions=extensions,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 825, in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 914, in send
+    response = self._send_handling_auth(
+        request,
+    ...<2 lines>...
+        history=[],
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+        request,
+        follow_redirects=follow_redirects,
+        history=history,
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_transports\default.py", line 249, in handle_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_transports\default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectTimeout: [WinError 10060] 由于连接方在一段时间后没有正确答复或连接的主机没有反应，连接尝试失败。
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\贯维\Omni_Pre_Processor\src\opp\extractors\audio.py", line 37, in extract
+    transcription_result = transcriber.transcribe(str(input_path))
+  File "D:\贯维\Omni_Pre_Processor\src\opp\transcriber.py", line 123, in transcribe
+    model_instance = self._get_model()
+  File "D:\贯维\Omni_Pre_Processor\src\opp\transcriber.py", line 89, in _get_model
+    self._model = WhisperModel(
+                  ~~~~~~~~~~~~^
+        self.model_name,
+        ^^^^^^^^^^^^^^^^
+        device=self._device,
+        ^^^^^^^^^^^^^^^^^^^^
+        compute_type=self._compute_type,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\faster_whisper\transcribe.py", line 681, in __init__
+    model_path = download_model(
+        model_size_or_path,
+    ...<3 lines>...
+        use_auth_token=use_auth_token,
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\faster_whisper\utils.py", line 116, in download_model
+    return huggingface_hub.snapshot_download(repo_id, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\utils\_validators.py", line 89, in _inner_fn
+    return fn(*args, **kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\_snapshot_download.py", line 324, in snapshot_download
+    raise LocalEntryNotFoundError(
+    ...<4 lines>...
+    ) from api_call_error
+huggingface_hub.errors.LocalEntryNotFoundError: Got: ConnectTimeout: [WinError 10060] 由于连接方在一段时间后没有正确答复或连接的主机没有反应，连接尝试失败。
+An error happened while trying to locate the files on the Hub and we cannot find the appropriate snapshot folder for the specified revision on the local disk. Please check your internet connection and try again.
+[2026-05-15 16:06:31] [ERROR] Audio transcription failed for test.wav
+Traceback (most recent call last):
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_transports\default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_transports\default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_sync\connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_sync\connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+        pool_request.request
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_sync\connection.py", line 101, in handle_request
+    raise exc
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_sync\connection.py", line 78, in handle_request
+    stream = self._connect(request)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_sync\connection.py", line 124, in _connect
+    stream = self._network_backend.connect_tcp(**kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_backends\sync.py", line 207, in connect_tcp
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ConnectTimeout: [WinError 10060] 由于连接方在一段时间后没有正确答复或连接的主机没有反应，连接尝试失败。
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\_snapshot_download.py", line 240, in snapshot_download
+    repo_info = api.repo_info(repo_id=repo_id, repo_type=repo_type, revision=revision)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\utils\_validators.py", line 89, in _inner_fn
+    return fn(*args, **kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\hf_api.py", line 3146, in repo_info
+    return method(
+        repo_id,
+    ...<4 lines>...
+        files_metadata=files_metadata,
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\utils\_validators.py", line 89, in _inner_fn
+    return fn(*args, **kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\hf_api.py", line 2939, in model_info
+    r = get_session().get(path, headers=headers, timeout=timeout, params=params)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 1053, in get
+    return self.request(
+           ~~~~~~~~~~~~^
+        "GET",
+        ^^^^^^
+    ...<7 lines>...
+        extensions=extensions,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 825, in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 914, in send
+    response = self._send_handling_auth(
+        request,
+    ...<2 lines>...
+        history=[],
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+        request,
+        follow_redirects=follow_redirects,
+        history=history,
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_transports\default.py", line 249, in handle_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\httpx\_transports\default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectTimeout: [WinError 10060] 由于连接方在一段时间后没有正确答复或连接的主机没有反应，连接尝试失败。
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\贯维\Omni_Pre_Processor\src\opp\extractors\audio.py", line 37, in extract
+    transcription_result = transcriber.transcribe(str(input_path))
+  File "D:\贯维\Omni_Pre_Processor\src\opp\transcriber.py", line 123, in transcribe
+    model_instance = self._get_model()
+  File "D:\贯维\Omni_Pre_Processor\src\opp\transcriber.py", line 89, in _get_model
+    self._model = WhisperModel(
+                  ~~~~~~~~~~~~^
+        self.model_name,
+        ^^^^^^^^^^^^^^^^
+        device=self._device,
+        ^^^^^^^^^^^^^^^^^^^^
+        compute_type=self._compute_type,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\faster_whisper\transcribe.py", line 681, in __init__
+    model_path = download_model(
+        model_size_or_path,
+    ...<3 lines>...
+        use_auth_token=use_auth_token,
+    )
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\faster_whisper\utils.py", line 116, in download_model
+    return huggingface_hub.snapshot_download(repo_id, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\utils\_validators.py", line 89, in _inner_fn
+    return fn(*args, **kwargs)
+  File "C:\Users\RenAnZai\AppData\Local\Programs\Python\Python313\Lib\site-packages\huggingface_hub\_snapshot_download.py", line 324, in snapshot_download
+    raise LocalEntryNotFoundError(
+    ...<4 lines>...
+    ) from api_call_error
+huggingface_hub.errors.LocalEntryNotFoundError: Got: ConnectTimeout: [WinError 10060] 由于连接方在一段时间后没有正确答复或连接的主机没有反应，连接尝试失败。
+An error happened while trying to locate the files on the Hub and we cannot find the appropriate snapshot folder for the specified revision on the local disk. Please check your internet connection and try again.
+[2026-05-15 16:07:07] [WARNING] EPUB parsing failed: 'NoneType' object has no attribute 'get_name'
+[2026-05-15 16:07:07] [WARNING] EPUB parsing failed: 'NoneType' object has no attribute 'get_name'
+[2026-05-15 16:07:07] [WARNING] EPUB parsing failed: 'NoneType' object has no attribute 'get_name'
+[2026-05-15 16:07:07] [WARNING] EPUB parsing failed: 'NoneType' object has no attribute 'get_name'
+[2026-05-15 16:07:07] [WARNING] EPUB parsing failed: 'NoneType' object has no attribute 'get_name'
+[2026-05-15 16:07:10] [WARNING] EPUB parsing failed: 'NoneType' object has no attribute 'get_name'
+[2026-05-15 16:07:11] [WARNING] EPUB parsing failed: 'Bad Zip file'
+[2026-05-15 16:07:11] [WARNING] EPUB parsing failed: 'Can not find container file'
+[2026-05-15 16:07:11] [INFO] HTML提取: 模式=complex
+[2026-05-15 16:07:11] [WARNING] docling不可用，降级到readability
+[2026-05-15 16:07:11] [INFO] HTML提取: 模式=complex
+[2026-05-15 16:07:11] [WARNING] docling不可用，降级到readability
+[2026-05-15 16:07:11] [INFO] HTML提取: 模式=complex
+[2026-05-15 16:07:11] [WARNING] docling不可用，降级到readability
+[2026-05-15 16:07:11] [INFO] HTML提取: 模式=complex
+[2026-05-15 16:07:11] [WARNING] docling不可用，降级到readability
+[2026-05-15 16:07:11] [INFO] HTML提取: 模式=complex
+[2026-05-15 16:07:11] [WARNING] docling不可用，降级到readability
+[2026-05-15 16:07:11] [INFO] HTML提取: 模式=complex
+[2026-05-15 16:07:11] [WARNING] docling不可用，降级到readability
+[2026-05-15 16:07:43] [INFO] HTML提取: 模式=complex
+[2026-05-15 16:07:43] [WARNING] docling不可用，降级到readability
+[2026-05-15 16:07:43] [INFO] HTML提取: 模式=complex
+[2026-05-15 16:07:43] [WARNING] docling不可用，降级到readability
+[2026-05-15 16:07:44] [WARNING] Cannot open image for OCR: cannot identify image file 'C:\\Users\\RenAnZai\\AppData\\Local\\Temp\\pytest-of-RenAnZai\\pytest-9\\test_corrupted_image0\\corrupted.png'
+[2026-05-15 16:08:39] [WARNING] YouTube extraction failed for https://www.youtube.com/watch?v=dQw4w9WgXcQ: HTTPSConnectionPool(host='www.youtube.com', port=443): Max retries exceeded with url: /watch?v=dQw4w9WgXcQ (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x000002C468B44D70>, 'Connection to www.youtube.com timed out. (connect timeout=None)'))

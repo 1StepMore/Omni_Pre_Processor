@@ -1,0 +1,9 @@
+T7 Scenario 3: PPTX with grouped shapes including TITLE
+==================================================
+
+Extracted 1 paragraphs:
+  [0] text='Grouped Title' style='TEXT_BOX' level=None
+Assertion: TITLE inside GROUP level == 1: FAIL
+
+OVERALL: FAIL
+FAIL: TITLE in GROUP level expected 1, got None

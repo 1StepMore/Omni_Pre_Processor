@@ -1,0 +1,10 @@
+T7 Scenario 1: PPTX with TITLE 'Introduction'
+==================================================
+
+Extracted 2 paragraphs:
+  [0] text='Introduction' style='Heading 1' level=1
+  [1] text='Body text content' style='PLACEHOLDER' level=None
+Assertion: level == 1: PASS (got 1)
+Assertion: style contains 'Heading': PASS (got 'Heading 1')
+
+OVERALL: PASS

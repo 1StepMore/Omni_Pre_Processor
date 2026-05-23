@@ -1,0 +1,17 @@
+[2026-05-22 15:07:23] [INFO] Log file: /mnt/d/贯维/Omni_Pre_Processor/logs/opp_20260522_150723_054.log
+[2026-05-22 15:10:05] [WARNING] Audio transcription unavailable - faster-whisper not installed
+[2026-05-22 15:10:05] [WARNING] Audio transcription unavailable - faster-whisper not installed
+[2026-05-22 15:11:53] [WARNING] EPUB parsing failed: 'Bad Zip file'
+[2026-05-22 15:11:53] [WARNING] EPUB parsing failed: 'Can not find container file'
+[2026-05-22 15:11:53] [INFO] HTML提取: 模式=complex
+[2026-05-22 15:11:53] [WARNING] docling不可用，降级到readability
+[2026-05-22 15:11:53] [INFO] HTML提取: 模式=complex
+[2026-05-22 15:11:53] [WARNING] docling不可用，降级到readability
+[2026-05-22 15:11:53] [INFO] HTML提取: 模式=complex
+[2026-05-22 15:11:53] [WARNING] docling不可用，降级到readability
+[2026-05-22 15:11:53] [INFO] HTML提取: 模式=complex
+[2026-05-22 15:11:53] [WARNING] docling不可用，降级到readability
+[2026-05-22 15:11:53] [INFO] HTML提取: 模式=complex
+[2026-05-22 15:11:53] [WARNING] docling不可用，降级到readability
+[2026-05-22 15:11:53] [INFO] HTML提取: 模式=complex
+[2026-05-22 15:11:53] [WARNING] docling不可用，降级到readability

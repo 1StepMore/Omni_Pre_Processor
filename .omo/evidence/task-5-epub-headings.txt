@@ -1,0 +1,15 @@
+T5 Scenario 1: EPUB with h1, h2, body text
+==================================================
+
+Extracted 4 paragraphs:
+  [0] text='Main Title...' style='Heading 1' level=1
+  [1] text='Subheading Level 2...' style='Heading 2' level=2
+  [2] text='First paragraph body text....' style='Normal' level=None
+  [3] text='Second paragraph body text....' style='Normal' level=None
+
+Assertion: paragraphs[0].level == 1: PASS (got 1)
+Assertion: paragraphs[0].style contains 'Heading 1': PASS (got 'Heading 1')
+Assertion: paragraphs[1].level == 2: PASS (got 2)
+Assertion: body paragraphs level is None: PASS
+
+OVERALL: PASS

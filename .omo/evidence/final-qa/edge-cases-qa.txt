@@ -1,0 +1,42 @@
+============================================================
+Edge Cases QA Scenarios
+============================================================
+
+EDGE CASE: Empty file detection
+  File: empty.docx (0 bytes)
+  Detected: docx, confidence=0.5
+  Expected: UNKNOWN (graceful handling)
+  PASSED: False
+
+EDGE CASE: Missing file handling
+  File: /tmp/this_file_definitely_does_not_exist_12345.docx
+  Detected: unknown, confidence=0.0
+  Expected: (UNKNOWN, 0.0)
+  PASSED: True
+
+EDGE CASE: Unknown extension, PDF magic bytes
+  File: no extension, has %PDF-1.4 header
+  Detected: pdf, confidence=1.0
+  Expected: PDF with 1.0 confidence
+  PASSED: True
+
+EDGE CASE: Wrong extension (.txt) with DOCX magic bytes
+  File: test.txt with PK\x03\x04 header
+  Detected: unknown, confidence=0.0
+  Expected: DOCX with 1.0 (magic bytes override extension)
+  PASSED: False
+
+EDGE CASE: Partial magic bytes (only 'PK')
+  File: test.docx with only 'PK' header
+  Detected: docx, confidence=1.0
+  Expected: UNKNOWN (incomplete header)
+  PASSED: False
+
+EDGE CASE: Non-existent file in resource manager
+  Correctly raised FileNotFoundError: 文件不存在: /nonexistent/image.jpg
+  PASSED: True
+
+============================================================
+SUMMARY: 3/6 edge cases passed
+VERDICT: FAIL
+============================================================

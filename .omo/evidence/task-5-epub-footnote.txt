@@ -1,0 +1,9 @@
+T5 Scenario 3: EPUB with footnote
+==================================================
+
+Extracted 2 paragraphs:
+  [0] text='Title with footnote marker [1] [[footnote]]' style='Heading 1' level=1
+  [1] text='Body text with footnote. [1] [[footnote]]' style='Normal' level=None
+Assertion: text contains '[[footnote]]': PASS
+
+OVERALL: PASS

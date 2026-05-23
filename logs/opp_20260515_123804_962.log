@@ -1,0 +1,22 @@
+[2026-05-15 12:38:04] [INFO] Log file: /mnt/d/贯维/Omni_Pre_Processor/logs/opp_20260515_123804_962.log
+[2026-05-15 12:38:11] [WARNING] Audio transcription unavailable - faster-whisper not installed
+[2026-05-15 12:38:11] [WARNING] Audio transcription unavailable - faster-whisper not installed
+[2026-05-15 12:40:06] [WARNING] EPUB parsing failed: 'Bad Zip file'
+[2026-05-15 12:40:07] [WARNING] EPUB parsing failed: 'Can not find container file'
+[2026-05-15 12:40:07] [INFO] HTML提取: 模式=complex
+[2026-05-15 12:40:07] [WARNING] docling不可用，降级到readability
+[2026-05-15 12:40:07] [INFO] HTML提取: 模式=complex
+[2026-05-15 12:40:07] [WARNING] docling不可用，降级到readability
+[2026-05-15 12:40:07] [INFO] HTML提取: 模式=complex
+[2026-05-15 12:40:07] [WARNING] docling不可用，降级到readability
+[2026-05-15 12:40:07] [INFO] HTML提取: 模式=complex
+[2026-05-15 12:40:07] [WARNING] docling不可用，降级到readability
+[2026-05-15 12:40:07] [INFO] HTML提取: 模式=complex
+[2026-05-15 12:40:07] [WARNING] docling不可用，降级到readability
+[2026-05-15 12:40:07] [INFO] HTML提取: 模式=complex
+[2026-05-15 12:40:07] [WARNING] docling不可用，降级到readability
+[2026-05-15 12:40:43] [INFO] HTML提取: 模式=complex
+[2026-05-15 12:40:43] [WARNING] docling不可用，降级到readability
+[2026-05-15 12:40:43] [INFO] HTML提取: 模式=complex
+[2026-05-15 12:40:43] [WARNING] docling不可用，降级到readability
+[2026-05-15 12:40:44] [WARNING] Cannot open image for OCR: cannot identify image file '/tmp/pytest-of-renanzai/pytest-5/test_corrupted_image0/corrupted.png'
