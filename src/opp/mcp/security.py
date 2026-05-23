@@ -66,11 +66,13 @@ class PathValidator:
         self.allowed_directories = [Path(d).resolve() for d in allowed_directories]
         self.max_file_size_bytes = max_file_size_bytes
 
-    def validate_path(self, path: str) -> ValidationResult:
+    def validate_path(self, path: str, allow_missing: bool = False) -> ValidationResult:
         """Validate a file path against security rules.
 
         Args:
             path: The path string to validate.
+            allow_missing: If True, skip the existence check (for output paths).
+                          If False (default), file must exist and be readable.
 
         Returns:
             ValidationResult with success=True if valid, or success=False with error message.
@@ -165,8 +167,9 @@ class PathValidator:
                 error=f"File extension '{input_path.suffix}' is blocked",
             )
 
-        # Check if file exists
         if not resolved.exists():
+            if allow_missing:
+                return ValidationResult(success=True, resolved_path=resolved)
             return ValidationResult(
                 success=False,
                 error="File does not exist",

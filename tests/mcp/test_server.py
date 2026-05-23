@@ -327,8 +327,8 @@ class TestGenerateXliffTool:
 
         if result["success"]:
             assert result["units_count"] >= 0
-            target_count = result["xliff_content"].count("<target>")
-            assert result["units_count"] == target_count
+            trans_unit_count = result["xliff_content"].count("<trans-unit")
+            assert result["units_count"] == trans_unit_count
 
     @pytest.mark.asyncio
     async def test_generate_xliff_output_path_validation(self, setup_server):

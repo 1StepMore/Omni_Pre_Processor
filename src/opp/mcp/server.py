@@ -43,6 +43,9 @@ async def extract_document(
     if output_formats is None:
         output_formats = ["md"]
 
+    if isinstance(output_formats, str):
+        output_formats = [output_formats]
+
     valid_formats = {"md", "xlf", "both"}
     for fmt in output_formats:
         if fmt not in valid_formats:
@@ -114,7 +117,7 @@ async def extract_document(
                     with open(xliff_output_path, "r", encoding="utf-8") as f:
                         xliff_content = f.read()
                     response["xliff_content"] = xliff_content
-                    response["xliff_units_count"] = xliff_content.count("<target>") if xliff_content else 0
+                    response["xliff_units_count"] = xliff_content.count("<trans-unit") if xliff_content else 0
                     xliff_output_path.unlink()
             except ValueError as e:
                 response["success"] = False
@@ -134,6 +137,9 @@ async def batch_extract(
 ) -> dict:
     if output_formats is None:
         output_formats = ["md"]
+
+    if isinstance(output_formats, str):
+        output_formats = [output_formats]
 
     valid_formats = {"md", "xlf", "both"}
     for fmt in output_formats:
@@ -203,7 +209,7 @@ async def batch_extract(
                             with open(xliff_output_path, "r", encoding="utf-8") as f:
                                 xliff_content = f.read()
                             serialized["xliff_content"] = xliff_content
-                            serialized["xliff_units_count"] = xliff_content.count("<target>") if xliff_content else 0
+                            serialized["xliff_units_count"] = xliff_content.count("<trans-unit") if xliff_content else 0
                             xliff_output_path.unlink()
                     except ValueError as e:
                         serialized["success"] = False
@@ -287,7 +293,7 @@ async def generate_xliff(
         input_p = Path(file_path)
         output_path = str(input_p.with_stem(f"{input_p.stem}_generated").with_suffix(".xlf"))
 
-    output_validation = _validator.validate_path(output_path)
+    output_validation = _validator.validate_path(output_path, allow_missing=True)
     if not output_validation.success:
         return {
             "success": False,
@@ -313,7 +319,7 @@ async def generate_xliff(
         with open(xliff_output_path, "r", encoding="utf-8") as f:
             xliff_content = f.read()
 
-        units_count = xliff_content.count("<target>") if xliff_content else 0
+        units_count = xliff_content.count("<trans-unit") if xliff_content else 0
 
         return {
             "success": True,
@@ -363,7 +369,7 @@ async def generate_markdown(
     if output_path is None:
         output_path = str(input_p.with_stem(f"{input_p.stem}_generated").with_suffix(".md"))
     else:
-        output_validation = _validator.validate_path(output_path)
+output_validation = _validator.validate_path(output_path, allow_missing=True)
         if not output_validation.success:
             return {
                 "success": False,
