@@ -1,9 +1,0 @@
-From: sender@example.com
-To: recipient@example.com
-Subject: Plain Text Email
-Date: Mon, 11 May 2026 21:54:47 -0000
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-MIME-Version: 1.0
-
-This is plain text body.

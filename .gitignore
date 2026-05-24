@@ -24,3 +24,15 @@ OPP增补完整版.md
 增补.txt
 *.md.txt
 DD\ Vibe.txt
+
+# Batch test files - never commit
+batch_files/
+batch_files_converted/
+batch_test/
+
+# Individual problem files
+OPP-改进计划-Manifest+Skeleton.md
+SSID-*.pdf
+
+# Logs
+logs/
