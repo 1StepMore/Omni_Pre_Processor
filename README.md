@@ -228,6 +228,58 @@ Test files available in `batch_test/` covering all formats.
 opp --target-format=both --source-lang=en --target-lang=zh --output-dir=output batch_test/
 ```
 
+## Pipeline — Omni Localization Suite
+
+OPP is **Step 1** of the Omni Localization Suite pipeline:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                     OMNI LOCALIZATION SUITE                             │
+│                                                                        │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐               │
+│  │     OPP     │───▶│     OL      │───▶│     ORF      │               │
+│  │  (提取)     │    │   (翻译)    │    │   (回写)    │               │
+│  └─────────────┘    └─────────────┘    └─────────────┘               │
+│                                                                        │
+│  Step 1: OPP        Step 2: OL            Step 3: ORF                  │
+│  Extract →          Translate →           Backfill →                  │
+│  MD + XLIFF +       MD + XLIFF            DOCX/PPTX                   │
+│  skeleton.zip                                                    │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### Complete Workflow
+
+```bash
+# Step 1: OPP - Extract document to MD/XLIFF + skeleton.zip
+opp --target-format=both --source-lang=en --target-lang=zh document.docx
+# Output: document.md, document.xlf, document_manifest.json, document.skeleton.zip
+
+# Step 2: OL - Translate to target language
+ol translate-md document.md -s en -t zh -o translated/
+
+# Step 3: ORF - Backfill translated content to target format
+orf apply-xliff document.docx --xliff translated/document.xlf --output result.docx
+```
+
+## Related Projects
+
+- [OL (Omni-Localizer)](https://github.com/1StepMore/Omni_Localizer) - **NEXT STEP** after OPP. Translates MD/XLIFF produced by OPP.
+- [ORF (Omni-Re-Formatter)](https://github.com/1StepMore/Omni_Re_Formatter) - Backfills translated content to DOCX/PPTX/EPUB.
+
+## For AI Agents
+
+OPP outputs standardized artifacts for downstream processing:
+
+| Artifact | Description | Used By |
+|----------|-------------|---------|
+| `{name}.md` | Markdown with YAML frontmatter (`source_lang`, `target_lang`) | OL (translate-md) |
+| `{name}.xlf` | XLIFF 1.2/2.0 with `<bx>`/`<ex>` inline tags | OL (translate-xliff) |
+| `{name}_manifest.json` | Metadata: source info, output paths, resources | ORF (manifest parser) |
+| `{name}.skeleton.zip` | Original DOCX/PPTX ZIP structure | ORF (XLIFF→DOCX backfill) |
+
+**MCP Tools Available:** `extract_document`, `batch_extract`, `detect_format`, `generate_markdown`, `generate_xliff`
+
 ## MCP Server (Agent-Facing)
 
 The OPP MCP server provides document extraction capabilities to AI agents via the Model Context Protocol. AI assistants can use these tools to process documents without needing to understand OPP's internal architecture.
