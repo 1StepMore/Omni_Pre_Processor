@@ -8,6 +8,7 @@ class DocumentMetadata:
     page_count: Optional[int] = None
     file_size: Optional[int] = None
     format_type: Optional[str] = None
+    source_md5: Optional[str] = None
     # Email-specific fields
     subject: Optional[str] = None
     sender: Optional[str] = None
@@ -34,6 +35,8 @@ class ParagraphData:
     text: str
     style: Optional[str] = None
     level: Optional[int] = None
+    chapter: Optional[str] = None
+    page: Optional[int] = None
     runs: List[RunData] = field(default_factory=list)
 
 

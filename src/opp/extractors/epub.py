@@ -127,12 +127,19 @@ class EPUBExtractor(ExtractorBase):
             if isinstance(content, bytes):
                 content = content.decode("utf-8", errors="ignore")
 
-            chapter_paragraphs = self._parse_html_elements(content)
+            # Extract chapter name from item title or name, fallback to item_id
+            chapter_name = item.get_title() if hasattr(item, 'get_title') and item.get_title() else None
+            if not chapter_name:
+                chapter_name = item.get_name() if hasattr(item, 'get_name') and item.get_name() else None
+            if not chapter_name:
+                chapter_name = item_id
+
+            chapter_paragraphs = self._parse_html_elements(content, chapter=chapter_name)
             paragraphs.extend(chapter_paragraphs)
 
         return paragraphs
 
-    def _parse_html_elements(self, html_content: str) -> List[ParagraphData]:
+    def _parse_html_elements(self, html_content: str, chapter: Optional[str] = None) -> List[ParagraphData]:
         """Parse HTML and extract text elements as separate ParagraphData objects."""
         if not html_content:
             return []
@@ -163,6 +170,7 @@ class EPUBExtractor(ExtractorBase):
                             text=plain_text,
                             style=f"Heading {level}",
                             level=level,
+                            chapter=chapter,
                             runs=runs,
                         ))
                     else:
@@ -170,6 +178,7 @@ class EPUBExtractor(ExtractorBase):
                             text=plain_text,
                             style="Normal",
                             level=None,
+                            chapter=chapter,
                             runs=runs,
                         ))
 

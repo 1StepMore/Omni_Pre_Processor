@@ -81,9 +81,9 @@ class PDFExtractor(ExtractorBase):
             for b in text_blocks:
                 level = self._detect_heading_level(b.text)
                 if level:
-                    paragraphs.append(ParagraphData(text=b.text, style=f"Heading {level}", level=level))
+                    paragraphs.append(ParagraphData(text=b.text, style=f"Heading {level}", level=level, page=b.page))
                 else:
-                    paragraphs.append(ParagraphData(text=b.text, style=None, level=None))
+                    paragraphs.append(ParagraphData(text=b.text, style=None, level=None, page=b.page))
 
             # Merge TOC entries with body paragraphs (dedupe by text+level)
             toc_paragraphs = self._extract_toc_from_doc(doc)
@@ -93,6 +93,9 @@ class PDFExtractor(ExtractorBase):
                 if (p.text.strip(), p.level) not in existing_texts:
                     merged.append(p)
             paragraphs = merged
+
+            # Build chapter-paragraph map based on page numbers
+            paragraphs = self._build_chapter_paragraph_map(toc_paragraphs, paragraphs)
 
             metadata = replace(metadata, page_count=doc.page_count)
         finally:
@@ -223,9 +226,41 @@ class PDFExtractor(ExtractorBase):
                 text=toc_entry[1],
                 style=f"Heading {toc_entry[0]}",
                 level=toc_entry[0],
+                page=toc_entry[2] if len(toc_entry) > 2 else None,
             )
             for toc_entry in toc_entries
         ]
+
+    def _build_chapter_paragraph_map(self, toc_entries: List[ParagraphData], paragraphs: List[ParagraphData]) -> List[ParagraphData]:
+        """Map each paragraph to a chapter based on page number from TOC entries.
+        
+        TOC entries from fitz doc.get_toc() return [level, title, page, ...] where page is index 2.
+        This method sorts TOC entries by page number and assigns chapters to paragraphs.
+        """
+        # Filter TOC entries that have page info and are level 1 (chapters)
+        chapter_entries = [t for t in toc_entries if t.page is not None and t.level == 1]
+        if not chapter_entries:
+            return paragraphs
+        
+        # Sort by page number
+        chapter_entries.sort(key=lambda x: x.page)
+        
+        result = []
+        for p in paragraphs:
+            if p.page is None:
+                # Paragraph without page info gets None chapter
+                result.append(replace(p, chapter=None))
+            else:
+                # Find the chapter this paragraph belongs to
+                chapter = None
+                for i, ch in enumerate(chapter_entries):
+                    if p.page < ch.page:
+                        # Paragraph is before this chapter
+                        break
+                    chapter = ch.text
+                result.append(replace(p, chapter=chapter))
+        
+        return result
 
     def extract_toc(self, input_path: Path) -> List[ParagraphData]:
         try:
@@ -245,6 +280,7 @@ class PDFExtractor(ExtractorBase):
                 text=toc_entry[1],
                 style=f"Heading {toc_entry[0]}",
                 level=toc_entry[0],
+                page=toc_entry[2] if len(toc_entry) > 2 else None,
             )
             for toc_entry in toc_entries
         ]

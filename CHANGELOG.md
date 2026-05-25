@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-05-25
+
+### Added
+- **Chapter-aware metadata** — ParagraphData now carries `chapter` field for EPUB spine order and PDF page-based chapter mapping
+  - `ParagraphData.chapter: Optional[str]` — chapter name from EPUB spine item title or PDF TOC
+  - `ParagraphData.page: Optional[int]` — page number for PDF paragraph-to-chapter mapping
+  - `DocumentMetadata.source_md5: Optional[str]` — source file MD5 for cache invalidation
+  - `EPUBExtractor._extract_chapters()` — fills chapter field from spine item title/name
+  - `PDFExtractor._build_chapter_paragraph_map()` — maps paragraphs to chapters by page number
+
+- **Chunk structure definition** — Standardized chunk metadata interface for Pipeline/OLL
+  - `src/opp/chunker.py` — `Chunk` and `ChunkedResult` dataclasses
+  - `ChunkMetaBuilder.build()` — groups paragraphs by chapter, computes character offsets
+  - No splitting logic — OPP defines structure only, Pipeline/OLL decides boundaries
+  - `tests/test_chunker.py` — 5 test cases for ChunkMetaBuilder
+
+### Changed
+- **Core principle**: OPP only defines structure ("是什么"), never makes splitting decisions ("怎么做")
+
 ## [0.3.0] - 2026-05-23
 
 ### Added
