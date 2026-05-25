@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.4.0] - 2026-05-25
 
+### Fixed
+- **MCP `extract_document`**: `_serialize_paragraph()` now includes `chapter` and `page` fields from `ParagraphData`; previously these were silently dropped and agents could not determine paragraph origin
+- **MarkdownGenerator**: Emit `<!-- chapter: {chapter} -->` HTML comment before headings that have a `chapter` value, enabling chapter-aware downstream processing
+
 ### Added
 - **Chapter-aware metadata** — ParagraphData now carries `chapter` field for EPUB spine order and PDF page-based chapter mapping
   - `ParagraphData.chapter: Optional[str]` — chapter name from EPUB spine item title or PDF TOC

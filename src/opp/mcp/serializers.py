@@ -23,6 +23,8 @@ def _serialize_paragraph(paragraph: ParagraphData) -> Dict[str, Any]:
         "text": paragraph.text,
         "style": paragraph.style,
         "level": paragraph.level,
+        "chapter": paragraph.chapter,
+        "page": paragraph.page,
     }
 
 

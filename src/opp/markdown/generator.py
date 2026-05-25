@@ -27,6 +27,8 @@ class MarkdownGenerator:
 
             if is_heading:
                 flush_list()
+                if para.chapter:
+                    output_lines.append(f"<!-- chapter: {para.chapter} -->")
                 heading = "#" * min(level or 1, 6) + " " + para.text
                 output_lines.append(heading)
             elif is_number or is_bullet:
