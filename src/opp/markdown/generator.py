@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from opp.utils.dataclasses import ExtractionResult, ParagraphData, TableData, ImageData
 
@@ -53,12 +53,23 @@ class MarkdownGenerator:
             output_lines.append("")
             output_lines.append(tables)
 
+        if result.images:
+            output_lines.append(self._generate_images_section(result.images, output_path=None))
+
         return "\n".join(output_lines)
 
     def generate_to_file(self, result: ExtractionResult, output_path: Path, _attachment_results=None) -> None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         content = self.generate(result)
         output_path.write_text(content, encoding="utf-8")
+
+        if result.images:
+            images_dir = output_path.parent / f"{output_path.stem}_images"
+            images_dir.mkdir(parents=True, exist_ok=True)
+            for i, img in enumerate(result.images):
+                ext = self._mime_to_ext(img.mime_type)
+                img_path = images_dir / f"{output_path.stem}_image_{i+1}.{ext}"
+                img_path.write_bytes(img.data)
 
     def generate_headings(self, paragraphs: List[ParagraphData], style_mapping=None) -> str:
         result_lines = []
@@ -156,3 +167,38 @@ class MarkdownGenerator:
 
     def _escape_table_cell(self, cell: str) -> str:
         return cell.replace('|', '\\|').replace('\n', ' ')
+
+    def _generate_images_section(
+        self,
+        images: List[ImageData],
+        output_path: Optional[Path] = None,
+    ) -> str:
+        lines = ["", "## Images", ""]
+        for i, img in enumerate(images):
+            if output_path is not None:
+                images_dir = output_path.parent / f"{output_path.stem}_images"
+                images_dir.mkdir(parents=True, exist_ok=True)
+                ext = self._mime_to_ext(img.mime_type)
+                img_path = images_dir / f"{output_path.stem}_image_{i+1}.{ext}"
+                img_path.write_bytes(img.data)
+                rel_path = f"{output_path.stem}_images/{img_path.name}"
+                lines.append(f"![Image {i+1}]({rel_path})")
+            else:
+                import base64
+                ext = self._mime_to_ext(img.mime_type)
+                data_uri = f"data:{img.mime_type};base64,{base64.b64encode(img.data).decode('utf-8')}"
+                lines.append(f"![Image {i+1}]({data_uri})")
+        return '\n'.join(lines)
+
+    def _mime_to_ext(self, mime_type: str) -> str:
+        mime_map = {
+            "image/png": "png",
+            "image/jpeg": "jpg",
+            "image/jpg": "jpg",
+            "image/gif": "gif",
+            "image/webp": "webp",
+            "image/bmp": "bmp",
+            "image/tiff": "tiff",
+            "image/svg+xml": "svg",
+        }
+        return mime_map.get(mime_type, "bin")

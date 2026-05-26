@@ -44,6 +44,9 @@ class MarkdownGenerator:
                 table = content
                 parts.append(self._format_single_table(table))
 
+        if result.images:
+            parts.append(self._generate_images_section(result.images, output_path=None))
+
         if attachment_results:
             parts.append(self._generate_attachments_section(attachment_results))
 
@@ -60,9 +63,10 @@ class MarkdownGenerator:
 
         if result.images:
             images_dir = output_path.parent / f"{output_path.stem}_images"
-            images_dir.mkdir(exist_ok=True)
+            images_dir.mkdir(parents=True, exist_ok=True)
             for i, img in enumerate(result.images):
-                img_path = images_dir / f"{output_path.stem}_image_{i+1}.png"
+                ext = self._mime_to_ext(img.mime_type)
+                img_path = images_dir / f"{output_path.stem}_image_{i+1}.{ext}"
                 img_path.write_bytes(img.data)
 
     def generate_headings(self, paragraphs: List[ParagraphData]) -> str:
@@ -160,3 +164,39 @@ class MarkdownGenerator:
                 lines.append(att_result.content)
                 lines.append("")
         return '\n'.join(lines)
+
+    def _generate_images_section(
+        self,
+        images: List[ImageData],
+        output_path: Optional[Path] = None,
+    ) -> str:
+        """Generate an images section. Uses relative paths if output_path given, else data URIs."""
+        lines = ["", "## Images", ""]
+        for i, img in enumerate(images):
+            if output_path is not None:
+                images_dir = output_path.parent / f"{output_path.stem}_images"
+                images_dir.mkdir(parents=True, exist_ok=True)
+                ext = self._mime_to_ext(img.mime_type)
+                img_path = images_dir / f"{output_path.stem}_image_{i+1}.{ext}"
+                img_path.write_bytes(img.data)
+                rel_path = f"{output_path.stem}_images/{img_path.name}"
+                lines.append(f"![Image {i+1}]({rel_path})")
+            else:
+                import base64
+                ext = self._mime_to_ext(img.mime_type)
+                data_uri = f"data:{img.mime_type};base64,{base64.b64encode(img.data).decode('utf-8')}"
+                lines.append(f"![Image {i+1}]({data_uri})")
+        return '\n'.join(lines)
+
+    def _mime_to_ext(self, mime_type: str) -> str:
+        mime_map = {
+            "image/png": "png",
+            "image/jpeg": "jpg",
+            "image/jpg": "jpg",
+            "image/gif": "gif",
+            "image/webp": "webp",
+            "image/bmp": "bmp",
+            "image/tiff": "tiff",
+            "image/svg+xml": "svg",
+        }
+        return mime_map.get(mime_type, "bin")

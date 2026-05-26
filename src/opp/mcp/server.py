@@ -105,6 +105,9 @@ async def extract_document(
                     with open(md_output_path, "r", encoding="utf-8") as f:
                         response["md_content"] = f.read()
                     md_output_path.unlink()
+                images_dir = md_output_path.parent / f"{md_output_path.stem}_images"
+                if images_dir.exists():
+                    response["images_dir"] = str(images_dir)
             except Exception as e:
                 response["warnings"] = response.get("warnings", []) + [f"Markdown generation failed: {str(e)}"]
 
@@ -197,6 +200,9 @@ async def batch_extract(
                             with open(md_output_path, "r", encoding="utf-8") as f:
                                 serialized["md_content"] = f.read()
                             md_output_path.unlink()
+                        images_dir = md_output_path.parent / f"{md_output_path.stem}_images"
+                        if images_dir.exists():
+                            serialized["images_dir"] = str(images_dir)
                     except Exception as e:
                         serialized["warnings"] = serialized.get("warnings", []) + [f"Markdown generation failed: {str(e)}"]
 
@@ -396,11 +402,13 @@ async def generate_markdown(
             markdown_content = f.read()
 
         images_count = markdown_content.count("![]")
+        images_dir = str(Path(output_path).with_suffix("") / f"{Path(output_path).stem}_images")
 
         return {
             "success": True,
             "markdown_content": markdown_content,
             "output_path": str(md_output_path),
+            "images_dir": images_dir,
             "images_count": images_count,
         }
 
@@ -410,6 +418,7 @@ async def generate_markdown(
             "error": f"Markdown generation failed: {str(e)}",
             "markdown_content": None,
             "output_path": None,
+            "images_dir": None,
             "images_count": 0,
         }
 

@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-05-26
+
+### Fixed
+- **MarkdownGenerator image injection**: `generate()` now emits `![Image N](data:mime;base64,...)` data URI references for all images in `ExtractionResult.images`, making markdown self-contained for MCP transport
+- **MCP image metadata**: `generate_markdown`, `extract_document`, and `batch_extract` tools now return `images_dir` field pointing to the `{stem}_images/` directory for downstream ORF tooling
+- **Image file extension**: `generate_to_file()` now uses correct mime-type-derived extension instead of hardcoded `.png`
+
 ## [0.4.1] - 2026-05-26
 
 ### Fixed
