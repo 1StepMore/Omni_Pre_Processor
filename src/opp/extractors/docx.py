@@ -167,10 +167,9 @@ class DOCXExtractor(ExtractorBase):
     ) -> List[ImageData]:
         """Extract inline w:drawing images from word/document.xml.
 
-        Args:
-            doc: python-docx Document object for rel lookups
-            input_path: Path to the DOCX file
-            paragraph_index_map: dict mapping id(w:p element) -> paragraph index
+        Uses iterparse to walk paragraphs in document order, counting
+        non-empty w:p elements. This avoids the id() mismatch between
+        python-docx CT_P objects and lxml elements from a separate parse.
         """
         result: List[ImageData] = []
         try:
@@ -181,16 +180,27 @@ class DOCXExtractor(ExtractorBase):
         except zipfile.BadZipFile:
             return result
 
+        W_NS = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
+        A_NS = '{http://schemas.openxmlformats.org/drawingml/2006/main}'
+        T_NS = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
+        R_NS = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'
+
+        para_count = 0
+        pending_drawings: List[tuple] = []
+
         try:
-            tree = etree.fromstring(document_xml)
+            from io import BytesIO
+            for event, elem in etree.iterparse(BytesIO(document_xml), events=('end',)):
+                if elem.tag == f'{W_NS}p':
+                    text = ''.join(t.text or '' for t in elem.iter(f'{T_NS}t'))
+                    if text.strip():
+                        para_count += 1
+                elif elem.tag == f'{W_NS}drawing':
+                    pending_drawings.append((para_count, elem))
         except etree.XMLSyntaxError:
             return result
 
-        W_NS = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
-        A_NS = '{http://schemas.openxmlformats.org/drawingml/2006/main}'
-        R_NS = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'
-
-        for drawing in tree.iter(f'{W_NS}drawing'):
+        for drawing_para_index, drawing in pending_drawings:
             for blip in drawing.iter(f'{A_NS}blip'):
                 embed_attr = blip.get(f'{R_NS}embed')
                 if not embed_attr:
@@ -199,19 +209,10 @@ class DOCXExtractor(ExtractorBase):
                     rel = doc.part.rels.get(embed_attr)
                     if rel and "image" in rel.target_ref:
                         image_part = rel.target_part
-                        image_bytes = image_part.blob
-                        content_type = image_part.content_type
-                        para_index = None
-                        parent = drawing.getparent()
-                        while parent is not None:
-                            if parent.tag == f'{W_NS}p':
-                                para_index = paragraph_index_map.get(id(parent))
-                                break
-                            parent = parent.getparent()
                         result.append(ImageData(
-                            data=image_bytes,
-                            mime_type=content_type,
-                            paragraph_index=para_index,
+                            data=image_part.blob,
+                            mime_type=image_part.content_type,
+                            paragraph_index=drawing_para_index,
                         ))
                 except Exception as e:
                     logger.warning(f"Failed to extract inline drawing image: {e}")
