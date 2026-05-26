@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.3] - 2026-05-26
+
+### Fixed
+- **Image paragraph positioning**: Added `ImageData.paragraph_index` field; `_extract_inline_drawings()` now uses lxml parent axis to track which `result.paragraphs` index each image belongs to, and `MarkdownGenerator.generate()` interleaves images immediately after their host paragraphs instead of dumping all images at a separate `## Images` section
+
 ## [0.4.2] - 2026-05-26
 
 ### Fixed

@@ -54,6 +54,7 @@ class ImageData:
     mime_type: str
     width: Optional[int] = None
     height: Optional[int] = None
+    paragraph_index: Optional[int] = None  # Index into result.paragraphs where this image appears
 
 
 @dataclass

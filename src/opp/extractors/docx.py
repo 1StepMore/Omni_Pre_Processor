@@ -55,7 +55,8 @@ class DOCXExtractor(ExtractorBase):
 
         paragraphs = self.extract_paragraphs(doc)
         tables = self.extract_tables(doc)
-        images = self.extract_images(doc, input_path)
+        para_index_map = self._build_paragraph_index_map(doc)
+        images = self.extract_images(doc, input_path, para_index_map)
 
         skeleton_bytes: Optional[bytes] = None
         skeleton_files: Optional[List[str]] = None
@@ -158,11 +159,18 @@ class DOCXExtractor(ExtractorBase):
             position += 1
         return result
 
-    def _extract_inline_drawings(self, doc: DocxDocument, input_path: Path) -> List[ImageData]:
+    def _extract_inline_drawings(
+        self,
+        doc: DocxDocument,
+        input_path: Path,
+        paragraph_index_map: dict,
+    ) -> List[ImageData]:
         """Extract inline w:drawing images from word/document.xml.
 
-        These are images embedded directly in paragraph XML via wp:inline or wp:anchor
-        elements containing a:blip references to image relationships.
+        Args:
+            doc: python-docx Document object for rel lookups
+            input_path: Path to the DOCX file
+            paragraph_index_map: dict mapping id(w:p element) -> paragraph index
         """
         result: List[ImageData] = []
         try:
@@ -178,31 +186,32 @@ class DOCXExtractor(ExtractorBase):
         except etree.XMLSyntaxError:
             return result
 
-        # Namespace map for OOXML
-        nsmap = {
-            'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
-            'a': 'http://schemas.openxmlformats.org/drawingml/2006/main',
-            'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
-            'wp': 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing',
-        }
+        W_NS = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
+        A_NS = '{http://schemas.openxmlformats.org/drawingml/2006/main}'
+        R_NS = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'
 
-        # Find all w:drawing elements
-        for drawing in tree.iter('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing'):
-            # Find a:blip elements within the drawing
-            for blip in drawing.iter('{http://schemas.openxmlformats.org/drawingml/2006/main}blip'):
-                embed_attr = blip.get('{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed')
+        for drawing in tree.iter(f'{W_NS}drawing'):
+            for blip in drawing.iter(f'{A_NS}blip'):
+                embed_attr = blip.get(f'{R_NS}embed')
                 if not embed_attr:
                     continue
-                # Look up the relationship
                 try:
                     rel = doc.part.rels.get(embed_attr)
                     if rel and "image" in rel.target_ref:
                         image_part = rel.target_part
                         image_bytes = image_part.blob
                         content_type = image_part.content_type
+                        para_index = None
+                        parent = drawing.getparent()
+                        while parent is not None:
+                            if parent.tag == f'{W_NS}p':
+                                para_index = paragraph_index_map.get(id(parent))
+                                break
+                            parent = parent.getparent()
                         result.append(ImageData(
                             data=image_bytes,
                             mime_type=content_type,
+                            paragraph_index=para_index,
                         ))
                 except Exception as e:
                     logger.warning(f"Failed to extract inline drawing image: {e}")
@@ -222,7 +231,30 @@ class DOCXExtractor(ExtractorBase):
 
         return TableData(headers=headers, rows=rows, position=position)
 
-    def extract_images(self, doc: DocxDocument, input_path: Optional[Path] = None) -> List[ImageData]:
+    def _build_paragraph_index_map(self, doc: DocxDocument) -> dict:
+        """Build a mapping from w:p element to paragraph index (0-based).
+
+        Uses body.index() on the underlying lxml element so the index is
+        stable across separate lxml parses (unlike id() which changes).
+        """
+        body = doc.element.body
+        para_index_map = {}
+        pos = 0
+        for para in doc.paragraphs:
+            if para.text.strip():
+                try:
+                    para_index_map[id(para._element)] = body.index(para._element)
+                except ValueError:
+                    para_index_map[id(para._element)] = pos
+                pos += 1
+        return para_index_map
+
+    def extract_images(
+        self,
+        doc: DocxDocument,
+        input_path: Optional[Path] = None,
+        para_index_map: Optional[dict] = None,
+    ) -> List[ImageData]:
         result: List[ImageData] = []
         for rel in doc.part.rels.values():
             if "image" in rel.target_ref:
@@ -237,8 +269,8 @@ class DOCXExtractor(ExtractorBase):
                 except Exception as e:
                     logger.warning(f"Failed to extract image from DOCX: {e}")
 
-        if input_path:
-            inline_images = self._extract_inline_drawings(doc, input_path)
+        if input_path and para_index_map is not None:
+            inline_images = self._extract_inline_drawings(doc, input_path, para_index_map)
             result.extend(inline_images)
 
         return result

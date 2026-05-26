@@ -1,3 +1,4 @@
+from collections import defaultdict
 from pathlib import Path
 from typing import List, Optional
 
@@ -9,6 +10,12 @@ class MarkdownGenerator:
         output_lines = []
         list_buffer: List[str] = []
         list_type = None
+
+        para_images: dict = defaultdict(list)
+        for img in result.images:
+            if img.paragraph_index is not None:
+                img._seq = len(para_images[img.paragraph_index]) + 1
+                para_images[img.paragraph_index].append(img)
 
         def flush_list():
             nonlocal list_type
@@ -47,14 +54,21 @@ class MarkdownGenerator:
                 if para.text:
                     output_lines.append(para.text)
 
+            for img in para_images.get(para.position, []):
+                import base64
+                ext = self._mime_to_ext(img.mime_type)
+                data_uri = f"data:{img.mime_type};base64,{base64.b64encode(img.data).decode('utf-8')}"
+                output_lines.append(f"![Image {img._seq}]({data_uri})")
+
         flush_list()
         tables = self.generate_tables_md(result.tables)
         if tables:
             output_lines.append("")
             output_lines.append(tables)
 
-        if result.images:
-            output_lines.append(self._generate_images_section(result.images, output_path=None))
+        orphaned = [img for img in result.images if img.paragraph_index is None]
+        if orphaned:
+            output_lines.append(self._generate_images_section(orphaned, output_path=None))
 
         return "\n".join(output_lines)
 
