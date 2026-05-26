@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Optional, TYPE_CHECKING
+from typing import List, Optional, Tuple, TYPE_CHECKING
 
 from opp.utils.dataclasses import ExtractionResult, ParagraphData, TableData, ImageData
 
@@ -11,21 +11,38 @@ class MarkdownGenerator:
     def generate(self, result: ExtractionResult, attachment_results: Optional[List["ProcessingResult"]] = None) -> str:
         parts = []
 
-        headings_paragraphs = [p for p in result.paragraphs if p.level is not None and p.level >= 1]
-        if headings_paragraphs:
-            parts.append(self.generate_headings(headings_paragraphs))
+        content_stream: List[Tuple[int, str, object]] = []
 
-        list_paragraphs = [p for p in result.paragraphs if p.style and ("List" in p.style or "Number" in p.style)]
-        if list_paragraphs:
-            parts.append(self.generate_lists(list_paragraphs))
+        for para in result.paragraphs:
+            content_stream.append((para.position, 'paragraph', para))
 
-        plain_paragraphs = [p for p in result.paragraphs if p.level is None or p.level < 1]
-        plain_paragraphs = [p for p in plain_paragraphs if not (p.style and ("List" in p.style or "Number" in p.style))]
-        for para in plain_paragraphs:
-            parts.append(para.text)
+        for table in result.tables:
+            content_stream.append((table.position, 'table', table))
 
-        if result.tables:
-            parts.append(self.generate_tables_md(result.tables))
+        content_stream.sort(key=lambda x: x[0])
+
+        for pos, content_type, content in content_stream:
+            if content_type == 'paragraph':
+                para = content
+                if para.level is not None and para.level >= 1:
+                    level = para.level
+                    if level > 6:
+                        level = 6
+                    parts.append('#' * level + ' ' + para.text)
+                elif para.style and ("List" in para.style or "Number" in para.style):
+                    style = para.style or ""
+                    if "Number" in style:
+                        marker = "- "
+                    else:
+                        marker = "- "
+                    level = para.level if para.level is not None else 1
+                    indent = "  " * max(0, level - 1)
+                    parts.append(f"{indent}{marker}{para.text}")
+                else:
+                    parts.append(para.text)
+            elif content_type == 'table':
+                table = content
+                parts.append(self._format_single_table(table))
 
         if attachment_results:
             parts.append(self._generate_attachments_section(attachment_results))
@@ -112,6 +129,25 @@ class MarkdownGenerator:
 
     def _escape_table_cell(self, cell: str) -> str:
         return cell.replace('|', '\\|').replace('\n', ' ')
+
+    def _format_single_table(self, table: TableData) -> str:
+        num_cols = len(table.headers)
+        if num_cols > 10:
+            return "<!-- table exceeds 10 columns -->"
+
+        lines = []
+        header_cells = [self._escape_table_cell(h) for h in table.headers]
+        lines.append("| " + " | ".join(header_cells) + " |")
+
+        sep_cells = ["---"] * num_cols
+        lines.append("| " + " | ".join(sep_cells) + " |")
+
+        for row in table.rows:
+            cells = [self._escape_table_cell(c) for c in row]
+            lines.append("| " + " | ".join(cells) + " |")
+
+        lines.append("")
+        return '\n'.join(lines)
 
     def _generate_attachments_section(self, attachment_results: List["ProcessingResult"]) -> str:
         if not attachment_results:

@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-05-26
+
+### Fixed
+- **DOCX image extraction**: `extract_images()` now parses `word/document.xml` via zipfile+lxml to extract inline `w:drawing` elements (previously only used `doc.part.rels`); 72 images extracted from test docx (was 0)
+- **Chinese-numbered heading detection**: Added heuristic regex patterns to detect Chinese section markers (`一、`、`二、`、`三、` etc.) and assign proper markdown heading levels (`##` for section headings, `###` for subsections)
+- **Table position interleaving**: Added `position` field to `TableData` and `ParagraphData` dataclasses; `MarkdownGenerator.generate()` now merges tables with paragraphs by source position instead of appending all tables at end
+
 ## [0.4.0] - 2026-05-25
 
 ### Fixed

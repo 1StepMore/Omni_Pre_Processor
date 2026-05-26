@@ -38,12 +38,14 @@ class ParagraphData:
     chapter: Optional[str] = None
     page: Optional[int] = None
     runs: List[RunData] = field(default_factory=list)
+    position: int = 0  # Block position for ordering interleaved output
 
 
 @dataclass
 class TableData:
     headers: List[str]
     rows: List[List[str]]
+    position: int = 0  # Table index for ordering interleaved output
 
 
 @dataclass
