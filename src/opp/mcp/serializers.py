@@ -44,6 +44,7 @@ def _serialize_image(
         "mime_type": image.mime_type,
         "width": image.width,
         "height": image.height,
+        "paragraph_index": image.paragraph_index,
     }
     if include_base64 and image.data:
         img_dict["data"] = base64.b64encode(image.data).decode("utf-8")
