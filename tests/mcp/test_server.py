@@ -399,9 +399,7 @@ class TestServerInitialization:
 
         import asyncio
         try:
-            result = asyncio.get_event_loop().run_until_complete(
-                server.extract_document("/nonexistent/path.docx")
-            )
+            result = asyncio.run(server.extract_document("/nonexistent/path.docx"))
             assert isinstance(result, dict)
             assert "success" in result
         except Exception as e:
