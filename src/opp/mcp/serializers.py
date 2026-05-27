@@ -51,7 +51,7 @@ def _serialize_image(
         "spine_index": image.spine_index,
     }
     if include_base64 and image.data:
-        img_dict["data"] = base64.b64encode(image.data).decode("utf-8")
+        img_dict["data_base64"] = base64.b64encode(image.data).decode("utf-8")
     return img_dict
 
 

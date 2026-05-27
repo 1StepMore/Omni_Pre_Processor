@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **asyncio test compatibility**: Use `asyncio.run()` instead of deprecated `get_event_loop().run_until_complete()` for Python 3.12+ compatibility
 
+### Changed
+- **MCP serializer field name**: `images[].data` → `images[].data_base64` to align with ORF ImagePlacement schema
+
 ## [0.5.0] - 2026-05-27
 
 ### Fixed
