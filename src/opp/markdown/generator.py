@@ -6,7 +6,7 @@ from opp.utils.dataclasses import ExtractionResult, ParagraphData, TableData, Im
 
 
 class MarkdownGenerator:
-    def generate(self, result: ExtractionResult, images_dir: Optional[Path] = None) -> str:
+    def generate(self, result: ExtractionResult, images_dir: Optional[Path] = None, stem: Optional[str] = None) -> str:
         output_lines = []
         list_buffer: List[str] = []
         list_type = None
@@ -68,10 +68,10 @@ class MarkdownGenerator:
             for img in para_images.get(para.position, []):
                 ext = self._mime_to_ext(img.mime_type)
                 if images_dir is not None:
-                    img_filename = f"image_{img._seq}.{ext}"
+                    img_filename = f"{stem}_image_{img._seq}.{ext}" if stem else f"image_{img._seq}.{ext}"
                     img_path = images_dir / img_filename
                     img_path.write_bytes(img.data)
-                    rel_path = f"./images/{img_filename}"
+                    rel_path = f"./{stem}_images/{img_filename}" if stem else f"./images/{img_filename}"
                     output_lines.append(f"![Image {img._seq}]({rel_path})")
                 else:
                     import base64
@@ -92,15 +92,15 @@ class MarkdownGenerator:
             ))
         ]
         if orphaned:
-            output_lines.append(self._generate_images_section(orphaned, images_dir=images_dir))
+            output_lines.append(self._generate_images_section(orphaned, images_dir=images_dir, stem=stem))
 
         return "\n".join(output_lines)
 
     def generate_to_file(self, result: ExtractionResult, output_path: Path, _attachment_results=None) -> None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        images_dir = output_path.parent / "images"
+        images_dir = output_path.parent / f"{output_path.stem}_images"
         images_dir.mkdir(parents=True, exist_ok=True)
-        content = self.generate(result, images_dir=images_dir)
+        content = self.generate(result, images_dir=images_dir, stem=output_path.stem)
         output_path.write_text(content, encoding="utf-8")
 
     def generate_headings(self, paragraphs: List[ParagraphData], style_mapping=None) -> str:
@@ -204,15 +204,16 @@ class MarkdownGenerator:
         self,
         images: List[ImageData],
         images_dir: Optional[Path] = None,
+        stem: Optional[str] = None,
     ) -> str:
         lines = ["", "## Images", ""]
         for i, img in enumerate(images):
             if images_dir is not None:
                 ext = self._mime_to_ext(img.mime_type)
-                img_filename = f"image_{i+1}.{ext}"
+                img_filename = f"{stem}_image_{i+1}.{ext}" if stem else f"image_{i+1}.{ext}"
                 img_path = images_dir / img_filename
                 img_path.write_bytes(img.data)
-                rel_path = f"./images/{img_filename}"
+                rel_path = f"./{stem}_images/{img_filename}" if stem else f"./images/{img_filename}"
                 lines.append(f"![Image {i+1}]({rel_path})")
             else:
                 import base64
