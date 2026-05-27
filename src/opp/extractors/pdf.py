@@ -210,6 +210,7 @@ class PDFExtractor(ExtractorBase):
                     result.append(ImageData(
                         data=image_bytes,
                         mime_type=mime_type,
+                        page_number=page_num + 1,
                     ))
                 except Exception as e:
                     logger.debug(f"Image extraction failed: {e}")

@@ -317,7 +317,7 @@ class HTMLExtractor(ExtractorBase):
             logger.warning(f"BeautifulSoup parsing failed: {e}")
             return result
 
-        for img in soup.find_all("img"):
+        for element_idx, img in enumerate(soup.find_all("img")):
             src = str(img.get("src", ""))
             if not src:
                 continue
@@ -328,6 +328,7 @@ class HTMLExtractor(ExtractorBase):
             if src.startswith("data:"):
                 image_data = self._parse_data_uri(src)
                 if image_data:
+                    image_data.element_index = element_idx
                     result.append(image_data)
                 continue
 
@@ -336,7 +337,11 @@ class HTMLExtractor(ExtractorBase):
                 if img_path.exists():
                     data = img_path.read_bytes()
                     mime_type = self._guess_mime_type(src)
-                    result.append(ImageData(data=data, mime_type=mime_type))
+                    result.append(ImageData(
+                        data=data, 
+                        mime_type=mime_type,
+                        element_index=element_idx,
+                    ))
             except Exception as e:
                 logger.debug(f"Image extraction failed for {src}: {e}")
                 continue

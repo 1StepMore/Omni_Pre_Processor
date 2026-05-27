@@ -207,7 +207,7 @@ class DOCXExtractor(ExtractorBase):
                     continue
                 try:
                     rel = doc.part.rels.get(embed_attr)
-                    if rel and "image" in rel.target_ref:
+                    if rel and "image" in rel.reltype:
                         image_part = rel.target_part
                         result.append(ImageData(
                             data=image_part.blob,
@@ -256,25 +256,9 @@ class DOCXExtractor(ExtractorBase):
         input_path: Optional[Path] = None,
         para_index_map: Optional[dict] = None,
     ) -> List[ImageData]:
-        result: List[ImageData] = []
-        for rel in doc.part.rels.values():
-            if "image" in rel.target_ref:
-                try:
-                    image_part = rel.target_part
-                    image_bytes = image_part.blob
-                    content_type = image_part.content_type
-                    result.append(ImageData(
-                        data=image_bytes,
-                        mime_type=content_type,
-                    ))
-                except Exception as e:
-                    logger.warning(f"Failed to extract image from DOCX: {e}")
-
         if input_path and para_index_map is not None:
-            inline_images = self._extract_inline_drawings(doc, input_path, para_index_map)
-            result.extend(inline_images)
-
-        return result
+            return self._extract_inline_drawings(doc, input_path, para_index_map)
+        return []
 
     def extract_runs(self, para) -> List[RunData]:
         """Extract individual runs with formatting properties from a paragraph.

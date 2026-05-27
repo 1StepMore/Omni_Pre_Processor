@@ -236,10 +236,9 @@ class EPUBExtractor(ExtractorBase):
     def _extract_images(
         self, image_items: List[epub.EpubItem], cover: Optional[ImageData]
     ) -> List[ImageData]:
-        """Extract all images from book manifest."""
         images: List[ImageData] = []
 
-        for item in image_items:
+        for spine_idx, item in enumerate(image_items):
             try:
                 content = item.get_content()
                 if not content:
@@ -251,6 +250,7 @@ class EPUBExtractor(ExtractorBase):
                 images.append(ImageData(
                     data=content,
                     mime_type=self._get_mime_type(item.get_name()),
+                    spine_index=spine_idx,
                 ))
             except Exception as e:
                 logger.debug(f"EPUB image extraction failed: {e}")

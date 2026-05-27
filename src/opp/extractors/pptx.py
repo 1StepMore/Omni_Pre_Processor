@@ -166,7 +166,7 @@ class PPTXExtractor(ExtractorBase):
 
     def extract_images(self, prs: Presentation) -> List[ImageData]:
         result: List[ImageData] = []
-        for slide in prs.slides:
+        for slide_idx, slide in enumerate(prs.slides):
             for shape in slide.shapes:
                 if hasattr(shape, "image"):
                     try:
@@ -176,6 +176,7 @@ class PPTXExtractor(ExtractorBase):
                             mime_type=image.content_type,
                             width=image.size.width if hasattr(image.size, 'width') else None,
                             height=image.size.height if hasattr(image.size, 'height') else None,
+                            slide_index=slide_idx,
                         ))
                     except Exception as e:
                         logger.warning(f"Failed to extract image from PPTX: {e}")

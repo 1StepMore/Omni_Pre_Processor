@@ -13,9 +13,20 @@ class MarkdownGenerator:
 
         para_images: dict = defaultdict(list)
         for img in result.images:
-            if img.paragraph_index is not None:
-                img._seq = len(para_images[img.paragraph_index]) + 1
-                para_images[img.paragraph_index].append(img)
+            key = (
+                img.paragraph_index
+                if img.paragraph_index is not None
+                else img.page_number
+                if img.page_number is not None
+                else img.slide_index
+                if img.slide_index is not None
+                else img.element_index
+                if img.element_index is not None
+                else img.spine_index
+            )
+            if key is not None:
+                img._seq = len(para_images[key]) + 1
+                para_images[key].append(img)
 
         def flush_list():
             nonlocal list_type
@@ -66,7 +77,13 @@ class MarkdownGenerator:
             output_lines.append("")
             output_lines.append(tables)
 
-        orphaned = [img for img in result.images if img.paragraph_index is None]
+        orphaned = [
+            img for img in result.images
+            if all(f is None for f in (
+                img.paragraph_index, img.page_number, img.slide_index,
+                img.element_index, img.spine_index
+            ))
+        ]
         if orphaned:
             output_lines.append(self._generate_images_section(orphaned, output_path=None))
 

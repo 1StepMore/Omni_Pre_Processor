@@ -45,6 +45,10 @@ def _serialize_image(
         "width": image.width,
         "height": image.height,
         "paragraph_index": image.paragraph_index,
+        "page_number": image.page_number,
+        "slide_index": image.slide_index,
+        "element_index": image.element_index,
+        "spine_index": image.spine_index,
     }
     if include_base64 and image.data:
         img_dict["data"] = base64.b64encode(image.data).decode("utf-8")

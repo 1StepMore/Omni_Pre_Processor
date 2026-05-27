@@ -54,7 +54,13 @@ class ImageData:
     mime_type: str
     width: Optional[int] = None
     height: Optional[int] = None
-    paragraph_index: Optional[int] = None  # Index into result.paragraphs where this image appears
+
+    # Position fields - only ONE of these has a value per ExtractionResult (format-specific)
+    paragraph_index: Optional[int] = None  # DOCX inline drawings (0-based)
+    page_number: Optional[int] = None      # PDF pages (1-based)
+    slide_index: Optional[int] = None      # PPTX slides (0-based)
+    element_index: Optional[int] = None    # HTML DOM elements (0-based)
+    spine_index: Optional[int] = None      # EPUB spine order (0-based)
 
 
 @dataclass

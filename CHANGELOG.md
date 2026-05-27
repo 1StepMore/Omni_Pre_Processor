@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-05-27
+
+### Fixed
+- **DOCX image extraction Bug**: `rel.target_ref` → `rel.reltype` in image relationship check. The `target_ref` contains file paths like `media/rId20.jfif` which never contain "image", while `reltype` contains the OOXML relationship type URI that does include "image".
+- **DOCX duplicate image extraction**: Removed redundant first loop in `extract_images()` that only extracted images without position context; all DOCX images now go through `_extract_inline_drawings()` which correctly sets `paragraph_index`.
+
+### Added
+- **Multi-format image position fields**: `ImageData` now supports format-specific position tracking:
+  - `paragraph_index: Optional[int]` — DOCX inline drawings (0-based)
+  - `page_number: Optional[int]` — PDF pages (1-based)
+  - `slide_index: Optional[int]` — PPTX slides (0-based)
+  - `element_index: Optional[int]` — HTML DOM elements (0-based)
+  - `spine_index: Optional[int]` — EPUB spine order (0-based)
+- **PPTX image position**: `extract_images()` now populates `slide_index` for each image
+- **PDF image position**: `extract_images()` now populates `page_number` (1-based) for each image
+- **HTML image position**: `_extract_images()` now populates `element_index` for each `<img>` element
+- **EPUB image position**: `_extract_images()` now populates `spine_index` for each image
+- **MarkdownGenerator fallback selection**: Position key selection now falls through `paragraph_index` → `page_number` → `slide_index` → `element_index` → `spine_index`
+- **Orphaned image detection**: `orphaned` images now defined as images with ALL position fields as `None`
+- **MCP serializer**: `_serialize_image()` now outputs all 5 position fields in manifest
+
+### Changed
+- **ImageData dataclass**: Extended with 4 new optional position fields; existing `paragraph_index` field retained for DOCX inline drawings
+
+### Deprecated
+- **DOCX rels-only image extraction**: First loop in `extract_images()` removed; use `_extract_inline_drawings()` directly for position-aware extraction
+
 ## [0.4.3] - 2026-05-26
 
 ### Fixed
