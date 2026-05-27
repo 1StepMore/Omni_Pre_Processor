@@ -5,12 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.3] - 2026-05-27
+## [0.5.5] - 2026-05-27
+
+### Fixed
+- **MD image externalization**: `generate_to_file()` now writes images to `images/` directory and uses `![](./images/N.png)` references instead of base64 data URIs. Improves Pandoc compatibility and prevents image loss during MD→DOCX conversion.
+- **DOCX orphaned images**: `_extract_inline_drawings()` now assigns virtual paragraph_index to images without valid paragraph context, eliminating orphaned images.
+
+## [0.5.4] - 2026-05-27
 
 ### Fixed
 - **XLIFF 1.2 namespace**: Post-process xliff output to upgrade namespace from 1.1 to 1.2 (translate-toolkit outputs 1.1, ORF requires 1.2)
 
-### Changed
+## [0.5.3] - 2026-05-27
+
+### Fixed
 - **MCP serializer field name**: `images[].data` → `images[].data_base64` to align with ORF ImagePlacement schema
 
 ## [0.5.2] - 2026-05-27

@@ -200,6 +200,7 @@ class DOCXExtractor(ExtractorBase):
         except etree.XMLSyntaxError:
             return result
 
+        fallback_index = para_count + 1
         for drawing_para_index, drawing in pending_drawings:
             for blip in drawing.iter(f'{A_NS}blip'):
                 embed_attr = blip.get(f'{R_NS}embed')
@@ -209,11 +210,13 @@ class DOCXExtractor(ExtractorBase):
                     rel = doc.part.rels.get(embed_attr)
                     if rel and "image" in rel.reltype:
                         image_part = rel.target_part
+                        assigned_index = drawing_para_index if drawing_para_index > 0 else fallback_index
                         result.append(ImageData(
                             data=image_part.blob,
                             mime_type=image_part.content_type,
-                            paragraph_index=drawing_para_index,
+                            paragraph_index=assigned_index,
                         ))
+                        fallback_index = assigned_index + 1
                 except Exception as e:
                     logger.warning(f"Failed to extract inline drawing image: {e}")
 
