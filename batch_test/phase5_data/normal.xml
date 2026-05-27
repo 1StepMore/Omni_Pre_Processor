@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root><config version="1.0"><setting name="debug" value="true" /><setting name="mode" value="production" /></config><items><item id="1">First item</item><item id="2">Second item</item></items></root>

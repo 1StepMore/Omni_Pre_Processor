@@ -28,7 +28,6 @@ DD\ Vibe.txt
 # Batch test files - never commit
 batch_files/
 batch_files_converted/
-batch_test/
 
 # Individual problem files
 OPP-改进计划-Manifest+Skeleton.md

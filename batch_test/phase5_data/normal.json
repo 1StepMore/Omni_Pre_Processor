@@ -1,0 +1,19 @@
+{
+  "user": {
+    "name": "John",
+    "address": {
+      "city": "New York",
+      "zip": "10001"
+    }
+  },
+  "items": [
+    "apple",
+    "banana",
+    "cherry"
+  ],
+  "config": {
+    "debug": true,
+    "version": 1.0,
+    "ratio": 0.75
+  }
+}
