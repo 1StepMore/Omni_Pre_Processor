@@ -5,13 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.3] - 2026-05-27
+
+### Fixed
+- **XLIFF 1.2 namespace**: Post-process xliff output to upgrade namespace from 1.1 to 1.2 (translate-toolkit outputs 1.1, ORF requires 1.2)
+
+### Changed
+- **MCP serializer field name**: `images[].data` → `images[].data_base64` to align with ORF ImagePlacement schema
+
 ## [0.5.2] - 2026-05-27
 
 ### Fixed
 - **asyncio test compatibility**: Use `asyncio.run()` instead of deprecated `get_event_loop().run_until_complete()` for Python 3.12+ compatibility
-
-### Changed
-- **MCP serializer field name**: `images[].data` → `images[].data_base64` to align with ORF ImagePlacement schema
 
 ## [0.5.0] - 2026-05-27
 

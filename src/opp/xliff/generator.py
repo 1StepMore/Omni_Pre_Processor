@@ -301,7 +301,16 @@ class XLIFFFileGenerator:
         Returns:
             Bytes representation of the XLIFF 1.2 file
         """
-        return bytes(self._store)
+        raw_bytes = bytes(self._store)
+        return self._upgrade_namespace_to_1_2(raw_bytes)
+
+    @staticmethod
+    def _upgrade_namespace_to_1_2(xliff_bytes: bytes) -> bytes:
+        ns_1_1 = b"urn:oasis:names:tc:xliff:document:1.1"
+        ns_1_2 = b"urn:oasis:names:tc:xliff:document:1.2"
+        result = xliff_bytes.replace(ns_1_1, ns_1_2)
+        result = result.replace(b'version="1.1"', b'version="1.2"')
+        return result
 
     def to_bytes(self) -> bytes:
         """Convert the XLIFF content to bytes.
