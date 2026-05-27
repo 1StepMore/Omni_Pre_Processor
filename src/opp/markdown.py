@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 
 class MarkdownGenerator:
-    def generate(self, result: ExtractionResult, attachment_results: Optional[List["ProcessingResult"]] = None) -> str:
+    def generate(self, result: ExtractionResult, attachment_results: Optional[List["ProcessingResult"]] = None, images_dir: Optional[Path] = None, stem: Optional[str] = None) -> str:
         parts = []
 
         content_stream: List[Tuple[int, str, object]] = []
@@ -45,7 +45,7 @@ class MarkdownGenerator:
                 parts.append(self._format_single_table(table))
 
         if result.images:
-            parts.append(self._generate_images_section(result.images, output_path=None))
+            parts.append(self._generate_images_section(result.images, images_dir=images_dir, stem=stem))
 
         if attachment_results:
             parts.append(self._generate_attachments_section(attachment_results))
@@ -58,16 +58,11 @@ class MarkdownGenerator:
         output_path: Path,
         attachment_results: Optional[List["ProcessingResult"]] = None,
     ) -> None:
-        content = self.generate(result, attachment_results)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        images_dir = output_path.parent / f"{output_path.stem}_images"
+        images_dir.mkdir(parents=True, exist_ok=True)
+        content = self.generate(result, attachment_results, images_dir=images_dir, stem=output_path.stem)
         output_path.write_text(content, encoding='utf-8')
-
-        if result.images:
-            images_dir = output_path.parent / f"{output_path.stem}_images"
-            images_dir.mkdir(parents=True, exist_ok=True)
-            for i, img in enumerate(result.images):
-                ext = self._mime_to_ext(img.mime_type)
-                img_path = images_dir / f"{output_path.stem}_image_{i+1}.{ext}"
-                img_path.write_bytes(img.data)
 
     def generate_headings(self, paragraphs: List[ParagraphData]) -> str:
         result_lines = []
@@ -168,18 +163,17 @@ class MarkdownGenerator:
     def _generate_images_section(
         self,
         images: List[ImageData],
-        output_path: Optional[Path] = None,
+        images_dir: Optional[Path] = None,
+        stem: Optional[str] = None,
     ) -> str:
-        """Generate an images section. Uses relative paths if output_path given, else data URIs."""
         lines = ["", "## Images", ""]
         for i, img in enumerate(images):
-            if output_path is not None:
-                images_dir = output_path.parent / f"{output_path.stem}_images"
-                images_dir.mkdir(parents=True, exist_ok=True)
+            if images_dir is not None:
                 ext = self._mime_to_ext(img.mime_type)
-                img_path = images_dir / f"{output_path.stem}_image_{i+1}.{ext}"
+                img_filename = f"{stem}_image_{i+1}.{ext}" if stem else f"image_{i+1}.{ext}"
+                img_path = images_dir / img_filename
                 img_path.write_bytes(img.data)
-                rel_path = f"{output_path.stem}_images/{img_path.name}"
+                rel_path = f"./{stem}_images/{img_filename}" if stem else f"./images/{img_filename}"
                 lines.append(f"![Image {i+1}]({rel_path})")
             else:
                 import base64

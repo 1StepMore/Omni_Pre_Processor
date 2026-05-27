@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.7] - 2026-05-27
+
+### Fixed
+- **markdown.py image externalization**: `generate()` and `generate_to_file()` now use `images_dir` parameter to write images to `{stem}_images/` and reference them as `./{stem}_images/{stem}_image_N.png` instead of base64 inline data URIs
+
 ## [0.5.5] - 2026-05-27
 
 ### Fixed
