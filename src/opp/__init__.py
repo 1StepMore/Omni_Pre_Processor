@@ -1,6 +1,6 @@
 """OPP - Omni Pre-Processor: Document content extraction package."""
 
-__version__ = "0.5.2"
+__version__ = "0.5.3"
 
 from opp.extractors.docx import DOCXExtractor
 from opp.extractors.pptx import PPTXExtractor
