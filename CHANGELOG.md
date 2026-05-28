@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.9] - 2026-05-28
+
+### Fixed
+- **`images_json` utility** (`src/opp/utils/images_json.py`): New utility module with `generate_images_json()` function that exports image placement data in ORF-compatible format for `--images-json` parameter
+- **XLIFF file persistence**: `extract_document` and `batch_extract` now respect `output_dir` config — XLIFF files are no longer deleted after reading when `output_dir` is configured
+
+### Added
+- **`images.json` generation**: `OPPPipeline.generate_images_json()` method generates `images.json` file containing image placement data (paragraph_index, page_number, slide_index, element_index, spine_index, mime_type, width, height)
+- **MCP `output_dir` config**: `MCPConfig` now accepts optional `output_dir: Path` field for persistent file output
+- **`output_formats=["json"]`**: `extract_document` and `batch_extract` accept `"json"` in output_formats to generate `images.json`
+
+### Changed
+- **`images_json_path` in response**: When `images.json` is generated, response now includes `images_json_path` field with the file path
+
+### Documentation
+- **`add_image()` docstring**: Documented UUID-based filename generation and `_mapping` tracking
+- **`generate_to_file()` docstring**: Documented image file naming pattern `{stem}_image_{seq}.{ext}`
+
 ## [0.5.7] - 2026-05-27
 
 ### Fixed
