@@ -97,6 +97,25 @@ class MarkdownGenerator:
         return "\n".join(output_lines)
 
     def generate_to_file(self, result: ExtractionResult, output_path: Path, _attachment_results=None) -> None:
+        """Generate markdown output and write to a file.
+
+        Image files are referenced in the markdown using the pattern
+        ``![alt]({stem}_image_{seq}.{ext})``, where:
+
+        - ``{stem}`` is derived from the output markdown filename
+          (e.g., ``report`` from ``report.md``)
+        - ``{seq}`` is a sequential number assigned per paragraph
+          (``_image_1``, ``_image_2``, etc.)
+        - ``{ext}`` is the appropriate file extension for the image MIME type
+
+        Images are written to a sibling directory named ``{stem}_images/``
+        adjacent to the output markdown file.
+
+        Args:
+            result: The extraction result containing paragraphs, images, etc.
+            output_path: Path for the output markdown file.
+            _attachment_results: Optional attachment results (unused).
+        """
         output_path.parent.mkdir(parents=True, exist_ok=True)
         images_dir = output_path.parent / f"{output_path.stem}_images"
         images_dir.mkdir(parents=True, exist_ok=True)

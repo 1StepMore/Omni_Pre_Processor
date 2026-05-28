@@ -111,6 +111,18 @@ async def extract_document(
             except Exception as e:
                 response["warnings"] = response.get("warnings", []) + [f"Markdown generation failed: {str(e)}"]
 
+    if "json" in output_formats or (result.extraction_result and result.extraction_result.images):
+        if result.extraction_result:
+            images_json_path = Path(file_path).with_suffix(".images.json")
+            if _config.output_dir:
+                images_json_path = Path(_config.output_dir) / images_json_path.name
+            try:
+                _pipeline.generate_images_json(result.extraction_result, images_json_path)
+                if images_json_path.exists():
+                    response["images_json_path"] = str(images_json_path)
+            except Exception as e:
+                response["warnings"] = response.get("warnings", []) + [f"Images JSON generation failed: {str(e)}"]
+
     if "xlf" in output_formats or "both" in output_formats:
         if result.extraction_result:
             xliff_output_path = Path(file_path).with_suffix(".xlf")
@@ -121,7 +133,8 @@ async def extract_document(
                         xliff_content = f.read()
                     response["xliff_content"] = xliff_content
                     response["xliff_units_count"] = xliff_content.count("<trans-unit") if xliff_content else 0
-                    xliff_output_path.unlink()
+                    if not _config.output_dir:
+                        xliff_output_path.unlink()
             except ValueError as e:
                 response["success"] = False
                 response["error"] = str(e)
@@ -216,7 +229,7 @@ async def batch_extract(
                                 xliff_content = f.read()
                             serialized["xliff_content"] = xliff_content
                             serialized["xliff_units_count"] = xliff_content.count("<trans-unit") if xliff_content else 0
-                            xliff_output_path.unlink()
+                            if not _config.output_dir: xliff_output_path.unlink()
                     except ValueError as e:
                         serialized["success"] = False
                         serialized["error"] = str(e)

@@ -18,6 +18,7 @@ class MCPConfig:
     max_images_per_extraction: int = 100
     max_extraction_depth: int = 3
     resource_storage_dir: Path = field(default_factory=lambda: Path("./mcp_resources"))
+    output_dir: Optional[Path] = None
 
 
 def _parse_allowed_dirs(value: str) -> List[Path]:
@@ -104,6 +105,8 @@ def load_config(config_path: Optional[Path] = None) -> MCPConfig:
         config_data["max_extraction_depth"] = 3
     if "resource_storage_dir" not in config_data:
         config_data["resource_storage_dir"] = Path("./mcp_resources")
+    if "output_dir" not in config_data:
+        config_data["output_dir"] = None
 
     # Validate required field
     allowed_dirs = config_data.get("allowed_directories")
@@ -117,4 +120,5 @@ def load_config(config_path: Optional[Path] = None) -> MCPConfig:
         max_images_per_extraction=config_data["max_images_per_extraction"],
         max_extraction_depth=config_data["max_extraction_depth"],
         resource_storage_dir=config_data["resource_storage_dir"],
+        output_dir=config_data["output_dir"],
     )

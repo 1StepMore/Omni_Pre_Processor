@@ -21,6 +21,23 @@ class ResourceManager:
         self._lock = threading.RLock()
 
     def add_image(self, source_path: Path) -> Path:
+        """Add an image resource to the storage.
+
+        Images are stored with UUID-based filenames (e.g., ``a1b2c3d4.png``)
+        rather than the original filename. This ensures unique storage names
+        regardless of filename conflicts in source documents.
+
+        The mapping between the original filename and the stored file is tracked
+        internally in the ``_mapping`` dict, keyed by MD5 hash. Each entry stores
+        the ``(stored_path, original_name)`` tuple, preserving the original
+        filename for reference lookups via :meth:`get_resource_path`.
+
+        Args:
+            source_path: Path to the source image file.
+
+        Returns:
+            Path to the stored image file (UUID-based filename).
+        """
         source_path = Path(source_path)
         if not source_path.exists():
             raise FileNotFoundError(f"文件不存在: {source_path}")
