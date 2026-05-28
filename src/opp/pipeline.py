@@ -14,6 +14,7 @@ from opp.markdown import MarkdownGenerator
 from opp.resource_manager import ResourceManager
 from opp.xliff import XLIFFFileGenerator
 from opp.utils.dataclasses import ExtractionResult
+from opp.utils.images_json import generate_images_json
 
 
 @dataclass
@@ -125,6 +126,23 @@ class OPPPipeline:
 
         generator = XLIFFFileGenerator.from_extraction_result(result, source_lang, target_lang)
         generator.write_to_file(output_path)
+        return output_path
+
+    def generate_images_json(
+        self,
+        result: ExtractionResult,
+        output_path: Path,
+    ) -> Path:
+        """Generate images JSON file from extraction result.
+
+        Args:
+            result: The extraction result containing image information
+            output_path: Path to write the JSON file to
+
+        Returns:
+            The output_path that was written to
+        """
+        generate_images_json(result, output_path)
         return output_path
 
     def save_skeleton(
