@@ -90,6 +90,8 @@ def opp_handler(
             target_lang=target_lang,
             resource_dir=resource_dir,
         )
+        if hasattr(result, 'structured_content') and result.structured_content is not None:
+            return result.structured_content
         return result
 
     except ImportError as e:

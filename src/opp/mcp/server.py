@@ -6,12 +6,35 @@ from pathlib import Path
 from typing import List, Optional
 
 from fastmcp import FastMCP
+from fastmcp.tools.base import ToolResult
+from mcp.types import TextContent
 
 from opp.detector import detect_format
 from opp.mcp.config import MCPConfig, load_config
 from opp.mcp.security import PathValidator
 from opp.mcp.serializers import ExtractionResultSerializer
 from opp.pipeline import OPPPipeline
+
+
+def _is_within_dir(path: Path, directory: Path) -> bool:
+    """Check if path is within directory (handles both Unix and Windows paths)."""
+    try:
+        path.resolve().relative_to(directory.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def _tool_result(data: dict, summary: str) -> ToolResult:
+    """Build a ToolResult with structured_content and human-readable text summary.
+
+    This ensures structuredContent contains the raw dict without JSON-stringification,
+    while content provides a brief human-readable summary.
+    """
+    return ToolResult(
+        content=[TextContent(type="text", text=summary)],
+        structured_content=data,
+    )
 
 
 _mcp: Optional[FastMCP] = None
@@ -40,7 +63,7 @@ async def extract_document(
     source_lang: str = "en",
     target_lang: str = "zh",
     resource_dir: Optional[str] = None,
-) -> dict:
+) -> ToolResult:
     if output_formats is None:
         output_formats = ["md"]
 
@@ -50,46 +73,48 @@ async def extract_document(
     valid_formats = {"md", "xlf", "both"}
     for fmt in output_formats:
         if fmt not in valid_formats:
-            return {
-                "success": False,
-                "error": f"Invalid output format: '{fmt}'. Valid values are: {sorted(valid_formats)}",
-            }
+            return _tool_result(
+                {"success": False, "error": f"Invalid output format: '{fmt}'. Valid values are: {sorted(valid_formats)}"},
+                f"Error: Invalid output format '{fmt}'",
+            )
 
     if _validator is None:
-        return {
-            "success": False,
-            "error": "Server not initialized",
-        }
+        return _tool_result(
+            {"success": False, "error": "Server not initialized"},
+            "Error: Server not initialized",
+        )
 
     validation_result = _validator.validate_path(file_path)
     if not validation_result.success:
-        return {
-            "success": False,
-            "error": validation_result.error or "Path validation failed",
-        }
+        return _tool_result(
+            {"success": False, "error": validation_result.error or "Path validation failed"},
+            f"Error: Path validation failed",
+        )
 
     if resource_dir is not None:
         resource_path = Path(resource_dir)
         if '..' in resource_path.parts:
-            return {
-                "success": False,
-                "error": "Resource directory path traversal not allowed",
-            }
-        try:
-            resource_path.resolve().relative_to(_config.allowed_directories[0])
-        except ValueError:
-            return {
-                "success": False,
-                "error": "Resource directory must be within allowed directories",
-            }
+            return _tool_result(
+                {"success": False, "error": "Resource directory path traversal not allowed"},
+                "Error: Path traversal not allowed",
+            )
+        resolved_resource = resource_path.resolve()
+        if not any(
+            _is_within_dir(resolved_resource, allowed_dir)
+            for allowed_dir in _config.allowed_directories
+        ):
+            return _tool_result(
+                {"success": False, "error": "Resource directory must be within allowed directories"},
+                "Error: Resource directory not in allowed directories",
+            )
 
     try:
         result = _pipeline.process_file(Path(file_path))
     except Exception as e:
-        return {
-            "success": False,
-            "error": f"Extraction failed: {str(e)}",
-        }
+        return _tool_result(
+            {"success": False, "error": f"Extraction failed: {str(e)}"},
+            f"Error: Extraction failed",
+        )
 
     response = _serializer.serialize(
         result,
@@ -130,7 +155,8 @@ async def extract_document(
             except Exception as e:
                 response["warnings"] = response.get("warnings", []) + [f"XLIFF generation failed: {str(e)}"]
 
-    return response
+    summary = f"Extracted {response.get('format_type', 'document')}: {len(response.get('extraction_result', {}).get('paragraphs', []))} paragraphs, {response.get('images_stored', 0)} images"
+    return _tool_result(response, summary)
 
 
 async def batch_extract(
@@ -138,7 +164,7 @@ async def batch_extract(
     output_formats: Optional[List[str]] = None,
     source_lang: str = "en",
     target_lang: str = "zh",
-) -> dict:
+) -> ToolResult:
     if output_formats is None:
         output_formats = ["md"]
 
@@ -148,16 +174,16 @@ async def batch_extract(
     valid_formats = {"md", "xlf", "both"}
     for fmt in output_formats:
         if fmt not in valid_formats:
-            return {
-                "success": False,
-                "error": f"Invalid output format: '{fmt}'. Valid values are: {sorted(valid_formats)}",
-            }
+            return _tool_result(
+                {"success": False, "error": f"Invalid output format: '{fmt}'. Valid values are: {sorted(valid_formats)}"},
+                f"Error: Invalid output format '{fmt}'",
+            )
 
     if _validator is None:
-        return {
-            "success": False,
-            "error": "Server not initialized",
-        }
+        return _tool_result(
+            {"success": False, "error": "Server not initialized"},
+            "Error: Server not initialized",
+        )
 
     # Validate ALL paths BEFORE processing any (fail-fast)
     validation_errors = []
@@ -170,15 +196,18 @@ async def batch_extract(
             })
 
     if validation_errors:
-        return {
-            "success": False,
-            "error": "Path validation failed for one or more files",
-            "validation_errors": validation_errors,
-            "results": [],
-            "successful": 0,
-            "failed": len(validation_errors),
-            "total_duration_ms": 0.0,
-        }
+        return _tool_result(
+            {
+                "success": False,
+                "error": "Path validation failed for one or more files",
+                "validation_errors": validation_errors,
+                "results": [],
+                "successful": 0,
+                "failed": len(validation_errors),
+                "total_duration_ms": 0.0,
+            },
+            "Error: Path validation failed",
+        )
 
     # Process files sequentially
     results = []
@@ -240,41 +269,43 @@ async def batch_extract(
 
     total_duration_ms = (time.time() - start_time) * 1000
 
-    return {
-        "success": True,
-        "results": results,
-        "successful": successful,
-        "failed": failed,
-        "total_duration_ms": total_duration_ms,
-    }
+    return _tool_result(
+        {
+            "success": True,
+            "results": results,
+            "successful": successful,
+            "failed": failed,
+            "total_duration_ms": total_duration_ms,
+        },
+        f"Batch complete: {successful} successful, {failed} failed",
+    )
 
 
-async def detect_format_tool(file_path: str) -> dict:
+async def detect_format_tool(file_path: str) -> ToolResult:
     if _validator is None:
-        return {
-            "success": False,
-            "error": "Server not initialized",
-        }
+        return _tool_result(
+            {"success": False, "error": "Server not initialized"},
+            "Error: Server not initialized",
+        )
 
     validation_result = _validator.validate_path(file_path)
     if not validation_result.success:
-        return {
-            "success": False,
-            "error": validation_result.error or "Path validation failed",
-        }
+        return _tool_result(
+            {"success": False, "error": validation_result.error or "Path validation failed"},
+            "Error: Path validation failed",
+        )
 
     try:
         fmt, confidence = detect_format(Path(file_path))
-        return {
-            "success": True,
-            "format": fmt.value,
-            "confidence": confidence,
-        }
+        return _tool_result(
+            {"success": True, "format": fmt.value, "confidence": confidence},
+            f"Detected format: {fmt.value} (confidence: {confidence})",
+        )
     except Exception as e:
-        return {
-            "success": False,
-            "error": f"Format detection failed: {str(e)}",
-        }
+        return _tool_result(
+            {"success": False, "error": f"Format detection failed: {str(e)}"},
+            "Error: Format detection failed",
+        )
 
 
 async def generate_xliff(
@@ -282,19 +313,19 @@ async def generate_xliff(
     source_lang: str = "en",
     target_lang: str = "zh",
     output_path: Optional[str] = None,
-) -> dict:
+) -> ToolResult:
     if _validator is None:
-        return {
-            "success": False,
-            "error": "Server not initialized",
-        }
+        return _tool_result(
+            {"success": False, "error": "Server not initialized"},
+            "Error: Server not initialized",
+        )
 
     validation_result = _validator.validate_path(file_path)
     if not validation_result.success:
-        return {
-            "success": False,
-            "error": validation_result.error or "Path validation failed",
-        }
+        return _tool_result(
+            {"success": False, "error": validation_result.error or "Path validation failed"},
+            "Error: Path validation failed",
+        )
 
     if output_path is None:
         input_p = Path(file_path)
@@ -302,19 +333,19 @@ async def generate_xliff(
 
     output_validation = _validator.validate_path(output_path, allow_missing=True)
     if not output_validation.success:
-        return {
-            "success": False,
-            "error": f"Output path validation failed: {output_validation.error}",
-        }
+        return _tool_result(
+            {"success": False, "error": f"Output path validation failed: {output_validation.error}"},
+            "Error: Output path validation failed",
+        )
 
     try:
         result = _pipeline.process_file(Path(file_path))
 
         if result.extraction_result is None:
-            return {
-                "success": False,
-                "error": "No extraction result available",
-            }
+            return _tool_result(
+                {"success": False, "error": "No extraction result available"},
+                "Error: No extraction result available",
+            )
 
         xliff_output_path = _pipeline.generate_xliff(
             result.extraction_result,
@@ -328,53 +359,62 @@ async def generate_xliff(
 
         units_count = xliff_content.count("<trans-unit") if xliff_content else 0
 
-        return {
-            "success": True,
-            "xliff_content": xliff_content,
-            "output_path": str(xliff_output_path),
-            "units_count": units_count,
-            "error": None,
-        }
+        return _tool_result(
+            {
+                "success": True,
+                "xliff_content": xliff_content,
+                "output_path": str(xliff_output_path),
+                "units_count": units_count,
+                "error": None,
+            },
+            f"Generated XLIFF: {units_count} trans-units",
+        )
 
     except ValueError as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "xliff_content": None,
-            "output_path": None,
-            "units_count": 0,
-        }
+        return _tool_result(
+            {
+                "success": False,
+                "error": str(e),
+                "xliff_content": None,
+                "output_path": None,
+                "units_count": 0,
+            },
+            f"Error: {str(e)}",
+        )
     except Exception as e:
-        return {
-            "success": False,
-            "error": f"XLIFF generation failed: {str(e)}",
-            "xliff_content": None,
-            "output_path": None,
-            "units_count": 0,
-        }
+        return _tool_result(
+            {
+                "success": False,
+                "error": f"XLIFF generation failed: {str(e)}",
+                "xliff_content": None,
+                "output_path": None,
+                "units_count": 0,
+            },
+            "Error: XLIFF generation failed",
+        )
 
 
-async def ping() -> dict:
+async def ping() -> ToolResult:
     """Health check endpoint."""
-    return {"success": True}
+    return _tool_result({"success": True}, "OPP MCP Server is healthy")
 
 
 async def generate_markdown(
     file_path: str,
     output_path: Optional[str] = None,
-) -> dict:
+) -> ToolResult:
     if _validator is None:
-        return {
-            "success": False,
-            "error": "Server not initialized",
-        }
+        return _tool_result(
+            {"success": False, "error": "Server not initialized"},
+            "Error: Server not initialized",
+        )
 
     validation_result = _validator.validate_path(file_path)
     if not validation_result.success:
-        return {
-            "success": False,
-            "error": validation_result.error or "Path validation failed",
-        }
+        return _tool_result(
+            {"success": False, "error": validation_result.error or "Path validation failed"},
+            "Error: Path validation failed",
+        )
 
     input_p = Path(file_path)
 
@@ -383,19 +423,19 @@ async def generate_markdown(
     else:
         output_validation = _validator.validate_path(output_path, allow_missing=True)
         if not output_validation.success:
-            return {
-                "success": False,
-                "error": f"Output path validation failed: {output_validation.error}",
-            }
+            return _tool_result(
+                {"success": False, "error": f"Output path validation failed: {output_validation.error}"},
+                "Error: Output path validation failed",
+            )
 
     try:
         result = _pipeline.process_file(input_p)
 
         if result.extraction_result is None:
-            return {
-                "success": False,
-                "error": "No extraction result available",
-            }
+            return _tool_result(
+                {"success": False, "error": "No extraction result available"},
+                "Error: No extraction result available",
+            )
 
         md_output_path = _pipeline.generate_markdown(result.extraction_result, Path(output_path))
 
@@ -405,23 +445,29 @@ async def generate_markdown(
         images_count = markdown_content.count("![]")
         images_dir = str(Path(output_path).with_suffix("") / f"{Path(output_path).stem}_images")
 
-        return {
-            "success": True,
-            "markdown_content": markdown_content,
-            "output_path": str(md_output_path),
-            "images_dir": images_dir,
-            "images_count": images_count,
-        }
+        return _tool_result(
+            {
+                "success": True,
+                "markdown_content": markdown_content,
+                "output_path": str(md_output_path),
+                "images_dir": images_dir,
+                "images_count": images_count,
+            },
+            f"Generated markdown: {len(markdown_content)} chars, {images_count} images",
+        )
 
     except Exception as e:
-        return {
-            "success": False,
-            "error": f"Markdown generation failed: {str(e)}",
-            "markdown_content": None,
-            "output_path": None,
-            "images_dir": None,
-            "images_count": 0,
-        }
+        return _tool_result(
+            {
+                "success": False,
+                "error": f"Markdown generation failed: {str(e)}",
+                "markdown_content": None,
+                "output_path": None,
+                "images_dir": None,
+                "images_count": 0,
+            },
+            "Error: Markdown generation failed",
+        )
 
 
 def main() -> None:

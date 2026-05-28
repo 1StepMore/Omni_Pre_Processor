@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **MCP server --config CLI argument**: `opp-mcp-server` now accepts `--config /path/to/config.yaml` argument, enabling self-contained configuration for Hermes integration without relying on environment variables or .env files
 - **Documentation path placeholders**: Replaced hardcoded `/mnt/d/贯维/...` paths with generic `/path/to/...` placeholders in `hermes-mcp-config.yaml` and `hermes-integration.md`
+- **resource_dir validation**: Fixed `resource_dir` validation to check against ALL `allowed_directories` instead of only `[0]`, allowing resource directories to be any allowed path
+- **MCP response structuredContent**: All 6 MCP tools (`extract_document`, `batch_extract`, `detect_format_tool`, `generate_xliff`, `ping`, `generate_markdown`) now return `ToolResult` directly with explicit `structured_content` and human-readable `content` summary. Agents can access `structuredContent` directly without JSON-parsing `content[0].text`
 
 ## [0.5.7] - 2026-05-27
 
