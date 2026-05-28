@@ -1,6 +1,6 @@
 [project]
 name = "Omni_Pre_Processor"
-version = "0.5.7"
+version = "0.5.8"
 description = "Omni Pre-Processor: Document content extraction package"
 readme = "README.md"
 requires-python = ">=3.12"
