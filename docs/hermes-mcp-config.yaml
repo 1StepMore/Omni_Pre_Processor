@@ -4,66 +4,49 @@
 # Hermes uses mcp_servers to define external MCP server connections.
 # Add this snippet to your Hermes agent configuration file.
 
-mcp_servers:
-  # OPP (Omni Pre-Processor) - Document extraction server
-  opp:
-    # Command to start the OPP MCP server.
-    # Use 'uvx' for automatic installation via uvx, or 'python -m' for manual start.
-    # The 'uvx opp-mcp-server' command requires: pip install -e ".[mcp]"
-    command: uvx
+# =============================================================================
+# RECOMMENDED: Using --config (self-contained, agent-oriented)
+# =============================================================================
+# Create an opp_mcp_config.yaml file with your settings, then reference it:
+#
+#   security:
+#     allowed_directories:
+#       - /path/to/documents
+#       - /path/to/output
+#
+#   max_file_size_bytes: 104857600
+#   request_timeout_seconds: 60
+#   resource_storage_dir: ./mcp_resources
 
-    # Arguments passed to the command.
-    # --config: Optional path to YAML config file (uncomment if using config file)
+mcp_servers:
+  opp:
+    command: uvx
     args:
       - opp-mcp-server
-      # - --config
-      # - /path/to/opp_mcp_config.yaml
+      - --config
+      - /path/to/opp_mcp_config.yaml
+    env: {}
 
-    # Environment variables for OPP MCP server configuration.
-    # These are passed to the server process.
-    env:
-      # REQUIRED: Colon or semicolon-separated list of allowed directories.
-      # Files outside these directories cannot be accessed by the MCP server.
-      # Windows: Use semicolons (C:\docs;C:\output)
-      # Unix/Linux/macOS: Use colons (/home/user/docs:/mnt/shared)
-      OPP_MCP_ALLOWED_DIRS: "/mnt/d/贯维/Documents:/mnt/d/贯维/Output"
-
-      # Optional: Maximum file size in bytes (default: 100MB = 104857600)
-      # Uncomment and adjust as needed.
-      # OPP_MCP_MAX_FILE_SIZE: "104857600"
-
-      # Optional: Request timeout in seconds (default: 60)
-      # Uncomment and adjust as needed.
-      # OPP_MCP_TIMEOUT: "60"
-
-      # Optional: Directory for storing extracted images (default: ./mcp_resources)
-      # OPP_MCP_RESOURCE_DIR: "./mcp_resources"
-
-      # Optional: Log level (default: INFO)
-      # OPP_LOG_LEVEL: "DEBUG"
-
-# Example Hermes agent configuration using OPP:
+# =============================================================================
+# ALTERNATIVE: Using environment variables (simpler, no config file)
+# =============================================================================
+# If you prefer not to use a config file, set via env variables:
 #
-# agents:
-#   my-document-agent:
-#     tools:
-#       - name: opp
-#         type: code
-#         config:
-#           server_command: uvx
-#           args:
-#             - opp-mcp-server
-#           env:
-#             OPP_MCP_ALLOWED_DIRS: "/mnt/d/贯维/Documents:/mnt/d/贯维/Output"
-#             # OPP_MCP_MAX_FILE_SIZE: "104857600"
-#             # OPP_MCP_TIMEOUT: "60"
-#
-# Hermes will automatically:
-# 1. Start the OPP MCP server using 'uvx opp-mcp-server'
-# 2. Forward tool calls to the server via stdio transport
-# 3. Route responses back to the agent
+# mcp_servers:
+#   opp:
+#     command: uvx
+#     args:
+#       - opp-mcp-server
+#     env:
+#       OPP_MCP_ALLOWED_DIRS: "/path/to/documents:/path/to/output"
+#       # OPP_MCP_MAX_FILE_SIZE: "104857600"
+#       # OPP_MCP_TIMEOUT: "60"
+#       # OPP_MCP_RESOURCE_DIR: "./mcp_resources"
+#       # OPP_LOG_LEVEL: "DEBUG"
 
-# Alternative: Manual server start (no auto-start)
+# =============================================================================
+# MANUAL SERVER START (no auto-start)
+# =============================================================================
 # If you prefer to start the server manually before running Hermes:
 #
 # 1. Install OPP with MCP support:
@@ -72,13 +55,12 @@ mcp_servers:
 # 2. Start the server in one terminal:
 #    python -m opp.mcp.server
 #    # or
-#    opp-mcp-server
+#    opp-mcp-server --config /path/to/opp_mcp_config.yaml
 #
 # 3. Configure Hermes to connect to the running server:
 #
 # mcp_servers:
 #   opp:
-#     # Use 'process' transport for already-running servers
 #     command: python
 #     args:
 #       - -m

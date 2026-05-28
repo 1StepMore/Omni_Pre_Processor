@@ -117,22 +117,22 @@ export OPP_MCP_ALLOWED_DIRS="/path/to/documents:/path/to/output"
 set OPP_MCP_ALLOWED_DIRS=C:\path\to\documents;C:\path\to\output
 ```
 
-### YAML Configuration File
+### YAML Configuration File (Recommended for Hermes)
 
-You can also create a dedicated OPP MCP config file:
+Create a dedicated OPP MCP config file:
 
 ```yaml
-allowed_directories:
-  - /path/to/documents
-  - /path/to/output
-  - ./documents
+security:
+  allowed_directories:
+    - /path/to/documents
+    - /path/to/output
 
 max_file_size_bytes: 104857600
 request_timeout_seconds: 60
 resource_storage_dir: ./mcp_resources
 ```
 
-Then reference it in Hermes:
+Then reference it in Hermes via `--config`:
 
 ```yaml
 mcp_servers:
@@ -142,9 +142,13 @@ mcp_servers:
       - opp-mcp-server
       - --config
       - /path/to/opp_mcp_config.yaml
-    env:
-      OPP_MCP_ALLOWED_DIRS: "/path/to/documents:/path/to/output"
+    env: {}
 ```
+
+The `--config` approach is recommended for Hermes because:
+- Config is self-contained in the YAML file (no external `.env` needed)
+- Each agent can have its own config
+- No dependence on environment variables being set system-wide
 
 ## Available Tools
 

@@ -1,5 +1,6 @@
 """OPP MCP Server with FastMCP."""
 
+import argparse
 import time
 from pathlib import Path
 from typing import List, Optional
@@ -424,7 +425,16 @@ async def generate_markdown(
 
 
 def main() -> None:
-    config = load_config()
+    parser = argparse.ArgumentParser(description="OPP MCP Server")
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="Path to YAML configuration file",
+    )
+    args = parser.parse_args()
+
+    config = load_config(args.config)
     _init_server(config)
 
     _mcp.add_tool(ping)

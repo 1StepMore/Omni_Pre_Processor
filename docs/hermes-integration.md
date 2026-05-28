@@ -25,8 +25,8 @@ This installs the `opp-mcp-server` command and the `mcp` package dependency.
 OPP enforces a security allowlist. Only files within these directories can be accessed. Decide which directories your agent needs to read from.
 
 Example directories:
-- `/mnt/d/贯维/Documents` - Source documents
-- `/mnt/d/贯维/Output` - Where output files go
+- `/path/to/documents` - Source documents
+- `/path/to/output` - Where output files go
 
 ### Step 2: Configure Hermes
 
@@ -39,7 +39,7 @@ mcp_servers:
     args:
       - opp-mcp-server
     env:
-      OPP_MCP_ALLOWED_DIRS: "/mnt/d/贯维/Documents:/mnt/d/贯维/Output"
+      OPP_MCP_ALLOWED_DIRS: "/path/to/documents:/path/to/output"
 ```
 
 On Windows, use semicolons for the path separator:
@@ -60,8 +60,8 @@ You can also create a dedicated OPP MCP config file:
 
 ```yaml
 allowed_directories:
-  - /mnt/d/贯维/Documents
-  - /mnt/d/贯维/Output
+  - /path/to/documents
+  - /path/to/output
   - ./documents
 
 max_file_size_bytes: 104857600
@@ -99,7 +99,7 @@ Start the OPP MCP server manually to verify it works:
 
 ```bash
 # Set the allowed directories
-export OPP_MCP_ALLOWED_DIRS="/mnt/d/贯维/Documents"
+export OPP_MCP_ALLOWED_DIRS="/path/to/documents"
 
 # Run the server (it will run until interrupted)
 python -m opp.mcp.server
@@ -115,7 +115,7 @@ Extracts content from a document file.
 
 ```python
 result = await extract_document(
-    file_path="/mnt/d/贯维/Documents/report.docx",
+    file_path="/path/to/documents/report.docx",
     output_formats=["md", "xlf"],
     source_lang="en",
     target_lang="zh"
@@ -136,8 +136,8 @@ Process multiple files in one call.
 ```python
 result = await batch_extract(
     file_paths=[
-        "/mnt/d/贯维/Documents/doc1.docx",
-        "/mnt/d/贯维/Documents/doc2.pdf"
+        "/path/to/documents/doc1.docx",
+        "/path/to/documents/doc2.pdf"
     ],
     output_formats=["md"]
 )
@@ -151,7 +151,7 @@ Identify a file's format without extracting content.
 
 ```python
 result = await detect_format(
-    file_path="/mnt/d/贯维/Documents/mystery.bin"
+    file_path="/path/to/documents/mystery.bin"
 )
 ```
 
@@ -163,8 +163,8 @@ Convert a document to markdown format.
 
 ```python
 result = await generate_markdown(
-    file_path="/mnt/d/贯维/Documents/document.docx",
-    output_path="/mnt/d/贯维/Output/document.md"
+    file_path="/path/to/documents/document.docx",
+    output_path="/path/to/output/document.md"
 )
 ```
 
@@ -174,10 +174,10 @@ Generate XLIFF 1.2 format for translation workflows.
 
 ```python
 result = await generate_xliff(
-    file_path="/mnt/d/贯维/Documents/document.docx",
+    file_path="/path/to/documents/document.docx",
     source_lang="en",
     target_lang="zh",
-    output_path="/mnt/d/贯维/Output/document.xlf"
+    output_path="/path/to/output/document.xlf"
 )
 ```
 

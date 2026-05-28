@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.8] - 2026-05-28
+
+### Fixed
+- **MCP server --config CLI argument**: `opp-mcp-server` now accepts `--config /path/to/config.yaml` argument, enabling self-contained configuration for Hermes integration without relying on environment variables or .env files
+- **Documentation path placeholders**: Replaced hardcoded `/mnt/d/贯维/...` paths with generic `/path/to/...` placeholders in `hermes-mcp-config.yaml` and `hermes-integration.md`
+
 ## [0.5.7] - 2026-05-27
 
 ### Fixed
