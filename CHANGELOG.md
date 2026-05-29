@@ -8,8 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.5.9] - 2026-05-28
 
 ### Fixed
-- **`images_json` utility** (`src/opp/utils/images_json.py`): New utility module with `generate_images_json()` function that exports image placement data in ORF-compatible format for `--images-json` parameter
-- **XLIFF file persistence**: `extract_document` and `batch_extract` now respect `output_dir` config — XLIFF files are no longer deleted after reading when `output_dir` is configured
+- **OPP image copying bug (E2E-02)**: Fixed `MarkdownGenerator.generate()` to write all images, not just those with matching paragraph_index
+  - Problem: `orphaned` filter only caught images with ALL position fields as `None`
+  - Images with `paragraph_index` outside paragraph range (e.g., indices 9,13,18,20,24 vs paragraphs 0-8) were lost
+  - Fix: track written images by `id()` and mark all non-written as orphaned
+  - Result: All 24 extracted images now written to output instead of only 2
 
 ### Added
 - **`images.json` generation**: `OPPPipeline.generate_images_json()` method generates `images.json` file containing image placement data (paragraph_index, page_number, slide_index, element_index, spine_index, mime_type, width, height)

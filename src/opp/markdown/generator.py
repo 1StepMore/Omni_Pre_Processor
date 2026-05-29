@@ -36,6 +36,10 @@ class MarkdownGenerator:
                 list_buffer.clear()
                 list_type = None
 
+        # Track valid paragraph positions and images written during paragraph iteration
+        valid_positions = {para.position for para in result.paragraphs}
+        written_images: set = set()
+
         for para in result.paragraphs:
             level = para.level
             style = para.style or ""
@@ -66,6 +70,7 @@ class MarkdownGenerator:
                     output_lines.append(para.text)
 
             for img in para_images.get(para.position, []):
+                written_images.add(id(img))
                 ext = self._mime_to_ext(img.mime_type)
                 if images_dir is not None:
                     img_filename = f"{stem}_image_{img._seq}.{ext}" if stem else f"image_{img._seq}.{ext}"
@@ -84,13 +89,11 @@ class MarkdownGenerator:
             output_lines.append("")
             output_lines.append(tables)
 
-        orphaned = [
-            img for img in result.images
-            if all(f is None for f in (
-                img.paragraph_index, img.page_number, img.slide_index,
-                img.element_index, img.spine_index
-            ))
-        ]
+        # Orphaned = images that were never written during paragraph iteration
+        # This includes both:
+        # 1. Images with ALL position fields as None
+        # 2. Images whose paragraph_index/page_number/etc didn't match any paragraph position
+        orphaned = [img for img in result.images if id(img) not in written_images]
         if orphaned:
             output_lines.append(self._generate_images_section(orphaned, images_dir=images_dir, stem=stem))
 
