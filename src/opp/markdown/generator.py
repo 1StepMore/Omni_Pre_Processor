@@ -107,6 +107,13 @@ class MarkdownGenerator:
         # Even if an image has a valid paragraph_index that matched a paragraph, if it
         # was output inline during paragraph iteration, it must NOT appear in orphaned.
         orphaned = [img for img in result.images if id(img) not in written_images]
+        # E2E-15 fix: further filter by content scan — if an orphaned image's
+        # _seq was already output inline (≤ max_inline_seq), skip it to avoid
+        # Pandoc embedding the same image twice (inline + Images section).
+        orphaned = [
+            img for img in orphaned
+            if not (hasattr(img, '_seq') and img._seq is not None and img._seq <= max_inline_seq)
+        ]
         if orphaned:
             output_lines.append(self._generate_images_section(
                 orphaned, images_dir=images_dir, stem=stem, offset=max_inline_seq
