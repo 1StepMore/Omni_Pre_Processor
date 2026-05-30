@@ -89,13 +89,28 @@ class MarkdownGenerator:
             output_lines.append("")
             output_lines.append(tables)
 
+        # E2E-11 fix: track max inline _seq to avoid orphaned images reusing same numbers.
+        # img._seq is reassigned every time a paragraph's images are processed, so we
+        # can't rely on the final _seq value for inline images. Track the max here,
+        # AFTER the paragraph loop (not before) so we only count what was actually written.
+        max_inline_seq = max(
+            (img._seq for img in result.images if id(img) in written_images),
+            default=0
+        )
+
         # Orphaned = images that were never written during paragraph iteration
         # This includes both:
         # 1. Images with ALL position fields as None
         # 2. Images whose paragraph_index/page_number/etc didn't match any paragraph position
+        # IMPORTANT: an image is only orphaned if it was NOT successfully output inline.
+        # We track this by checking if the image was added to written_images (by id).
+        # Even if an image has a valid paragraph_index that matched a paragraph, if it
+        # was output inline during paragraph iteration, it must NOT appear in orphaned.
         orphaned = [img for img in result.images if id(img) not in written_images]
         if orphaned:
-            output_lines.append(self._generate_images_section(orphaned, images_dir=images_dir, stem=stem))
+            output_lines.append(self._generate_images_section(
+                orphaned, images_dir=images_dir, stem=stem, offset=max_inline_seq
+            ))
 
         return "\n".join(output_lines)
 
@@ -227,21 +242,22 @@ class MarkdownGenerator:
         images: List[ImageData],
         images_dir: Optional[Path] = None,
         stem: Optional[str] = None,
+        offset: int = 0,
     ) -> str:
         lines = ["", "## Images", ""]
         for i, img in enumerate(images):
             if images_dir is not None:
                 ext = self._mime_to_ext(img.mime_type)
-                img_filename = f"{stem}_image_{i+1}.{ext}" if stem else f"image_{i+1}.{ext}"
+                img_filename = f"{stem}_image_{i+1+offset}.{ext}" if stem else f"image_{i+1+offset}.{ext}"
                 img_path = images_dir / img_filename
                 img_path.write_bytes(img.data)
                 rel_path = f"./{stem}_images/{img_filename}" if stem else f"./images/{img_filename}"
-                lines.append(f"![Image {i+1}]({rel_path})")
+                lines.append(f"![Image {i+1+offset}]({rel_path})")
             else:
                 import base64
                 ext = self._mime_to_ext(img.mime_type)
                 data_uri = f"data:{img.mime_type};base64,{base64.b64encode(img.data).decode('utf-8')}"
-                lines.append(f"![Image {i+1}]({data_uri})")
+                lines.append(f"![Image {i+1+offset}]({data_uri})")
         return '\n'.join(lines)
 
     def _mime_to_ext(self, mime_type: str) -> str:
