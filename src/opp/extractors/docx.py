@@ -95,10 +95,17 @@ class DOCXExtractor(ExtractorBase):
     def extract_paragraphs(self, doc: DocxDocument) -> List[ParagraphData]:
         result: List[ParagraphData] = []
         position = 0
+        W_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
         for para in doc.paragraphs:
-            text = para.text.strip()
-            if not text:
+            # E2E-66 fix: python-docx para.text truncates long paragraphs (only reads
+            # first ~35 w:r elements, missing content in paragraphs with 100+ w:t nodes).
+            # Use lxml body.findall to read ALL w:t elements for complete text.
+            full_text = "".join(
+                t.text or "" for t in para._element.findall(f".//{W_NS}t")
+            ).strip()
+            if not full_text:
                 continue
+            text = full_text
             style_name = para.style.name if para.style else None
             level = None
 
@@ -272,11 +279,16 @@ class DOCXExtractor(ExtractorBase):
         Returns:
             List of RunData with text and formatting
         """
+        W_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
         runs = []
         for run in para.runs:
-            text = run.text
-            if not text or not text.strip():
+            # E2E-66 fix: use findall to read ALL w:t elements in this run,
+            # not just run.text which truncates at ~35 w:r elements.
+            # For runs in paragraphs with 100+ w:t nodes, run.text is incomplete.
+            run_text = "".join(t.text or "" for t in run._element.findall(f".//{W_NS}t"))
+            if not run_text or not run_text.strip():
                 continue
+            text = run_text
 
             run_data = RunData(
                 text=text,
