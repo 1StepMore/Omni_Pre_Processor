@@ -187,7 +187,8 @@ class XLIFFFileGenerator:
                 source_elem = elem.find('source')
 
             if source_elem is not None:
-                # Clear existing content
+                # Clear existing content including placeholder text
+                source_elem.text = None
                 for child in list(source_elem):
                     source_elem.remove(child)
 
@@ -260,10 +261,23 @@ class XLIFFFileGenerator:
             first_word = tag_content.split()[0] if tag_content else ""
 
             if first_word in inline_tags:
+                # Check if this is a self-closing tag (ends with /)
+                is_self_closing = tag_content.rstrip().endswith('/')
+                
                 # This is an inline element tag - add it as XML child
                 if text_content:
-                    # Add accumulated text as text node
-                    source_elem.text = ''.join(text_content)
+                    # Add accumulated text to the appropriate node
+                    # First text segment goes to source_elem.text
+                    # Subsequent text segments go to the tail of the previous element
+                    if source_elem.text is None and len(source_elem) == 0:
+                        # First text segment - set source_elem.text
+                        source_elem.text = ''.join(text_content)
+                    else:
+                        # Subsequent text - set tail of last child element
+                        if len(source_elem) > 0:
+                            source_elem[-1].tail = ''.join(text_content)
+                        else:
+                            source_elem.text = ''.join(text_content)
                     text_content = []
 
                 # Parse attributes from tag content using regex
@@ -281,6 +295,29 @@ class XLIFFFileGenerator:
                     new_elem = etree.SubElement(source_elem, first_word)
                     for key, val in attrs.items():
                         new_elem.set(key, val)
+                    
+                    # For self-closing tags, immediately look for following text as tail
+                    # Don't wait for the next tag to assign tail
+                    if is_self_closing:
+                        next_pos = tag_end + 1
+                        # Look for text immediately following the self-closing tag
+                        next_tag_pos = source_text.find('<', next_pos)
+                        if next_tag_pos == -1:
+                            # No more tags, remaining text is tail of this element
+                            remaining = source_text[next_pos:].strip()
+                            if remaining:
+                                new_elem.tail = remaining
+                            pos = len(source_text)
+                        elif next_tag_pos > next_pos:
+                            # There's text between this tag and the next
+                            text_after = source_text[next_pos:next_tag_pos]
+                            if text_after.strip():
+                                new_elem.tail = text_after
+                            pos = next_tag_pos
+                        else:
+                            # Next tag immediately follows (no text in between)
+                            pos = next_pos
+                        continue
             else:
                 # Not an inline tag, treat as text
                 text_content.append(source_text[tag_start:tag_end + 1])
