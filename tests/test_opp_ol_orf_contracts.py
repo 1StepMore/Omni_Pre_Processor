@@ -8,6 +8,7 @@ OL output (XLIFF with <source> + <target>) → ORF input: ORF must handle XLIFF 
 These tests verify the contracts, NOT the implementation details.
 """
 
+import asyncio
 import pytest
 import tempfile
 import zipfile
@@ -168,10 +169,13 @@ class TestOPPtoOLContract:
         xliff_path = temp_dir / "opp_output.xlf"
         xliff_path.write_text(OPP_OUTPUT_XLIFF_SOURCE_ONLY, encoding="utf-8")
 
-        def mock_translate(text, src_lang, tgt_lang, context=None):
-            return f"[T: {text}]"
+        class MockPool:
+            async def translate(self, text, src_lang, tgt_lang, context=None):
+                return f"[T: {text}]"
 
-        with patch("ol_pool.router.ModelPool.translate", side_effect=mock_translate):
+        mock_pool = MockPool()
+
+        with patch("ol_pool.router.ModelPool.get_instance", return_value=mock_pool):
             from ol_mcp.tools import translate_xliff, TranslateXliffInput
 
             output_path = str(temp_dir / "ol_output.xlf")
@@ -181,7 +185,7 @@ class TestOPPtoOLContract:
                 source_lang="en",
                 target_lang="zh",
             )
-            result = translate_xliff(params)
+            result = asyncio.run(translate_xliff(params))
 
         import json
         result_data = json.loads(result)
@@ -298,7 +302,13 @@ class TestFullPipelineContracts:
         def mock_translate(text, src_lang, tgt_lang, context=None):
             return f"[已翻译: {text}]"
 
-        with patch("ol_pool.router.ModelPool.translate", side_effect=mock_translate):
+        class MockPool:
+            async def translate(self, text, src_lang, tgt_lang, context=None):
+                return mock_translate(text, src_lang, tgt_lang, context)
+
+        mock_pool = MockPool()
+
+        with patch("ol_pool.router.ModelPool.get_instance", return_value=mock_pool):
             from ol_mcp.tools import translate_xliff, TranslateXliffInput
 
             ol_output_path = str(temp_dir / "step2_ol_output.xlf")
@@ -308,7 +318,7 @@ class TestFullPipelineContracts:
                 source_lang="en",
                 target_lang="zh",
             )
-            ol_result = translate_xliff(params)
+            ol_result = asyncio.run(translate_xliff(params))
 
         import json
         ol_data = json.loads(ol_result)
@@ -361,5 +371,5 @@ class TestFullPipelineContracts:
         # Verify translations are in final DOCX
         assert "[已翻译: Contract Test Paragraph 1]" in result_xml
         assert "[已翻译: Contract Test Paragraph 2]" in result_xml
-        assert "Contract Test Paragraph 1" not in result_xml
-        assert "Contract Test Paragraph 2" not in result_xml
+        assert ">Contract Test Paragraph 1<" not in result_xml
+        assert ">Contract Test Paragraph 2<" not in result_xml
