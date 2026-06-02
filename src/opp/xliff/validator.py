@@ -4,17 +4,17 @@ from lxml import etree
 
 from opp.xliff.xliff_dataclasses import _VALID_LANGUAGE_CODES
 
-# XLIFF 1.1 namespace (translate-toolkit default)
-XLIFF_NAMESPACE = "urn:oasis:names:tc:xliff:document:1.1"
+# XLIFF 1.2 namespace (OASIS standard, what XLIFFFileGenerator emits)
+XLIFF_NAMESPACE = "urn:oasis:names:tc:xliff:document:1.2"
 XLIFF_NS = {"xlf": XLIFF_NAMESPACE}
 
 # Minimal XLIFF 1.2 XSD schema (bundled locally - no network calls)
 # Based on OASIS XLIFF 1.2 specification
 _XLIFF_1_2_XSD = b"""<?xml version="1.0" encoding="UTF-8"?>
 <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-            xmlns:xlf="urn:oasis:names:tc:xliff:document:1.1"
+            xmlns:xlf="urn:oasis:names:tc:xliff:document:1.2"
             xmlns:xml="http://www.w3.org/XML/1998/namespace"
-            targetNamespace="urn:oasis:names:tc:xliff:document:1.1"
+            targetNamespace="urn:oasis:names:tc:xliff:document:1.2"
             elementFormDefault="qualified"
             version="1.2">
 
