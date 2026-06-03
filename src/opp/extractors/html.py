@@ -360,7 +360,9 @@ class HTMLExtractor(ExtractorBase):
             data = base64.b64decode(data_str)
             return ImageData(data=data, mime_type=mime_type)
         except Exception as e:
-            logger.debug(f"Base64 decode failed: {e}")
+            logger.debug(
+                f"_parse_data_uri: base64 decode failed for data URI (mime={mime_type}): {e}"
+            )
             return None
 
     def _guess_mime_type(self, src: str) -> str:

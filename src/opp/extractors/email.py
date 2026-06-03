@@ -205,6 +205,10 @@ class AttachmentHandler:
 
     def process_attachment(self, attachment_data: AttachmentData) -> Optional["ProcessingResult"]:
         if self._current_depth >= self.max_depth:
+            self._logger.debug(
+                "process_attachment: skipping attachment '%s' (recursion depth %d >= max %d)",
+                attachment_data.filename, self._current_depth, self.max_depth,
+            )
             return None
 
         original_filename = attachment_data.filename
@@ -230,7 +234,9 @@ class AttachmentHandler:
 
             return result
         except Exception as e:
-            logger.debug(f"Attachment processing failed: {e}")
+            logger.debug(
+                f"process_attachment: attachment '{attachment_data.filename}' processing failed: {e}"
+            )
             return None
         finally:
             if temp_path.exists():

@@ -115,6 +115,7 @@ class PDFExtractor(ExtractorBase):
             from rapidocr_onnxruntime import RapidOCRSentenceExtractor
             return RapidOCRSentenceExtractor()
         except ImportError:
+            logger.warning("_init_rapidocr: rapidocr_onnxruntime not installed, OCR fallback unavailable")
             return None
 
     def _ocr_tesseract(self, img, lang: str) -> Optional[str]:
@@ -138,6 +139,7 @@ class PDFExtractor(ExtractorBase):
                 from rapidocr_onnxruntime import RapidOCRSentenceExtractor
                 engine = RapidOCRSentenceExtractor()
             except ImportError:
+                logger.warning("_ocr_rapidocr: rapidocr_onnxruntime not installed, OCR fallback unavailable")
                 return None
 
         try:
@@ -153,12 +155,16 @@ class PDFExtractor(ExtractorBase):
                     for item in result:
                         if len(item) >= 2:
                             text_parts.append(item[1])
-                    return "\n".join(text_parts) if text_parts else None
+                    if not text_parts:
+                        logger.debug("_ocr_rapidocr: RapidOCR returned no text parts")
+                        return None
+                    return "\n".join(text_parts)
+                logger.debug("_ocr_rapidocr: RapidOCR returned no result")
                 return None
             finally:
                 Path(tmp_path).unlink(missing_ok=True)
         except Exception as e:
-            logger.debug(f"RapidOCR extraction failed: {e}")
+            logger.debug(f"_ocr_rapidocr: RapidOCR extraction failed: {e}")
             return None
 
     def extract_text_blocks(self, doc: fitz.Document) -> List[TextBlockData]:

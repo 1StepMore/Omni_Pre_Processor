@@ -4,7 +4,10 @@ import time
 from pathlib import Path
 from typing import List, Optional
 
-from fastmcp import FastMCP
+try:
+    from fastmcp import FastMCP
+except ImportError:
+    FastMCP = None
 
 from opp.detector import detect_format
 from opp.mcp.config import MCPConfig, load_config
@@ -30,7 +33,7 @@ def _init_server(config: MCPConfig) -> None:
     )
     _pipeline = OPPPipeline(resource_storage_dir=config.resource_storage_dir)
     _serializer = ExtractionResultSerializer()
-    _mcp = FastMCP("OPP MCP Server")
+    _mcp = FastMCP("OPP MCP Server") if FastMCP is not None else None
 
 
 async def extract_document(
@@ -436,6 +439,69 @@ async def generate_markdown(
         }
 
 
+async def save_skeleton(
+    file_path: str,
+    base_name: str = "document",
+    output_dir: Optional[str] = None,
+) -> dict:
+    """Save skeleton ZIP file from extracted document.
+
+    Runs OPP extraction (process_file), then saves the skeleton via
+    OPPPipeline.save_skeleton. Returns the skeleton path. The skeleton
+    is required by ORF's apply_xliff as the input_file arg, so this tool
+    completes the OPP MCP surface for full-pipeline use.
+
+    Args:
+        file_path: Path to the source document (DOCX/PPTX/PDF/etc.).
+        base_name: Output file base name (default "document").
+        output_dir: Output directory (default: same dir as file_path).
+
+    Returns:
+        JSON dict with success, skeleton_path (or None if no skeleton), error.
+    """
+    if _validator is None:
+        return {
+            "success": False,
+            "skeleton_path": None,
+            "error": "Server not initialized",
+        }
+
+    validation_result = _validator.validate_path(file_path)
+    if not validation_result.success:
+        return {
+            "success": False,
+            "skeleton_path": None,
+            "error": validation_result.error or "Path validation failed",
+        }
+
+    output_path = Path(output_dir) if output_dir else Path(file_path).parent
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    try:
+        result = _pipeline.process_file(Path(file_path))
+        if result.extraction_result is None:
+            return {
+                "success": False,
+                "skeleton_path": None,
+                "error": "No extraction result",
+            }
+
+        skeleton_path = _pipeline.save_skeleton(
+            result.extraction_result, base_name, output_path,
+        )
+        return {
+            "success": True,
+            "skeleton_path": str(skeleton_path) if skeleton_path else None,
+            "error": None,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "skeleton_path": None,
+            "error": f"Skeleton save failed: {str(e)}",
+        }
+
+
 def main() -> None:
     config = load_config()
     _init_server(config)
@@ -446,5 +512,6 @@ def main() -> None:
     _mcp.add_tool(detect_format_tool)
     _mcp.add_tool(generate_xliff)
     _mcp.add_tool(generate_markdown)
+    _mcp.add_tool(save_skeleton)
 
     _mcp.run()
