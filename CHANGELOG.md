@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-06-03
+
+### Added
+- **Floating DOCX image support** — OPP now distinguishes `wp:anchor` (floating) from `wp:inline` drawings, exposing anchor coordinates for downstream ORF wp:anchor reinjection.
+  - `ImageData.is_floating: bool = False` — True for `wp:anchor` drawings, False for `wp:inline`
+  - `ImageData.wp_anchor_h: int = 0` — horizontal position offset in EMU units (read from `wp:posOffset` inside `wp:positionH`)
+  - `ImageData.wp_anchor_v: int = 0` — vertical position offset in EMU units (read from `wp:posOffset` inside `wp:positionV`)
+  - `docx._extract_anchor_offsets(drawing, WP_NS, ns_map)` — module-level helper that returns `(h, v)` EMU tuple; returns `(0, 0)` for inline drawings, `wp:align`-only anchors, and malformed/missing `posOffset` text
+  - `images.json` now emits `is_floating: true` and `wp_anchor_h` / `wp_anchor_v` keys for floating images; zero-valued offsets are omitted from the JSON to keep the inline-image shape unchanged
+- **pytest markers** — `conftest.py` registers `e2e` and `real_chain` markers used by the new Phase 2 nightly-test suite
+- **Phase 2 test coverage** — two new test files
+  - `tests/test_opp_floating_image_fix.py` — unit tests for `_extract_anchor_offsets` (inline, posOffset, wp:align, missing children, non-numeric text, partial anchor), `ImageData` defaults/backward-compat, and `images_json` floating-field propagation
+  - `tests/test_opp_ol_orf_contracts_md.py` — end-to-end OPP→OL→ORF MD-path contract tests with a comprehensive translate mock, asserting the public `MD2DOCXConverter.convert()` consumes real OPP output
+
+### Changed
+- **`_extract_inline_drawings` (docx.py)** — sets `paragraph_index=None` for floating drawings (they are not anchored to a `w:p`) and populates the new `is_floating` / `wp_anchor_h` / `wp_anchor_v` fields from the `wp:anchor` element when present
+
+### Notes
+- This unblocks real-LLM nightly tests (`tests/test_e2e_real_llm.py` in Omni_Re_Formatter) that need floating-image metadata to inject `wp:anchor` elements into the regenerated DOCX.
+- The current Haier DOCX test fixture contains 0 floating images; the floating-image path is exercised by synthetic XML in `test_opp_floating_image_fix.py` until a real fixture is added.
+
 ## [0.5.9] - 2026-05-28
 
 ### Fixed

@@ -16,6 +16,7 @@ Document content extraction for DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPU
 - **Audio/Video transcription** - Whisper-based ASR
 - **Format auto-detection** - Magic bytes detection (extension not required)
 - **Resource management** - MD5 deduplication, UUID naming for images
+- **Floating image extraction** - Distinguishes `wp:anchor` (floating) from `wp:inline` drawings and carries `wp:positionH`/`wp:positionV` offsets in EMU units through `images.json` for downstream ORF reinjection
 - **Pipeline orchestrator** - detect → extract → manage → report
 - **CLI interface** - Full command-line with batch support
 - **Output formats** - Markdown and XLIFF 1.2/2.0
@@ -279,6 +280,10 @@ OPP outputs standardized artifacts for downstream processing:
 | `{name}.skeleton.zip` | Original DOCX/PPTX ZIP structure | ORF (XLIFF→DOCX backfill) |
 
 **MCP Tools Available:** `extract_document`, `batch_extract`, `detect_format`, `generate_markdown`, `generate_xliff`
+
+### Floating Image Metadata
+
+For DOCX inputs that contain anchored (floating) images, OPP emits an `is_floating: true` flag alongside `wp_anchor_h` and `wp_anchor_v` fields in `images.json` — both expressed in EMU (English Metric Units, 914400 EMU = 1 inch). The `paragraph_index` for floating drawings is `None` because they are not anchored to a `w:p` element. ORF consumes these fields to reinject `<wp:anchor>` blocks with `<wp:positionH>`/`<wp:positionV>` when backfilling the translated DOCX, preserving the original page layout. Inline images keep the previous JSON shape (no `is_floating` key) so downstream consumers that don't care about floating layout remain unaffected.
 
 ## MCP Server (Agent-Facing)
 

@@ -56,11 +56,19 @@ class ImageData:
     height: Optional[int] = None
 
     # Position fields - only ONE of these has a value per ExtractionResult (format-specific)
-    paragraph_index: Optional[int] = None  # DOCX inline drawings (0-based)
+    paragraph_index: Optional[int] = None  # DOCX inline drawings (0-based, None for floating)
     page_number: Optional[int] = None      # PDF pages (1-based)
     slide_index: Optional[int] = None      # PPTX slides (0-based)
     element_index: Optional[int] = None    # HTML DOM elements (0-based)
     spine_index: Optional[int] = None      # EPUB spine order (0-based)
+    is_floating: bool = False              # DOCX: True if <wp:anchor>, False if <wp:inline>
+
+    # Anchor coordinates (EMU = English Metric Units, 914400 EMU = 1 inch).
+    # Only meaningful for floating DOCX images (is_floating=True). Phase 3
+    # (ORF wp:anchor injection) reads these to rebuild <wp:positionH>/<wp:positionV>
+    # on the regenerated DOCX. Default 0 keeps the field optional for inline images.
+    wp_anchor_h: int = 0
+    wp_anchor_v: int = 0
 
 
 @dataclass

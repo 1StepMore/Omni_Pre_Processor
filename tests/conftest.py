@@ -5,6 +5,11 @@ import fitz
 import io
 
 
+def pytest_configure(config):
+    config.addinivalue_line("markers", "e2e: end-to-end pipeline tests")
+    config.addinivalue_line("markers", "real_chain: tests that exercise OPP→OL→ORF with fake-LLM seam")
+
+
 def createMinimalPNG(width=10, height=10):
     import zlib, struct
     def png_chunk(chunk_type, data):

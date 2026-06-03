@@ -29,12 +29,44 @@ logger = logging.getLogger(__name__)
 CHINESE_NUMERIC = '[零一二三四五六七八九十百千零\\d]+'
 CHINESE_HEADING_PATTERNS = [
     re.compile(rf'^第{CHINESE_NUMERIC}[章节条款]'),   # 第X章/节/条
-    re.compile(rf'^{CHINESE_NUMERIC}[、.]'),          # X、or X.  
+    re.compile(rf'^{CHINESE_NUMERIC}[、.]'),          # X、or X.
     re.compile(r'^【[^】]+】'),                        # 【标题】
     re.compile(rf'^{CHINESE_NUMERIC}、'),              # 一、二、三、
     re.compile(r'^附录'),                              # 附录
     re.compile(r'^[一二三四五六七八九十]+、'),         # 一、二、三、 (without digits)
 ]
+
+
+def _parse_position_value(pos_elem) -> int:
+    """Read a numeric offset from a wp:positionH/wp:positionV element.
+
+    Prefers <wp:posOffset> (EMU integer text), falls back to 0. wp:align
+    values are alignment keywords (left/center/right/top/bottom) which are
+    not numeric offsets, so they are treated as 0 here; ORF can resolve
+    the alignment relative to the page at injection time.
+    """
+    if pos_elem is None:
+        return 0
+    offset = pos_elem.find(f'{{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}}posOffset')
+    if offset is not None and offset.text:
+        try:
+            return int(offset.text.strip())
+        except (ValueError, TypeError):
+            return 0
+    return 0
+
+
+def _extract_anchor_offsets(drawing, WP_NS: str, ns_map: dict) -> tuple[int, int]:
+    """Extract (horizontal, vertical) EMU offsets from a wp:anchor.
+
+    Returns (0, 0) for inline drawings or when positionH/positionV is absent.
+    """
+    anchor = drawing.find(f'.//{WP_NS}anchor', ns_map)
+    if anchor is None:
+        return (0, 0)
+    pos_h = anchor.find(f'{WP_NS}positionH')
+    pos_v = anchor.find(f'{WP_NS}positionV')
+    return (_parse_position_value(pos_h), _parse_position_value(pos_v))
 
 
 class DOCXExtractor(ExtractorBase):
@@ -172,11 +204,13 @@ class DOCXExtractor(ExtractorBase):
         input_path: Path,
         paragraph_index_map: dict,
     ) -> List[ImageData]:
-        """Extract inline w:drawing images from word/document.xml.
+        """Extract w:drawing images from word/document.xml.
 
-        Uses iterparse to walk paragraphs in document order, counting
-        non-empty w:p elements. This avoids the id() mismatch between
-        python-docx CT_P objects and lxml elements from a separate parse.
+        Deduplicates mc:Choice/mc:Fallback renderings (each drawing is
+        only counted once even if it has both primary and fallback blips).
+        Gets the real paragraph position by walking up the XML tree to
+        find the enclosing w:p element. Distinguishes wp:inline from
+        wp:anchor (floating) drawings.
         """
         result: List[ImageData] = []
         try:
@@ -189,26 +223,45 @@ class DOCXExtractor(ExtractorBase):
 
         W_NS = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
         A_NS = '{http://schemas.openxmlformats.org/drawingml/2006/main}'
-        T_NS = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
         R_NS = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'
-
-        para_count = 0
-        pending_drawings: List[tuple] = []
+        WP_NS = '{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}'
+        MC_NS = '{http://schemas.openxmlformats.org/markup-compatibility/2006}'
+        ns_map = {'w': W_NS, 'wp': WP_NS}
 
         try:
-            from io import BytesIO
-            for event, elem in etree.iterparse(BytesIO(document_xml), events=('end',)):
-                if elem.tag == f'{W_NS}p':
-                    text = ''.join(t.text or '' for t in elem.iter(f'{T_NS}t'))
-                    if text.strip():
-                        para_count += 1
-                elif elem.tag == f'{W_NS}drawing':
-                    pending_drawings.append((para_count, elem))
+            tree = etree.fromstring(document_xml)
         except etree.XMLSyntaxError:
             return result
 
-        fallback_index = para_count + 1
-        for drawing_para_index, drawing in pending_drawings:
+        body = tree.find(f'{W_NS}body')
+        if body is None:
+            return result
+
+        all_paragraphs = tree.findall(f'.//{W_NS}p')
+        para_to_idx = {p: i for i, p in enumerate(all_paragraphs)}
+
+        for drawing in tree.findall(f'.//{W_NS}drawing'):
+            parent = drawing.getparent()
+            if parent is not None and parent.tag == f'{MC_NS}Fallback':
+                continue
+
+            p = None
+            if parent is not None and parent.tag == f'{W_NS}p':
+                p = parent
+            elif parent is not None:
+                p = parent
+                while p is not None and p.tag != f'{W_NS}p':
+                    p = p.getparent()
+
+            if p is not None and p in para_to_idx:
+                para_idx = para_to_idx[p]
+            else:
+                para_idx = None
+
+            is_floating = drawing.find(f'.//{WP_NS}anchor', ns_map) is not None
+            assigned_index = None if is_floating else para_idx
+            anchor_h, anchor_v = _extract_anchor_offsets(drawing, WP_NS, ns_map)
+
             for blip in drawing.iter(f'{A_NS}blip'):
                 embed_attr = blip.get(f'{R_NS}embed')
                 if not embed_attr:
@@ -217,13 +270,15 @@ class DOCXExtractor(ExtractorBase):
                     rel = doc.part.rels.get(embed_attr)
                     if rel and "image" in rel.reltype:
                         image_part = rel.target_part
-                        assigned_index = drawing_para_index if drawing_para_index > 0 else fallback_index
                         result.append(ImageData(
                             data=image_part.blob,
                             mime_type=image_part.content_type,
                             paragraph_index=assigned_index,
+                            is_floating=is_floating,
+                            wp_anchor_h=anchor_h,
+                            wp_anchor_v=anchor_v,
                         ))
-                        fallback_index = assigned_index + 1
+                        break
                 except Exception as e:
                     logger.warning(f"Failed to extract inline drawing image: {e}")
 

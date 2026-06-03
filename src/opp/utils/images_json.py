@@ -42,6 +42,15 @@ def generate_images_json(result: ExtractionResult, output_path: Path) -> dict:
             "mime_type": img.mime_type,
         }
 
+        if getattr(img, "is_floating", False):
+            image_entry["is_floating"] = True
+            anchor_h = getattr(img, "wp_anchor_h", 0)
+            anchor_v = getattr(img, "wp_anchor_v", 0)
+            if anchor_h:
+                image_entry["wp_anchor_h"] = anchor_h
+            if anchor_v:
+                image_entry["wp_anchor_v"] = anchor_v
+
         if img.width is not None:
             image_entry["width"] = img.width
         if img.height is not None:
