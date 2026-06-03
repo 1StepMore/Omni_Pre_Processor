@@ -183,11 +183,9 @@ class TestImagesJsonFloatingPropagation:
         from opp.utils.dataclasses import DocumentMetadata, ExtractionResult
 
         meta = DocumentMetadata(
-            file_path="/tmp/x.docx",
-            original_filename="x.docx",
-            format="DOCX",
-            file_size_bytes=0,
-            file_hash_md5="0" * 32,
+            file_size=0,
+            format_type="DOCX",
+            source_md5="0" * 32,
         )
         return ExtractionResult(
             paragraphs=[],
