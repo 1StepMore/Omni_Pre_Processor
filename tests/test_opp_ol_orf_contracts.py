@@ -246,7 +246,7 @@ class TestOPPtoOLContract:
                 source_lang="en",
                 target_lang="zh",
             )
-            result_str = asyncio.run(translate_xliff(params))
+            result_str = translate_xliff(params)
             result_data = json.loads(result_str)
 
         assert result_data["success"], f"OL failed: {result_data}"
@@ -301,7 +301,7 @@ class TestOLtoORFContract:
                 source_lang="en",
                 target_lang="zh",
             )
-            result_str = asyncio.run(translate_xliff(params))
+            result_str = translate_xliff(params)
             result_data = json.loads(result_str)
         assert result_data["success"], f"OL failed: {result_data}"
 
@@ -382,7 +382,7 @@ class TestFullPipelineContracts:
                 source_lang="en",
                 target_lang="zh",
             )
-            ol_result_str = asyncio.run(translate_xliff(params))
+            ol_result_str = translate_xliff(params)
             ol_data = json.loads(ol_result_str)
         assert ol_data["success"], f"OL step failed: {ol_data}"
 

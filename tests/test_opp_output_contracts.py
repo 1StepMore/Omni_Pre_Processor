@@ -30,8 +30,11 @@ class TestOPPExtractDocument:
         """
         # This is a contract test - verifies OPP's XLIFF generator produces source-only format
         from opp.xliff.generator import XLIFFFileGenerator
+        from opp.xliff import XLIFFFileAttributes
 
-        generator = XLIFFFileGenerator(source_lang="en", target_lang="zh")
+        generator = XLIFFFileGenerator(
+            XLIFFFileAttributes(source_language="en", target_language="zh")
+        )
 
         from opp.utils.dataclasses import ExtractionResult, ParagraphData
 
@@ -39,10 +42,8 @@ class TestOPPExtractDocument:
         result = ExtractionResult(
             paragraphs=[
                 ParagraphData(
-                    paragraph_index=0,
                     text="Test paragraph content",
-                    is_heading=False,
-                    images=[],
+                    position=0,
                 )
             ],
             tables=[],
@@ -51,7 +52,7 @@ class TestOPPExtractDocument:
         )
 
         xliff_output = temp_dir / "output.xlf"
-        generator.from_extraction_result(result, xliff_output)
+        XLIFFFileGenerator.from_extraction_result(result, "en", "zh").write_to_file(xliff_output)
 
         content = xliff_output.read_text(encoding="utf-8")
 
@@ -113,19 +114,18 @@ class TestOPPOLContracts:
 
         result = ExtractionResult(
             paragraphs=[
-                ParagraphData(paragraph_index=0, text="Hello World", is_heading=False, images=[]),
-                ParagraphData(paragraph_index=1, text="Second paragraph", is_heading=False, images=[]),
+                ParagraphData(text="Hello World", position=0),
+                ParagraphData(text="Second paragraph", position=1),
             ],
             tables=[],
             images=[],
             metadata={}
         )
 
-        generator = XLIFFFileGenerator(source_lang="en", target_lang="zh")
         output_path = Path(tempfile.mktemp(suffix=".xlf"))
 
         try:
-            generator.from_extraction_result(result, output_path)
+            XLIFFFileGenerator.from_extraction_result(result, "en", "zh").write_to_file(output_path)
             content = output_path.read_text(encoding="utf-8")
 
             # Contract verification
