@@ -1,5 +1,7 @@
 """OPP MCP Server with FastMCP."""
 
+import os
+import tempfile
 import time
 from pathlib import Path
 from typing import List, Optional
@@ -13,6 +15,11 @@ from opp.detector import detect_format
 from opp.mcp.config import MCPConfig, load_config
 from opp.mcp.security import PathValidator
 from opp.mcp.serializers import ExtractionResultSerializer
+# C12 fix: shared error boundary. The decorator provides a final safety net
+# for any UNCAUGHT exception; the existing inner try/except blocks still
+# handle expected error conditions, but their `str(e)` values no longer
+# reach the client in failure paths handled by the decorator.
+from opp.mcp._errors import mcp_error_boundary
 from opp.pipeline import OPPPipeline
 
 
@@ -36,6 +43,42 @@ def _init_server(config: MCPConfig) -> None:
     _mcp = FastMCP("OPP MCP Server") if FastMCP is not None else None
 
 
+def _safe_unlink(path: Path) -> bool:
+    """C3 fix: resolve+revalidate path before unlink, then refuse to follow
+    symlinks. Returns True if a file was deleted, False otherwise.
+    """
+    if _validator is None:
+        return False
+    try:
+        resolved = path.resolve()
+    except (ValueError, OSError):
+        return False
+    # Reject symlinks: unlink() follows them and could delete the target
+    if path.is_symlink():
+        return False
+    # Re-validate against allowlist
+    result = _validator.validate_path(str(resolved), allow_missing=True)
+    if not result.success:
+        return False
+    try:
+        os.unlink(resolved)
+        return True
+    except OSError:
+        return False
+
+
+def _safe_temp_output(suffix: str, parent: Path) -> Path:
+    """Create a tempfile inside the resolved parent dir (which must be in an
+    allowed dir). Returns the Path. C3 fix: intermediate outputs go in
+    tempfiles, never at the input file's with_suffix location.
+    """
+    parent_resolved = parent.resolve()
+    fd, name = tempfile.mkstemp(suffix=suffix, prefix="opp_mcp_", dir=str(parent_resolved))
+    os.close(fd)
+    return Path(name)
+
+
+@mcp_error_boundary
 async def extract_document(
     file_path: str,
     output_formats: Optional[List[str]] = None,
@@ -78,8 +121,22 @@ async def extract_document(
                 "error": "Resource directory path traversal not allowed",
             }
         try:
-            resource_path.resolve().relative_to(_config.allowed_directories[0])
-        except ValueError:
+            resolved_resource = resource_path.resolve()
+        except (ValueError, OSError) as e:
+            return {
+                "success": False,
+                "error": f"Resource directory cannot be resolved: {e}",
+            }
+        # C6 fix: iterate ALL allowed_directories; pre-fix only checked [0].
+        is_resource_allowed = False
+        for allowed_dir in _config.allowed_directories:
+            try:
+                resolved_resource.relative_to(Path(allowed_dir).resolve())
+                is_resource_allowed = True
+                break
+            except ValueError:
+                continue
+        if not is_resource_allowed:
             return {
                 "success": False,
                 "error": "Resource directory must be within allowed directories",
@@ -101,34 +158,43 @@ async def extract_document(
 
     if "md" in output_formats or "both" in output_formats:
         if result.extraction_result:
-            md_output_path = Path(file_path).with_suffix(".md")
+            # C3 fix: write to a tempfile inside the input dir, then safe_unlink
+            md_output_path = _safe_temp_output(".md", Path(file_path).parent)
             try:
                 _pipeline.generate_markdown(result.extraction_result, md_output_path)
                 if md_output_path.exists():
                     with open(md_output_path, "r", encoding="utf-8") as f:
                         response["md_content"] = f.read()
-                    md_output_path.unlink()
-                images_dir = md_output_path.parent / f"{md_output_path.stem}_images"
+                    _safe_unlink(md_output_path)
+                images_dir = md_output_path.parent / f"{Path(file_path).stem}_images"
                 if images_dir.exists():
                     response["images_dir"] = str(images_dir)
             except Exception as e:
                 response["warnings"] = response.get("warnings", []) + [f"Markdown generation failed: {str(e)}"]
+            finally:
+                _safe_unlink(md_output_path)
 
     if "json" in output_formats or (result.extraction_result and result.extraction_result.images):
         if result.extraction_result:
-            images_json_path = Path(file_path).with_suffix(".images.json")
+            # C3 fix: write to a tempfile; safe_unlink in finally
             if _config.output_dir:
-                images_json_path = Path(_config.output_dir) / images_json_path.name
+                images_json_path = _safe_temp_output(".images.json", Path(_config.output_dir))
+            else:
+                images_json_path = _safe_temp_output(".images.json", Path(file_path).parent)
             try:
                 _pipeline.generate_images_json(result.extraction_result, images_json_path)
                 if images_json_path.exists():
                     response["images_json_path"] = str(images_json_path)
             except Exception as e:
                 response["warnings"] = response.get("warnings", []) + [f"Images JSON generation failed: {str(e)}"]
+            finally:
+                if not _config.output_dir:
+                    _safe_unlink(images_json_path)
 
     if "xlf" in output_formats or "both" in output_formats:
         if result.extraction_result:
-            xliff_output_path = Path(file_path).with_suffix(".xlf")
+            # C3 fix: write to a tempfile; safe_unlink in finally
+            xliff_output_path = _safe_temp_output(".xlf", Path(file_path).parent)
             try:
                 _pipeline.generate_xliff(result.extraction_result, xliff_output_path, source_lang, target_lang)
                 if xliff_output_path.exists():
@@ -136,18 +202,20 @@ async def extract_document(
                         xliff_content = f.read()
                     response["xliff_content"] = xliff_content
                     response["xliff_units_count"] = xliff_content.count("<trans-unit") if xliff_content else 0
-                    if not _config.output_dir:
-                        xliff_output_path.unlink()
             except ValueError as e:
                 response["success"] = False
                 response["error"] = str(e)
                 response["xliff_error"] = str(e)
             except Exception as e:
                 response["warnings"] = response.get("warnings", []) + [f"XLIFF generation failed: {str(e)}"]
+            finally:
+                if not _config.output_dir:
+                    _safe_unlink(xliff_output_path)
 
     return response
 
 
+@mcp_error_boundary
 async def batch_extract(
     file_paths: List[str],
     output_formats: Optional[List[str]] = None,
@@ -209,22 +277,25 @@ async def batch_extract(
             # Handle output formats for each file
             if "md" in output_formats or "both" in output_formats:
                 if result.extraction_result:
-                    md_output_path = Path(file_path).with_suffix(".md")
+                    # C3 fix: tempfile + safe_unlink
+                    md_output_path = _safe_temp_output(".md", Path(file_path).parent)
                     try:
                         _pipeline.generate_markdown(result.extraction_result, md_output_path)
                         if md_output_path.exists():
                             with open(md_output_path, "r", encoding="utf-8") as f:
                                 serialized["md_content"] = f.read()
-                            md_output_path.unlink()
-                        images_dir = md_output_path.parent / f"{md_output_path.stem}_images"
+                        images_dir = md_output_path.parent / f"{Path(file_path).stem}_images"
                         if images_dir.exists():
                             serialized["images_dir"] = str(images_dir)
                     except Exception as e:
                         serialized["warnings"] = serialized.get("warnings", []) + [f"Markdown generation failed: {str(e)}"]
+                    finally:
+                        _safe_unlink(md_output_path)
 
             if "xlf" in output_formats or "both" in output_formats:
                 if result.extraction_result:
-                    xliff_output_path = Path(file_path).with_suffix(".xlf")
+                    # C3 fix: tempfile + safe_unlink
+                    xliff_output_path = _safe_temp_output(".xlf", Path(file_path).parent)
                     try:
                         _pipeline.generate_xliff(result.extraction_result, xliff_output_path, source_lang, target_lang)
                         if xliff_output_path.exists():
@@ -232,13 +303,15 @@ async def batch_extract(
                                 xliff_content = f.read()
                             serialized["xliff_content"] = xliff_content
                             serialized["xliff_units_count"] = xliff_content.count("<trans-unit") if xliff_content else 0
-                            if not _config.output_dir: xliff_output_path.unlink()
                     except ValueError as e:
                         serialized["success"] = False
                         serialized["error"] = str(e)
                         serialized["xliff_error"] = str(e)
                     except Exception as e:
                         serialized["warnings"] = serialized.get("warnings", []) + [f"XLIFF generation failed: {str(e)}"]
+                    finally:
+                        if not _config.output_dir:
+                            _safe_unlink(xliff_output_path)
 
             results.append({
                 "file_path": file_path,
@@ -264,6 +337,7 @@ async def batch_extract(
     }
 
 
+@mcp_error_boundary
 async def detect_format_tool(file_path: str) -> dict:
     if _validator is None:
         return {
@@ -292,6 +366,7 @@ async def detect_format_tool(file_path: str) -> dict:
         }
 
 
+@mcp_error_boundary
 async def generate_xliff(
     file_path: str,
     source_lang: str = "en",
@@ -374,6 +449,7 @@ async def ping() -> dict:
     return {"success": True}
 
 
+@mcp_error_boundary
 async def generate_markdown(
     file_path: str,
     output_path: Optional[str] = None,
@@ -439,6 +515,7 @@ async def generate_markdown(
         }
 
 
+@mcp_error_boundary
 async def save_skeleton(
     file_path: str,
     base_name: str = "document",
