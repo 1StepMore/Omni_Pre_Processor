@@ -2,6 +2,7 @@ import argparse
 import hashlib
 import json
 import os
+import shutil
 import sys
 import time
 from datetime import datetime
@@ -13,6 +14,89 @@ from opp.error_handler import ErrorHandler, ErrorContext
 from opp.pipeline import OPPPipeline
 from opp.resource_manager import ResourceManager
 from opp.logger import setup_logger, get_logger
+
+
+# ========== A6: Content-addressed cache (~/.omni_cache/opp/) ==========
+# Re-runs of the same input+config skip the expensive extraction and just
+# copy the cached .xlf to the output dir. The cache root can be overridden
+# with the OMNI_CACHE_DIR env var (used by tests). Mode 0o700 protects any
+# sensitive content (e.g., a translated DOCX that contains private info).
+# CACHE_DIR is computed lazily so the OMNI_CACHE_DIR override works even
+# when tests set the env var after the module is imported.
+CACHE_DIR_NAME = "opp"
+
+
+def _cache_root() -> Path:
+    root = Path(
+        os.environ.get("OMNI_CACHE_DIR", str(Path.home() / ".omni_cache"))
+    ) / CACHE_DIR_NAME
+    root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    return root
+
+
+def _cache_key(input_path: Path, config: dict) -> str:
+    """Return sha256(input_bytes + repr(sorted(config.items())))."""
+    h = hashlib.sha256()
+    h.update(input_path.read_bytes())
+    h.update(repr(sorted(config.items())).encode())
+    return h.hexdigest()
+
+
+def _relevant_config_for_cache(args: argparse.Namespace) -> dict:
+    """Build the config dict that affects the cache key for OPP.
+
+    Only the user-supplied ``--config`` file is hashed; CLI flags like
+    --source-lang/--target-lang are NOT in the cache key because they are
+    typically derived from the config file (and including them would
+    invalidate the cache for any CLI override of an unchanged config).
+    """
+    if args.config and args.config.exists():
+        return {
+            "config_file_sha256": hashlib.sha256(
+                args.config.read_bytes()
+            ).hexdigest()
+        }
+    return {}
+
+
+def _check_cache(file_path: Path, args: argparse.Namespace, output_dir: Path) -> bool:
+    """If cached, copy ``<stem>.xlf`` to ``output_dir`` and return True."""
+    if getattr(args, "no_cache", False):
+        return False
+    key = _cache_key(file_path, _relevant_config_for_cache(args))
+    cache_file = _cache_root() / f"{key}.xlf"
+    if cache_file.exists():
+        target = output_dir / f"{file_path.stem}.xlf"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(cache_file, target)
+        get_logger().info(f"Cache hit: {cache_file} -> {target}")
+        return True
+    return False
+
+
+def _write_cache(file_path: Path, args: argparse.Namespace, output_dir: Path) -> None:
+    """Copy the produced .xlf into the cache for next run."""
+    if getattr(args, "no_cache", False):
+        return
+    output_file = output_dir / f"{file_path.stem}.xlf"
+    if not output_file.exists():
+        return
+    key = _cache_key(file_path, _relevant_config_for_cache(args))
+    cache_file = _cache_root() / f"{key}.xlf"
+    cache_file.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    shutil.copy(output_file, cache_file)
+    get_logger().debug(f"Cache miss: wrote {cache_file}")
+
+
+def _clear_opp_cache() -> int:
+    """Remove all cached OPP files. Returns the number of files removed."""
+    root = _cache_root()
+    if not root.exists():
+        return 0
+    count = sum(1 for _ in root.iterdir())
+    shutil.rmtree(root)
+    root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    return count
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -81,15 +165,15 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--source-lang",
         type=str,
-        default="en",
-        help="Source language code (default: en)"
+        default="zh",
+        help="Source language code (default: zh — the project's primary translation direction)"
     )
 
     parser.add_argument(
         "--target-lang",
         type=str,
-        default=None,
-        help="Target language code (required for --target-format=xlf or both)"
+        default="en",
+        help="Target language code (default: en — required when --target-format is xlf or both)"
     )
 
     parser.add_argument(
@@ -138,6 +222,18 @@ def create_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="Path to opp_config.yaml configuration file"
+    )
+
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Skip the .omni_cache/ cache check (force a fresh extraction)"
+    )
+
+    parser.add_argument(
+        "--clear-cache",
+        action="store_true",
+        help="Remove all cached OPP outputs and exit"
     )
 
     return parser
@@ -245,6 +341,15 @@ def process_single_file(
             )
             get_logger().info(f"Generated: {xliff_path}")
 
+        # Always emit images.json when images are present (POST_MORTEM OPP-1).
+        images_json_path: Path | None = None
+        if proc_result.extraction_result is not None and proc_result.extraction_result.images:
+            images_json_path = output_dir / f"{base_name}_images.json"
+            pipeline.generate_images_json(
+                proc_result.extraction_result, images_json_path
+            )
+            get_logger().info(f"Generated: {images_json_path}")
+
         md_path = output_dir / f"{base_name}.md"
         xliff_path = output_dir / f"{base_name}.xlf"
 
@@ -280,7 +385,10 @@ def process_single_file(
                     "xliff": {
                         "path": str(xliff_path.relative_to(output_dir)) if xliff_path.exists() else None,
                         "trans_unit_count": _count_xliff_units(xliff_path) if xliff_path.exists() else 0,
-                    }
+                    },
+                    "images_json": {
+                        "path": str(images_json_path.relative_to(output_dir)) if images_json_path and images_json_path.exists() else None,
+                    } if images_json_path is not None else None,
                 },
                 "images": [
                     {
@@ -337,6 +445,12 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     logger = setup_logger(args.verbose)
 
+    if args.clear_cache:
+        # A6: short-circuit: clear the cache and exit before any work.
+        n = _clear_opp_cache()
+        logger.info(f"Cleared {n} cached file(s) from {_cache_root()}")
+        return 0
+
     if args.verbose:
         logger.info(f"OPP CLI v0.1.0")
         logger.info(f"Processing {len(args.files)} input(s)")
@@ -389,8 +503,18 @@ def main(argv: Optional[List[str]] = None) -> int:
                 continue
 
         if args.target_format:
+            # A6: cache check before any expensive work. If the input+config
+            # key is in the cache, copy the .xlf to the output dir and skip
+            # the full extraction pipeline for this file.
+            output_dir = args.output_dir if args.output_dir else file_path.parent
+            output_dir.mkdir(parents=True, exist_ok=True)
+            if _check_cache(file_path, args, output_dir):
+                stats["files_processed"] += 1
+                continue
             success = process_single_file(file_path, args, pipeline, stats, error_handler)
             if success:
+                # A6: cache the produced .xlf so the next run is a cache hit.
+                _write_cache(file_path, args, output_dir)
                 stats["files_processed"] += 1
         else:
             result = {

@@ -113,6 +113,30 @@ class TestXLIFFFileGenerator:
         xliff_bytes = gen.generate_xliff_1_2()
         assert b"Hello" in xliff_bytes
 
+    def test_unit_with_resname_emits_attribute(self):
+        """Phase B.1: resname attribute is set on the trans-unit.
+
+        translate-toolkit has no setresname method, so the generator
+        sets the attribute via xmlelement.set('resname', value).
+        ORF consumes this in B.2 for position-based paragraph lookup.
+        """
+        attrs = XLIFFFileAttributes(source_language="en", target_language="fr")
+        gen = XLIFFFileGenerator(attributes=attrs)
+        gen.add_unit(XLIFFTransUnit(
+            id="1", source="Hello", source_language="en",
+            resname="para_index_42",
+        ))
+        xliff_bytes = gen.generate_xliff_1_2()
+        assert b'resname="para_index_42"' in xliff_bytes
+
+    def test_unit_without_resname_omits_attribute(self):
+        """Phase B.1: units without resname must not emit a resname attribute."""
+        attrs = XLIFFFileAttributes(source_language="en", target_language="fr")
+        gen = XLIFFFileGenerator(attributes=attrs)
+        gen.add_unit(XLIFFTransUnit(id="1", source="Hello", source_language="en"))
+        xliff_bytes = gen.generate_xliff_1_2()
+        assert b"resname" not in xliff_bytes
+
     def test_unit_with_context(self):
         """Unit with context note is added correctly."""
         attrs = XLIFFFileAttributes(source_language="en", target_language="fr")

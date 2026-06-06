@@ -39,6 +39,7 @@ class ParagraphData:
     page: Optional[int] = None
     runs: List[RunData] = field(default_factory=list)
     position: int = 0  # Block position for ordering interleaved output
+    para_index_in_body: Optional[int] = None  # Absolute w:p index in body for XLIFF resname
 
 
 @dataclass

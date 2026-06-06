@@ -41,6 +41,7 @@ class XLIFFTransUnit:
     state: Optional[XLIFFUnitState] = None
     translate: bool = True
     inline_elements: List[InlineElement] = field(default_factory=list)
+    resname: Optional[str] = None
 
 
 @dataclass

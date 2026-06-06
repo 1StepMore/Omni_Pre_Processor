@@ -62,3 +62,74 @@ class TestDOCXExtractor:
     def test_supported_extensions(self):
         extractor = DOCXExtractor()
         assert extractor.supported_extensions() == [".docx"]
+
+    def test_table_cell_paragraphs_are_extracted(self, sample_files_normal: Path):
+        extractor = DOCXExtractor()
+        result = extractor.extract(sample_files_normal / "with_table.docx")
+        para_texts = [p.text for p in result.paragraphs]
+        for cell_text in ("Header1", "Header2", "Row1Cell1", "Row1Cell2", "Row2Cell1", "Row2Cell2"):
+            assert cell_text in para_texts, f"Table cell text {cell_text!r} missing from result.paragraphs"
+
+    def test_table_cell_paragraphs_have_none_para_index_in_body(self, sample_files_normal: Path):
+        extractor = DOCXExtractor()
+        result = extractor.extract(sample_files_normal / "with_table.docx")
+        cell_paras = [p for p in result.paragraphs if p.text in {"Header1", "Header2", "Row1Cell1", "Row1Cell2", "Row2Cell1", "Row2Cell2"}]
+        assert len(cell_paras) == 6
+        for p in cell_paras:
+            assert p.para_index_in_body is None, f"{p.text!r} should have para_index_in_body=None"
+
+    def test_textbox_paragraphs_are_extracted(self, tmp_path: Path):
+        """D.2: paragraphs inside w:txbxContent (textboxes) are extracted."""
+        from docx import Document
+        from lxml import etree as _etree
+        doc = Document()
+        p = doc.add_paragraph("Body para before")
+        txbx_xml = """<w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+            <w:p><w:r><w:t>TextBox Chinese 文本框</w:t></w:r></w:p>
+        </w:txbxContent>"""
+        p._element.append(_etree.fromstring(txbx_xml))
+        doc.add_paragraph("Body para after")
+        path = tmp_path / "with_textbox.docx"
+        doc.save(str(path))
+        extractor = DOCXExtractor()
+        result = extractor.extract(path)
+        para_texts = [p.text for p in result.paragraphs]
+        assert "Body para before" in para_texts
+        assert "Body para after" in para_texts
+        assert "TextBox Chinese 文本框" in para_texts
+
+    def test_textbox_dedup_mc_alternate_content(self, tmp_path: Path):
+        """D.2: same textbox paragraph inside mc:Choice and mc:Fallback appears only once."""
+        from docx import Document
+        from lxml import etree as _etree
+        doc = Document()
+        p = doc.add_paragraph("Body para")
+        alt_xml = """<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+                           xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+                           xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+                           xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"
+                           xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+            <mc:AlternateContent>
+                <mc:Choice Requires="wps">
+                    <w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">
+                        <wp:extent cx="600000" cy="600000"/>
+                        <wp:docPr id="1" name="TB"/>
+                        <a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">
+                            <wps:wsp><wps:cNvSpPr txBox="1"/><wps:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="600000" cy="600000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></wps:spPr>
+                            <wps:txbx><w:txbxContent><w:p><w:r><w:t>Dedup target 唯一</w:t></w:r></w:p></w:txbxContent></wps:txbx>
+                            <wps:bodyPr/>
+                        </wps:wsp></a:graphicData></a:graphic>
+                    </wp:inline></w:drawing>
+                </mc:Choice>
+                <mc:Fallback>
+                    <w:pict><w:txbxContent><w:p><w:r><w:t>Dedup target 唯一</w:t></w:r></w:p></w:txbxContent></w:pict>
+                </mc:Fallback>
+            </mc:AlternateContent>
+        </w:r>"""
+        p._element.append(_etree.fromstring(alt_xml))
+        path = tmp_path / "with_dup_textbox.docx"
+        doc.save(str(path))
+        extractor = DOCXExtractor()
+        result = extractor.extract(path)
+        matches = [pp for pp in result.paragraphs if pp.text == "Dedup target 唯一"]
+        assert len(matches) == 1, f"Expected 1 (deduped), got {len(matches)}"

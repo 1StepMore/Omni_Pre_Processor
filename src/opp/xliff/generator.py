@@ -50,7 +50,10 @@ class XLIFFFileGenerator:
             unit: The translation unit to add
         """
         self._units.append(unit)
-        self.create_trans_unit(unit)
+        xliff_unit = self.create_trans_unit(unit)
+        if unit.resname and xliff_unit is not None:
+            # translate-toolkit has no setresname; use lxml directly.
+            xliff_unit.xmlelement.set('resname', unit.resname)
 
     @staticmethod
     def _filter_control_chars(text: str) -> str:
@@ -212,6 +215,13 @@ class XLIFFFileGenerator:
 
         xliff_unit = self._store.addsourceunit(source)
         xliff_unit.setid(unit.id)
+
+        # Preserve whitespace on <source> and <target> so downstream textContent
+        # readers don't pull in unintended indentation between siblings.
+        for _elem_name in ("source", "target"):
+            _elem = xliff_unit.xmlelement.find(_elem_name)
+            if _elem is not None:
+                _elem.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
 
         if target:
             xliff_unit.target = target
@@ -399,11 +409,16 @@ class XLIFFFileGenerator:
                 source = para.text
                 inline_elements = []
 
+            resname = None
+            if getattr(para, 'para_index_in_body', None) is not None:
+                resname = f"para_index_{para.para_index_in_body}"
+
             unit = XLIFFTransUnit(
                 id=str(idx + 1),
                 source=source,
                 source_language=source_lang,
                 inline_elements=inline_elements,
+                resname=resname,
             )
             generator.add_unit(unit)
 

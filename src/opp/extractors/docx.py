@@ -128,12 +128,18 @@ class DOCXExtractor(ExtractorBase):
         result: List[ParagraphData] = []
         position = 0
         W_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+        body_children = list(doc.element.body)
         for para in doc.paragraphs:
             # E2E-66 fix: python-docx para.text truncates long paragraphs (only reads
             # first ~35 w:r elements, missing content in paragraphs with 100+ w:t nodes).
             # Use lxml body.findall to read ALL w:t elements for complete text.
+            # D.2 fix: skip w:t that lives inside w:txbxContent (textbox/shape content);
+            # those are extracted separately by _walk_textbox_paragraphs and would
+            # otherwise contaminate the body paragraph's text.
             full_text = "".join(
-                t.text or "" for t in para._element.findall(f".//{W_NS}t")
+                t.text or ""
+                for t in para._element.iter(f"{W_NS}t")
+                if not any(anc.tag == f"{W_NS}txbxContent" for anc in t.iterancestors())
             ).strip()
             if not full_text:
                 continue
@@ -160,15 +166,72 @@ class DOCXExtractor(ExtractorBase):
 
             runs = self.extract_runs(para)
 
+            try:
+                para_idx_in_body = body_children.index(para._element)
+            except ValueError:
+                para_idx_in_body = None
+
             result.append(ParagraphData(
                 text=text,
                 style=style_name,
                 level=level,
                 runs=runs,
                 position=position,
+                para_index_in_body=para_idx_in_body,
+            ))
+            position += 1
+
+        for p_elem, text in self._walk_table_paragraphs(doc.element.body, W_NS):
+            result.append(ParagraphData(
+                text=text,
+                runs=[],
+                position=position,
+                para_index_in_body=None,
+            ))
+            position += 1
+
+        for p_elem, text in self._walk_textbox_paragraphs(doc.element.body, W_NS):
+            result.append(ParagraphData(
+                text=text,
+                runs=[],
+                position=position,
+                para_index_in_body=None,
             ))
             position += 1
         return result
+
+    def _walk_table_paragraphs(self, body_elem, W_NS: str):
+        """Yield (w:p element, text) for each non-empty w:p inside w:tbl cells.
+
+        Body-level doc.paragraphs excludes table cell paragraphs. This recovers
+        them so the OPP XLIFF includes table content for translation.
+        """
+        tc_tag = f"{W_NS}tc"
+        p_tag = f"{W_NS}p"
+        for tc in body_elem.iter(tc_tag):
+            for p_elem in tc.iter(p_tag):
+                text = "".join((t.text or "") for t in p_elem.iter(f"{W_NS}t")).strip()
+                if text:
+                    yield p_elem, text
+
+    def _walk_textbox_paragraphs(self, body_elem, W_NS: str):
+        """Yield (w:p element, text) for each non-empty w:p inside w:txbxContent.
+
+        Body-level doc.paragraphs excludes textbox paragraphs (which live in
+        w:drawing/w:txbxContent or w:pict/w:txbxContent). Deduplicates by text
+        content because mc:AlternateContent often holds the same textbox in
+        both mc:Choice and mc:Fallback.
+        """
+        txbx_tag = f"{W_NS}txbxContent"
+        p_tag = f"{W_NS}p"
+        t_tag = f"{W_NS}t"
+        seen: set[str] = set()
+        for txbx in body_elem.iter(txbx_tag):
+            for p_elem in txbx.iter(p_tag):
+                text = "".join((t.text or "") for t in p_elem.iter(t_tag)).strip()
+                if text and text not in seen:
+                    seen.add(text)
+                    yield p_elem, text
 
     def _is_chinese_heading(self, text: str) -> bool:
         for pattern in CHINESE_HEADING_PATTERNS:

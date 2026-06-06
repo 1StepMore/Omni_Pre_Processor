@@ -68,15 +68,15 @@ class TestSourceLangFlag:
 
 
 class TestTargetLangFlag:
-    def test_target_lang_required_for_xlf(self, tmp_path):
+    def test_target_lang_has_default_en(self, tmp_path):
         test_file = tmp_path / "test.docx"
         test_file.write_bytes(b"PK\x03\x04\x14\x00\x00\x00\x08\x00")
         result = run_opp([
             "--target-format=xlf",
-            "--source-lang=en",
+            "--source-lang=zh",
             str(test_file)
         ])
-        assert result.returncode != 0 or "target-lang" in result.stderr.lower()
+        assert result.returncode == 0 or "error" not in result.stderr.lower()
 
     def test_target_lang_works_when_provided(self, tmp_path):
         test_file = tmp_path / "test.docx"
@@ -105,23 +105,23 @@ class TestOutputDirFlag:
 
 
 class TestValidation:
-    def test_target_format_xlf_without_target_lang_fails(self, tmp_path):
+    def test_target_format_xlf_works_with_default_target_lang(self, tmp_path):
         test_file = tmp_path / "test.docx"
         test_file.write_bytes(b"PK\x03\x04\x14\x00\x00\x00\x08\x00")
         result = run_opp([
             "--target-format=xlf",
             str(test_file)
         ])
-        assert result.returncode != 0
+        assert result.returncode == 0 or "error" not in result.stderr.lower()
 
-    def test_target_format_both_without_target_lang_fails(self, tmp_path):
+    def test_target_format_both_works_with_default_target_lang(self, tmp_path):
         test_file = tmp_path / "test.docx"
         test_file.write_bytes(b"PK\x03\x04\x14\x00\x00\x00\x08\x00")
         result = run_opp([
             "--target-format=both",
             str(test_file)
         ])
-        assert result.returncode != 0
+        assert result.returncode == 0 or "error" not in result.stderr.lower()
 
 
 class TestExistingFlagsRegression:
