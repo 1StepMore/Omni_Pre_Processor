@@ -1,11 +1,14 @@
 """MCP-specific configuration loading."""
 
+import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
 import yaml
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -58,14 +61,18 @@ def _load_from_env() -> dict:
         try:
             config["max_file_size_bytes"] = int(max_file_size)
         except ValueError:
-            pass
+            logger.warning(
+                "Invalid OPP_MCP_MAX_FILE_SIZE=%r; falling back to default", max_file_size
+            )
 
     timeout = os.environ.get("OPP_MCP_TIMEOUT")
     if timeout:
         try:
             config["request_timeout_seconds"] = int(timeout)
         except ValueError:
-            pass
+            logger.warning(
+                "Invalid OPP_MCP_TIMEOUT=%r; falling back to default", timeout
+            )
 
     return config
 
