@@ -374,7 +374,7 @@ def process_single_file(
                 "file_hash_md5": file_hash,
             },
             "extraction": {
-                "source_lang": args.source_lang or "en",
+                "source_lang": args.source_lang or "zh",
                 "target_lang": args.target_lang or "en",
                 "outputs": {
                     "markdown": {

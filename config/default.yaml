@@ -16,10 +16,12 @@
 project_id: "ol-phase0-test"
 
 # Translation source language (BCP-47, e.g. "en", "zh", "ja")
-source_lang: "en"
+# POST_MORTEM OPP-4: align with CLI argparse defaults (cli.py:168).
+source_lang: "zh"
 
 # Translation target language (BCP-47)
-target_lang: "zh"
+# POST_MORTEM OPP-4: align with CLI argparse defaults (cli.py:175).
+target_lang: "en"
 
 # Optional glossary file (path to CSV/TSV) used by OL during translation
 glossary_path: null

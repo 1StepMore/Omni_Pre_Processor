@@ -82,8 +82,8 @@ def _safe_temp_output(suffix: str, parent: Path) -> Path:
 async def extract_document(
     file_path: str,
     output_formats: Optional[List[str]] = None,
-    source_lang: str = "en",
-    target_lang: str = "zh",
+    source_lang: str = "zh",
+    target_lang: str = "en",
     resource_dir: Optional[str] = None,
 ) -> dict:
     if output_formats is None:
@@ -219,8 +219,8 @@ async def extract_document(
 async def batch_extract(
     file_paths: List[str],
     output_formats: Optional[List[str]] = None,
-    source_lang: str = "en",
-    target_lang: str = "zh",
+    source_lang: str = "zh",
+    target_lang: str = "en",
 ) -> dict:
     if output_formats is None:
         output_formats = ["md"]
@@ -369,8 +369,8 @@ async def detect_format_tool(file_path: str) -> dict:
 @mcp_error_boundary
 async def generate_xliff(
     file_path: str,
-    source_lang: str = "en",
-    target_lang: str = "zh",
+    source_lang: str = "zh",
+    target_lang: str = "en",
     output_path: Optional[str] = None,
 ) -> dict:
     if _validator is None:
