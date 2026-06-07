@@ -1,0 +1,42 @@
+# OPP Configuration
+# Loaded by src/opp/config/__init__.py in this order:
+#   1. $OPP_CONFIG_PATH (if set and exists)
+#   2. <repo-root>/config/default.yaml  (or .yml)
+#   3. <repo-root>/opp_config.yaml     (deprecated, warns)
+# If none of the above exist, FileNotFoundError is raised.
+#
+# Extraction modes:
+#   simple  - Use built-in parsers (fast, deterministic)
+#   complex - Use AI-assisted extraction (higher quality, may be slower)
+#
+# OCR / ASR settings can be overridden by environment variables
+# (see .env.example for the full list).
+
+# Project identifier (echoed in manifest.json for downstream OL/ORF tracking)
+project_id: "ol-phase0-test"
+
+# Translation source language (BCP-47, e.g. "en", "zh", "ja")
+source_lang: "en"
+
+# Translation target language (BCP-47)
+target_lang: "zh"
+
+# Optional glossary file (path to CSV/TSV) used by OL during translation
+glossary_path: null
+
+# PDF extraction mode: simple / complex (reserved for future use)
+# pdf: complex
+
+# HTML extraction mode: simple / complex
+html: complex
+
+# OCR Configuration (used by PDF and Image extractors)
+# OCR engine: tesseract / rapidocr (auto fallback to rapidocr if not available)
+# Environment variables override config:
+#   OPP_OCR_ENGINE - OCR engine choice (tesseract/rapidocr)
+#   OPP_OCR_LANG - OCR language (e.g., 'eng', 'chi_sim', 'chi_tra')
+#   OPP_ASR_ENGINE - ASR engine for audio/video (whisper)
+#   OPP_MODEL_SIZE - Whisper model size (tiny, base, small, medium, large)
+ocr:
+  engine: tesseract
+  lang: eng

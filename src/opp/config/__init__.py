@@ -29,14 +29,45 @@ class OPPConfig:
             cls._instance = None
 
     def _find_config(self) -> Path:
-        candidates = [
-            Path.cwd() / "opp_config.yaml",
-            Path(__file__).parent.parent.parent / "opp_config.yaml",
-        ]
-        for path in candidates:
-            if path.exists():
-                return path
-        return candidates[0]
+        """Locate the OPP config, with 3-tier fallback.
+
+        Tier 1: $OPP_CONFIG_PATH (explicit env override)
+        Tier 2: config/default.yaml (or .yml) at CWD or repo root
+        Tier 3: opp_config.yaml at CWD or repo root (deprecated, warns)
+
+        Raises FileNotFoundError if no candidate exists.
+        """
+        import warnings
+
+        # Tier 1: explicit env override
+        env_path = os.environ.get("OPP_CONFIG_PATH")
+        if env_path:
+            candidate = Path(env_path)
+            if candidate.exists():
+                return candidate
+
+        # Tier 2: bundled config/default.yaml
+        for base in [Path.cwd(), Path(__file__).parent.parent.parent]:
+            for rel in ["config/default.yaml", "config/default.yml"]:
+                candidate = base / rel
+                if candidate.exists():
+                    return candidate
+
+        # Tier 3: legacy opp_config.yaml (back-compat with deprecation warning)
+        for base in [Path.cwd(), Path(__file__).parent.parent.parent]:
+            candidate = base / "opp_config.yaml"
+            if candidate.exists():
+                warnings.warn(
+                    "opp_config.yaml is deprecated; migrate to config/default.yaml",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                return candidate
+
+        raise FileNotFoundError(
+            "No OPP config found. Set OPP_CONFIG_PATH or place "
+            "config/default.yaml in repo root or CWD."
+        )
 
     def _load(self):
         if not self.config_path.exists():
