@@ -16,6 +16,16 @@ RUN uv sync --frozen --all-extras --no-dev
 # --- Runtime stage ---
 FROM python:3.12-slim AS runtime
 
+# ULTRAREADY-VERIFY (2026-06-07): install tesseract for the OCR path
+# (ImageOCRExtractor). The image-OCR feature is documented in README
+# and is part of the public surface, so the runtime image must
+# support it.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        tesseract-ocr \
+        tesseract-ocr-eng \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copy the installed virtualenv and source from the builder

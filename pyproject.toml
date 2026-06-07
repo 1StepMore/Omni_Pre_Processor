@@ -1,5 +1,12 @@
 [project]
-name = "Omni_Pre_Processor"
+# ULTRAREADY-VERIFY (2026-06-07): renamed from "Omni_Pre_Processor"
+# to "opp" to match (a) the README PyPI badge and import paths
+# (from opp import DOCXExtractor, ...), (b) the TestPyPI verify URL
+# in .github/workflows/publish.yml:26, and (c) PEP 503 (lowercase).
+# The previous name "Omni_Pre_Processor" was rejected by PyPI
+# (underscores + mixed case are not allowed in distribution names)
+# and would have caused the publish.yml job to fail at upload time.
+name = "opp"
 version = "0.5.7"
 description = "Omni Pre-Processor: Document content extraction package"
 readme = "README.md"
