@@ -33,8 +33,9 @@ dev = [
     "pytest-cov>=7.0.0",
 ]
 office = [
-    "openpyxl>=3.0.0",
+    "openpyxl>=3.1.5,<3.2",
     "pandas>=2.0.0",
+    "numpy<2",
     "chardet>=5.0.0",
 ]
 web = [
