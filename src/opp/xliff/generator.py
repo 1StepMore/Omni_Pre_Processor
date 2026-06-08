@@ -409,9 +409,22 @@ class XLIFFFileGenerator:
                 source = para.text
                 inline_elements = []
 
-            resname = None
-            if getattr(para, 'para_index_in_body', None) is not None:
-                resname = f"para_index_{para.para_index_in_body}"
+            # ULTRAREADY-FIX (2026-06-08): every trans-unit must carry a
+            # non-None resname so ORF's B.2 position-based backfill can
+            # locate it in the source DOCX. Pre-fix code assigned
+            # resname=None for non-body content (table cells, header/
+            # footer paragraphs), which silently produced empty cells in
+            # the final DOCX because the backfill pass wiped the cell
+            # content without ever finding a target paragraph to
+            # inject the LLM translation into. Body paragraphs use the
+            # `para_index_N` prefix (B.2 contract); non-body content
+            # uses `non_body_N` so ORF's resname-prefix dispatch can
+            # distinguish the two paths.
+            body_idx = getattr(para, 'para_index_in_body', None)
+            if body_idx is not None:
+                resname = f"para_index_{body_idx}"
+            else:
+                resname = f"non_body_{idx}"
 
             unit = XLIFFTransUnit(
                 id=str(idx + 1),

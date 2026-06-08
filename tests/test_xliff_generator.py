@@ -173,3 +173,99 @@ class TestXLIFFFileGenerator:
         gen = XLIFFFileGenerator(attributes=attrs)
         gen.add_unit(XLIFFTransUnit(id="1", source="Hello", source_language="en"))
         assert gen.to_bytes() == gen.generate_xliff_1_2()
+
+
+class TestFromExtractionResultResnameContract:
+    """ULTRAREADY-FIX (2026-06-08): every trans-unit emitted by
+    `from_extraction_result` must carry a non-empty `resname` so that
+    ORF's B.2 position-based backfill can find a target paragraph.
+    The pre-fix code assigned `resname=None` for non-body content
+    (table cells, header/footer paragraphs), which silently produced
+    empty cells in the final DOCX because ORF's "No matching
+    paragraph" fallback preserved the OPP source but the source XML
+    was wiped by the backfill pass.
+    """
+
+    def _build_extraction_result(self):
+        """Return an ExtractionResult with mixed body + non-body paragraphs.
+
+        Body paragraph: para_index_in_body=0 (set by the body iterator).
+        Non-body paragraphs: para_index_in_body=None (e.g. table cells,
+        header/footer paragraphs) — these are the ones that previously
+        ended up with resname=None and caused empty cells in the DOCX.
+        """
+        from opp.utils.dataclasses import (
+            ExtractionResult, ParagraphData, TableData, ImageData, DocumentMetadata,
+        )
+        return ExtractionResult(
+            paragraphs=[
+                ParagraphData(text="Body paragraph", para_index_in_body=0),
+                ParagraphData(text="Table cell A", para_index_in_body=None),
+                ParagraphData(text="Table cell B", para_index_in_body=None),
+            ],
+            tables=[TableData(headers=[], rows=[])],
+            images=[ImageData(data=b"", mime_type="image/png")],
+            metadata=DocumentMetadata(),
+        )
+
+    def test_from_extraction_result_assigns_resname_to_every_unit(self):
+        """RED: every trans-unit must have a non-empty resname."""
+        result = self._build_extraction_result()
+        gen = XLIFFFileGenerator.from_extraction_result(
+            result, source_lang="zh", target_lang="en"
+        )
+        xliff_bytes = gen.generate_xliff_1_2()
+        # Count resname= occurrences in the output.
+        n_resname = xliff_bytes.count(b"resname=")
+        n_trans_units = xliff_bytes.count(b"<trans-unit")
+        assert n_trans_units == 3, f"expected 3 trans-units, got {n_trans_units}"
+        assert n_resname == n_trans_units, (
+            f"BUG: only {n_resname}/{n_trans_units} trans-units have resname; "
+            f"the others will be silently dropped by ORF's backfill pass."
+        )
+
+    def test_from_extraction_result_resname_is_unique_per_unit(self):
+        """Resname must be unique so ORF's position lookup can disambiguate."""
+        result = self._build_extraction_result()
+        gen = XLIFFFileGenerator.from_extraction_result(
+            result, source_lang="zh", target_lang="en"
+        )
+        xliff_bytes = gen.generate_xliff_1_2()
+        # Extract all resname values via simple regex.
+        import re
+        resnames = re.findall(rb'resname="([^"]+)"', xliff_bytes)
+        assert len(resnames) == 3, f"expected 3 resnames, got {resnames!r}"
+        assert len(set(resnames)) == 3, f"resnames are not unique: {resnames!r}"
+
+    def test_from_extraction_result_body_para_keeps_para_index_prefix(self):
+        """Body paragraphs should still use the `para_index_N` prefix (B.2 contract)."""
+        result = self._build_extraction_result()
+        gen = XLIFFFileGenerator.from_extraction_result(
+            result, source_lang="zh", target_lang="en"
+        )
+        xliff_bytes = gen.generate_xliff_1_2()
+        assert b'resname="para_index_0"' in xliff_bytes, (
+            "the body paragraph should keep its para_index_0 resname "
+            "(regression check on the B.2 contract)"
+        )
+
+    def test_from_extraction_result_non_body_para_gets_distinct_prefix(self):
+        """Non-body paragraphs should get a distinct prefix (so ORF knows they're not body).
+
+        The exact prefix is a contract between OPP and ORF. ORF's
+        position-based backfill must be able to look up these units.
+        """
+        result = self._build_extraction_result()
+        gen = XLIFFFileGenerator.from_extraction_result(
+            result, source_lang="zh", target_lang="en"
+        )
+        xliff_bytes = gen.generate_xliff_1_2()
+        # The 2 non-body paragraphs should have distinct resnames
+        # with a non-`para_index_` prefix (so they're distinguishable).
+        import re
+        resnames = re.findall(rb'resname="([^"]+)"', xliff_bytes)
+        non_body = [r for r in resnames if not r.startswith(b"para_index_")]
+        assert len(non_body) == 2, (
+            f"expected 2 non-body resnames with a distinct prefix, got {non_body!r}"
+        )
+        assert len(set(non_body)) == 2, f"non-body resnames not unique: {non_body!r}"
