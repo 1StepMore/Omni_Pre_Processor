@@ -85,8 +85,103 @@ class DOCXExtractor(ExtractorBase):
                 raise PasswordProtectedError(f"文件受密码保护: {input_path}")
             raise CorruptedFileError(f"文件损坏或无法解析: {input_path}")
 
-        paragraphs = self.extract_paragraphs(doc)
-        tables = self.extract_tables(doc)
+        W_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+
+        # Build element → python-docx object lookups for fast access
+        doc_para_lookup = {}
+        for p in doc.paragraphs:
+            if p._element is not None:
+                doc_para_lookup[p._element] = p
+
+        doc_tbl_lookup = {}
+        for t in doc.tables:
+            if t._tbl is not None:
+                doc_tbl_lookup[t._tbl] = t
+
+        paragraphs: List[ParagraphData] = []
+        tables: List[TableData] = []
+        position = 0
+
+        body_children = list(doc.element.body)
+        p_body_index = 0  # sequential counter for w:p elements among body children
+
+        for child in body_children:
+            if child.tag == f"{W_NS}p":
+                para = doc_para_lookup.get(child)
+                if para is None:
+                    p_body_index += 1
+                    continue
+
+                full_text = "".join(
+                    t.text or ""
+                    for t in child.iter(f"{W_NS}t")
+                    if not any(anc.tag == f"{W_NS}txbxContent" for anc in t.iterancestors())
+                ).strip()
+                if not full_text:
+                    p_body_index += 1
+                    continue
+
+                text = full_text
+                style_name = para.style.name if para.style else None
+                level = None
+
+                if style_name and style_name.startswith("Heading"):
+                    try:
+                        level = int(style_name.replace("Heading ", "").replace("Heading", ""))
+                    except ValueError:
+                        level = 1
+                elif style_name == "Title":
+                    level = 1
+                elif style_name == "Subtitle":
+                    level = 2
+
+                if level is None and self._is_chinese_heading(text):
+                    level = self._detect_chinese_heading_level(text)
+
+                runs = self.extract_runs(para)
+                para_idx_in_body = p_body_index
+                p_body_index += 1
+
+                paragraphs.append(ParagraphData(
+                    text=text,
+                    style=style_name,
+                    level=level,
+                    runs=runs,
+                    position=position,
+                    para_index_in_body=para_idx_in_body,
+                ))
+                position += 1
+
+            elif child.tag == f"{W_NS}tbl":
+                tbl = doc_tbl_lookup.get(child)
+                if tbl is None:
+                    continue
+                table_data = self._parse_table(tbl, position=position)
+                if table_data.headers or table_data.rows:
+                    tables.append(table_data)
+                    position += 1
+
+        # Append table cell paragraphs
+        for p_elem, text in self._walk_table_paragraphs(doc.element.body, W_NS):
+            paragraphs.append(ParagraphData(
+                text=text,
+                runs=[],
+                position=position,
+                para_index_in_body=None,
+            ))
+            position += 1
+
+        # Append text box paragraphs (tagged with [TextBox] style)
+        for p_elem, text in self._walk_textbox_paragraphs(doc.element.body, W_NS):
+            paragraphs.append(ParagraphData(
+                text=text,
+                runs=[],
+                style="[TextBox]",
+                position=position,
+                para_index_in_body=None,
+            ))
+            position += 1
+
         para_index_map = self._build_paragraph_index_map(doc)
         images = self.extract_images(doc, input_path, para_index_map)
 
@@ -167,7 +262,8 @@ class DOCXExtractor(ExtractorBase):
             runs = self.extract_runs(para)
 
             try:
-                para_idx_in_body = body_children.index(para._element)
+                p_elements = [c for c in body_children if c.tag == f"{{{W_NS}}}p"]
+                para_idx_in_body = p_elements.index(para._element)
             except ValueError:
                 para_idx_in_body = None
 
@@ -300,7 +396,9 @@ class DOCXExtractor(ExtractorBase):
         if body is None:
             return result
 
-        all_paragraphs = tree.findall(f'.//{W_NS}p')
+        # Use body-direct w:p children only so paragraph_index aligns with
+        # the shared position counter from the body-walking extract() loop.
+        all_paragraphs = [c for c in body if c.tag == f'{W_NS}p']
         para_to_idx = {p: i for i, p in enumerate(all_paragraphs)}
 
         for drawing in tree.findall(f'.//{W_NS}drawing'):
@@ -322,7 +420,7 @@ class DOCXExtractor(ExtractorBase):
                 para_idx = None
 
             is_floating = drawing.find(f'.//{WP_NS}anchor', ns_map) is not None
-            assigned_index = None if is_floating else para_idx
+            assigned_index = para_idx  # Place images near their enclosing paragraph regardless of floating status
             anchor_h, anchor_v = _extract_anchor_offsets(drawing, WP_NS, ns_map)
 
             for blip in drawing.iter(f'{A_NS}blip'):
@@ -372,7 +470,8 @@ class DOCXExtractor(ExtractorBase):
         for para in doc.paragraphs:
             if para.text.strip():
                 try:
-                    para_index_map[id(para._element)] = body.index(para._element)
+                    p_elements = [c for c in body if c.tag == "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p"]
+                    para_index_map[id(para._element)] = p_elements.index(para._element)
                 except ValueError:
                     para_index_map[id(para._element)] = pos
                 pos += 1

@@ -6,7 +6,13 @@ from opp.utils.dataclasses import ExtractionResult, ParagraphData, TableData, Im
 
 
 class MarkdownGenerator:
-    def generate(self, result: ExtractionResult, images_dir: Optional[Path] = None, stem: Optional[str] = None) -> str:
+    def generate(
+        self,
+        result: ExtractionResult,
+        images_dir: Optional[Path] = None,
+        stem: Optional[str] = None,
+        style_mapping: Optional[dict[str, int]] = None,
+    ) -> str:
         output_lines = []
         list_buffer: List[str] = []
         list_type = None
@@ -36,76 +42,94 @@ class MarkdownGenerator:
                 list_buffer.clear()
                 list_type = None
 
-        # Track valid paragraph positions and images written during paragraph iteration
-        valid_positions = {para.position for para in result.paragraphs}
         written_images: set = set()
 
+        # Interleave paragraphs and tables by shared position (document order)
+        merged = []
         for para in result.paragraphs:
-            level = para.level
-            style = para.style or ""
-            is_heading = level is not None and level >= 1
-            is_number = "Number" in style
-            is_bullet = "List" in style
+            merged.append((para.position, 'para', para))
+        for table in result.tables:
+            merged.append((table.position, 'table', table))
+        merged.sort(key=lambda x: x[0])
 
-            if is_heading:
-                flush_list()
-                if para.chapter:
-                    output_lines.append(f"<!-- chapter: {para.chapter} -->")
-                heading = "#" * min(level or 1, 6) + " " + para.text
-                output_lines.append(heading)
-            elif is_number or is_bullet:
-                if is_number:
-                    marker = "1. "
-                else:
-                    marker = "- "
-                if list_type is None:
-                    list_type = "ordered" if is_number else "bullet"
-                if list_type != ("ordered" if is_number else "bullet"):
+        for _pos, kind, data in merged:
+            if kind == 'para':
+                para = data
+                level = para.level
+                style = para.style or ""
+
+                # Apply style_mapping for custom heading styles
+                if level is None and style_mapping and para.style in style_mapping:
+                    level = style_mapping[para.style]
+
+                is_heading = level is not None and level >= 1
+                is_number = "Number" in style
+                is_bullet = "List" in style
+
+                if is_heading:
                     flush_list()
-                    list_type = "ordered" if is_number else "bullet"
-                list_buffer.append(marker + para.text)
-            else:
-                flush_list()
-                if para.text:
-                    output_lines.append(para.text)
-
-            for img in para_images.get(para.position, []):
-                written_images.add(id(img))
-                ext = self._mime_to_ext(img.mime_type)
-                if images_dir is not None:
-                    img_filename = f"{stem}_image_{img._seq}.{ext}" if stem else f"image_{img._seq}.{ext}"
-                    img_path = images_dir / img_filename
-                    img_path.write_bytes(img.data)
-                    rel_path = f"./{stem}_images/{img_filename}" if stem else f"./images/{img_filename}"
-                    output_lines.append(f"![Image {img._seq}]({rel_path})")
+                    # Ensure blank line before heading for proper markdown parsing
+                    if output_lines and output_lines[-1] != "":
+                        output_lines.append("")
+                    if para.chapter:
+                        output_lines.append(f"<!-- chapter: {para.chapter} -->")
+                    heading = "#" * min(level or 1, 6) + " " + para.text
+                    output_lines.append(heading)
+                elif is_number or is_bullet:
+                    if is_number:
+                        marker = "1. "
+                    else:
+                        marker = "- "
+                    if list_type is None:
+                        list_type = "ordered" if is_number else "bullet"
+                    if list_type != ("ordered" if is_number else "bullet"):
+                        flush_list()
+                        list_type = "ordered" if is_number else "bullet"
+                    list_buffer.append(marker + para.text)
                 else:
-                    import base64
-                    data_uri = f"data:{img.mime_type};base64,{base64.b64encode(img.data).decode('utf-8')}"
-                    output_lines.append(f"![Image {img._seq}]({data_uri})")
+                    flush_list()
+                    if para.text:
+                        if output_lines and output_lines[-1] != "":
+                            output_lines.append("")
+                        if para.style == "[TextBox]":
+                            output_lines.append(f"> {para.text}")
+                        elif para.runs:
+                            md_text = self._runs_to_markdown(para.runs)
+                            output_lines.append(md_text)
+                        else:
+                            output_lines.append(para.text)
+
+                # Use para_index_in_body for image lookup (matches paragraph_index from extractor)
+                img_key = para.para_index_in_body
+                for img in para_images.get(img_key, []):
+                    written_images.add(id(img))
+                    ext = self._mime_to_ext(img.mime_type)
+                    if images_dir is not None:
+                        img_filename = f"{stem}_image_{img._seq}.{ext}" if stem else f"image_{img._seq}.{ext}"
+                        img_path = images_dir / img_filename
+                        img_path.write_bytes(img.data)
+                        rel_path = f"./{stem}_images/{img_filename}" if stem else f"./images/{img_filename}"
+                        output_lines.append(f"![Image {img._seq}]({rel_path})")
+                    else:
+                        import base64
+                        data_uri = f"data:{img.mime_type};base64,{base64.b64encode(img.data).decode('utf-8')}"
+                        output_lines.append(f"![Image {img._seq}]({data_uri})")
+
+            elif kind == 'table':
+                flush_list()
+                table_md = self.generate_tables_md([data])
+                output_lines.append("")
+                output_lines.append(table_md)
 
         flush_list()
-        tables = self.generate_tables_md(result.tables)
-        if tables:
-            output_lines.append("")
-            output_lines.append(tables)
 
         # E2E-11 fix: track max inline _seq to avoid orphaned images reusing same numbers.
-        # img._seq is reassigned every time a paragraph's images are processed, so we
-        # can't rely on the final _seq value for inline images. Track the max here,
-        # AFTER the paragraph loop (not before) so we only count what was actually written.
         max_inline_seq = max(
             (img._seq for img in result.images if id(img) in written_images),
             default=0
         )
 
-        # Orphaned = images that were never written during paragraph iteration
-        # This includes both:
-        # 1. Images with ALL position fields as None
-        # 2. Images whose paragraph_index/page_number/etc didn't match any paragraph position
-        # IMPORTANT: an image is only orphaned if it was NOT successfully output inline.
-        # We track this by checking if the image was added to written_images (by id).
-        # Even if an image has a valid paragraph_index that matched a paragraph, if it
-        # was output inline during paragraph iteration, it must NOT appear in orphaned.
+        # Orphaned = images that were never written during paragraph/table iteration
         orphaned = [img for img in result.images if id(img) not in written_images]
         if orphaned:
             output_lines.append(self._generate_images_section(
@@ -114,30 +138,48 @@ class MarkdownGenerator:
 
         return "\n".join(output_lines)
 
-    def generate_to_file(self, result: ExtractionResult, output_path: Path, _attachment_results=None) -> None:
+    def _runs_to_markdown(self, runs: list) -> str:
+        """Convert OOXML runs to markdown with inline formatting."""
+        parts = []
+        for run in runs:
+            text = run.text
+            if run.bold:
+                text = f"**{text}**"
+            if run.italic:
+                text = f"*{text}*"
+            if run.strike:
+                text = f"~~{text}~~"
+            parts.append(text)
+        return "".join(parts)
+
+    def generate_to_file(self, result: ExtractionResult, output_path: Path, _attachment_results=None, style_mapping=None, embed_images=True) -> None:
         """Generate markdown output and write to a file.
 
         Image files are referenced in the markdown using the pattern
-        ``![alt]({stem}_image_{seq}.{ext})``, where:
-
-        - ``{stem}`` is derived from the output markdown filename
-          (e.g., ``report`` from ``report.md``)
-        - ``{seq}`` is a sequential number assigned per paragraph
-          (``_image_1``, ``_image_2``, etc.)
-        - ``{ext}`` is the appropriate file extension for the image MIME type
-
-        Images are written to a sibling directory named ``{stem}_images/``
-        adjacent to the output markdown file.
+        ``![alt]({stem}_image_{seq}.{ext})``, where ``{ext}`` is the
+        appropriate file extension for the image MIME type. When
+        ``embed_images=True`` (default), images are written to a sibling
+        ``{stem}_images/`` directory and referenced as relative file paths.
+        When ``embed_images=False``, images are embedded directly as base64
+        ``data:`` URIs in the markdown — this makes the MD self-contained
+        for downstream piping (e.g. through OL → pandoc) without requiring
+        the image directory to be preserved.
 
         Args:
-            result: The extraction result containing paragraphs, images, etc.
-            output_path: Path for the output markdown file.
+            result: The extraction result containing paragraphs, tables, and images
+            output_path: Path to write the Markdown file to
             _attachment_results: Optional attachment results (unused).
+            style_mapping: Optional dict mapping style names to heading levels.
+            embed_images: When True (default), write images to disk and
+                reference by relative path. When False, embed as base64 data URIs.
         """
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        images_dir = output_path.parent / f"{output_path.stem}_images"
-        images_dir.mkdir(parents=True, exist_ok=True)
-        content = self.generate(result, images_dir=images_dir, stem=output_path.stem)
+        if embed_images:
+            images_dir = output_path.parent / f"{output_path.stem}_images"
+            images_dir.mkdir(parents=True, exist_ok=True)
+            content = self.generate(result, images_dir=images_dir, stem=output_path.stem, style_mapping=style_mapping)
+        else:
+            content = self.generate(result, images_dir=None, stem=output_path.stem, style_mapping=style_mapping)
         output_path.write_text(content, encoding="utf-8")
 
     def generate_headings(self, paragraphs: List[ParagraphData], style_mapping=None) -> str:
