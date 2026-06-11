@@ -177,6 +177,22 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        "--style-map",
+        type=str,
+        default=None,
+        help='JSON mapping of style names to heading levels, e.g. \'{"a5": 1, "a6": 2}\''
+    )
+
+    parser.add_argument(
+        "--no-embed-images",
+        action="store_true",
+        default=False,
+        help="Embed images as base64 data URIs instead of separate files. "
+             "Produces a self-contained markdown file that can be piped through "
+             "OL → pandoc without requiring the image directory."
+    )
+
+    parser.add_argument(
         "--output-dir",
         type=Path,
         default=None,
@@ -326,9 +342,14 @@ def process_single_file(
         output_dir.mkdir(parents=True, exist_ok=True)
         base_name = file_path.stem
 
+        style_mapping = json.loads(args.style_map) if args.style_map else None
+
         if args.target_format in ("md", "both"):
             md_path = output_dir / f"{base_name}.md"
-            pipeline.generate_markdown(proc_result.extraction_result, md_path, proc_result.attachment_results)
+            pipeline.generate_markdown(
+                proc_result.extraction_result, md_path, proc_result.attachment_results,
+                style_mapping=style_mapping, embed_images=not args.no_embed_images,
+            )
             get_logger().info(f"Generated: {md_path}")
 
         if args.target_format in ("xlf", "both"):
@@ -508,15 +529,23 @@ def main(argv: Optional[List[str]] = None) -> int:
             # the full extraction pipeline for this file.
             output_dir = args.output_dir if args.output_dir else file_path.parent
             output_dir.mkdir(parents=True, exist_ok=True)
-            if _check_cache(file_path, args, output_dir):
-                stats["files_processed"] += 1
-                continue
+            # Cache stores only .xlf. If MD is requested (target_format in
+            # ("md", "both")), skip cache so generate_markdown() runs.
+            if args.target_format not in ("md", "both"):
+                if _check_cache(file_path, args, output_dir):
+                    stats["files_processed"] += 1
+                    continue
             success = process_single_file(file_path, args, pipeline, stats, error_handler)
             if success:
                 # A6: cache the produced .xlf so the next run is a cache hit.
                 _write_cache(file_path, args, output_dir)
                 stats["files_processed"] += 1
         else:
+            logger.warning(
+                "--target-format not specified for %s; no output files "
+                "generated. Use --target-format md, xlf, or both.",
+                file_path,
+            )
             result = {
                 "file": str(file_path),
                 "success": True,

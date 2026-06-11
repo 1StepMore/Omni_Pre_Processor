@@ -77,6 +77,8 @@ class OPPPipeline:
         result: ExtractionResult,
         output_path: Path,
         _attachment_results: Optional[List["ProcessingResult"]] = None,
+        style_mapping: Optional[dict[str, int]] = None,
+        embed_images: bool = True,
     ) -> Path:
         """Generate Markdown file from extraction result.
 
@@ -84,11 +86,16 @@ class OPPPipeline:
             result: The extraction result containing paragraphs, tables, and images
             output_path: Path to write the Markdown file to
             attachment_results: Optional list of attachment processing results (unused but kept for API compatibility)
+            style_mapping: Optional dict mapping style names to heading levels
+            embed_images: When True (default), images as separate files.
+                When False, embed as base64 data URIs in the markdown.
 
         Returns:
             The output_path that was written to
         """
-        self.markdown_generator.generate_to_file(result, output_path)
+        self.markdown_generator.generate_to_file(
+            result, output_path, style_mapping=style_mapping, embed_images=embed_images,
+        )
         return output_path
 
     def generate_xliff(
