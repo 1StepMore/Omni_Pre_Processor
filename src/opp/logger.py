@@ -12,6 +12,10 @@ def get_log_dir():
 
 
 def setup_logger(verbose: bool = False) -> logging.Logger:
+    # Allow env var override: OPP_LOG_LEVEL=DEBUG
+    env_level = os.environ.get("OPP_LOG_LEVEL", "").upper()
+    if env_level == "DEBUG":
+        verbose = True
     level = logging.DEBUG if verbose else logging.INFO
     log_dir = get_log_dir()
 

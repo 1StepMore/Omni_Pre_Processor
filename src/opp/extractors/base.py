@@ -9,7 +9,7 @@ from opp.utils.exceptions import CorruptedFileError, ValidationError
 
 class ExtractorBase(ABC):
     @abstractmethod
-    def supported_extensions(self) -> List[str]:
+    def supported_extensions(self) -> list[str]:
         pass
 
     @abstractmethod

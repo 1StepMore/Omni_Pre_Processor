@@ -119,9 +119,8 @@ exclude_lines = [
 [tool.pyright]
 include = ["src"]
 exclude = ["tests", "**/__pycache__"]
-reportMissingTypeStubs = false
-reportDeprecated = false
-reportUnusedVariable = false
-reportUnusedImport = false
+# reportMissingParameterType is suppressed because adding correct type
+# annotations to 35+ function parameters requires understanding the actual
+# expected types (lxml elements, callbacks, etc.) — a larger refactor.
 reportMissingParameterType = false
 pythonVersion = "3.12"

@@ -1,7 +1,6 @@
 """Serialization utilities for OPP MCP interface."""
 
 import base64
-from datetime import datetime, date
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -18,7 +17,7 @@ from opp.utils.dataclasses import (
 )
 
 
-def _serialize_paragraph(paragraph: ParagraphData) -> Dict[str, Any]:
+def _serialize_paragraph(paragraph: ParagraphData) -> dict[str, Any]:
     return {
         "text": paragraph.text,
         "style": paragraph.style,
@@ -28,7 +27,7 @@ def _serialize_paragraph(paragraph: ParagraphData) -> Dict[str, Any]:
     }
 
 
-def _serialize_table(table: TableData) -> Dict[str, Any]:
+def _serialize_table(table: TableData) -> dict[str, Any]:
     return {
         "headers": table.headers,
         "rows": table.rows,
@@ -38,9 +37,9 @@ def _serialize_table(table: TableData) -> Dict[str, Any]:
 def _serialize_image(
     image: ImageData,
     include_base64: bool = True,
-    resource_dir: Optional[Path] = None,
-) -> Dict[str, Any]:
-    img_dict: Dict[str, Any] = {
+    resource_dir: Path | None = None,
+) -> dict[str, Any]:
+    img_dict: dict[str, Any] = {
         "mime_type": image.mime_type,
         "width": image.width,
         "height": image.height,
@@ -58,8 +57,8 @@ def _serialize_image(
 def _serialize_attachment(
     attachment: AttachmentData,
     include_base64: bool = True,
-) -> Dict[str, Any]:
-    att_dict: Dict[str, Any] = {
+) -> dict[str, Any]:
+    att_dict: dict[str, Any] = {
         "filename": attachment.filename,
         "mime_type": attachment.mime_type,
     }
@@ -68,7 +67,7 @@ def _serialize_attachment(
     return att_dict
 
 
-def _serialize_slide(slide: SlideData) -> Dict[str, Any]:
+def _serialize_slide(slide: SlideData) -> dict[str, Any]:
     return {
         "index": slide.index,
         "shapes": [_serialize_paragraph(p) for p in slide.shapes],
@@ -76,7 +75,7 @@ def _serialize_slide(slide: SlideData) -> Dict[str, Any]:
     }
 
 
-def _serialize_text_block(block: TextBlockData) -> Dict[str, Any]:
+def _serialize_text_block(block: TextBlockData) -> dict[str, Any]:
     return {
         "text": block.text,
         "bbox": block.bbox,
@@ -84,7 +83,7 @@ def _serialize_text_block(block: TextBlockData) -> Dict[str, Any]:
     }
 
 
-def _serialize_metadata(metadata: Optional[DocumentMetadata]) -> Optional[Dict[str, Any]]:
+def _serialize_metadata(metadata: DocumentMetadata | None) -> dict[str, Any] | None:
     if metadata is None:
         return None
     return {
@@ -100,10 +99,10 @@ def _serialize_metadata(metadata: Optional[DocumentMetadata]) -> Optional[Dict[s
 
 
 def _serialize_extraction_result(
-    result: Optional[ExtractionResult],
+    result: ExtractionResult | None,
     include_base64: bool = True,
-    resource_dir: Optional[Path] = None,
-) -> Optional[Dict[str, Any]]:
+    resource_dir: Path | None = None,
+) -> dict[str, Any] | None:
     if result is None:
         return None
 
@@ -127,10 +126,10 @@ def _serialize_extraction_result(
 class ExtractionResultSerializer:
     def serialize(
         self,
-        result: Optional[ProcessingResult],
+        result: ProcessingResult | None,
         include_base64: bool = True,
-        resource_dir: Optional[Path] = None,
-    ) -> Dict[str, Any]:
+        resource_dir: Path | None = None,
+    ) -> dict[str, Any]:
         if result is None:
             return {
                 "success": False,
@@ -169,10 +168,10 @@ class ExtractionResultSerializer:
 
     def serialize_batch(
         self,
-        results: List[ProcessingResult],
+        results: list[ProcessingResult],
         include_base64: bool = True,
-        resource_dir: Optional[Path] = None,
-    ) -> List[Dict[str, Any]]:
+        resource_dir: Path | None = None,
+    ) -> list[dict[str, Any]]:
         return [
             self.serialize(r, include_base64, resource_dir)
             for r in results

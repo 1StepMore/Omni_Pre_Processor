@@ -119,7 +119,7 @@ class XLIFFFileGenerator:
         return "".join(result)
 
     @staticmethod
-    def encode_inline_elements(runs: List[RunData]) -> tuple[str, List[InlineElement]]:
+    def encode_inline_elements(runs: list[RunData]) -> tuple[str, list[InlineElement]]:
         """Convert run formatting to XLIFF inline markup.
 
         Args:
@@ -129,7 +129,6 @@ class XLIFFFileGenerator:
             Tuple of (source_text_with_markup, list of InlineElement metadata)
         """
         from opp.xliff.xliff_dataclasses import InlineElement
-        from opp.utils.dataclasses import RunData
 
         inline_counter = 0
         result_parts = []
@@ -172,7 +171,6 @@ class XLIFFFileGenerator:
         return ''.join(result_parts), inline_elements
 
     def create_trans_unit(self, unit: XLIFFTransUnit):
-        from lxml import etree
 
         # Check if unit has inline elements that need XML DOM manipulation
         if hasattr(unit, 'inline_elements') and unit.inline_elements:
@@ -197,6 +195,15 @@ class XLIFFFileGenerator:
 
                 # Build source content from unit.source which contains inline markup
                 self._build_source_with_inline(source_elem, unit.source)
+
+            # Preserve whitespace on <source> and <target> so downstream textContent
+            # readers don't pull in unintended indentation between siblings.
+            for _elem_name_inline in ("source", "target"):
+                _elem_inline = elem.find(
+                    f'{{urn:oasis:names:tc:xliff:document:1.1}}{_elem_name_inline}'
+                ) or elem.find(_elem_name_inline)
+                if _elem_inline is not None:
+                    _elem_inline.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
 
             if unit.location:
                 xliff_unit.addlocation(unit.location)

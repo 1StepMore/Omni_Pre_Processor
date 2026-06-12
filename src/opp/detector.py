@@ -25,7 +25,7 @@ class FormatType(Enum):
     UNKNOWN = "unknown"
 
 
-def detect_format(path: Union[Path, str]) -> Tuple[FormatType, float]:
+def detect_format(path: Path | str) -> tuple[FormatType, float]:
     if isinstance(path, str):
         path = Path(path)
 

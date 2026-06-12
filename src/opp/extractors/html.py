@@ -51,7 +51,7 @@ _RE_JS_PATTERNS = [
 ]
 
 try:
-    from markdownify import MarkdownConverter, markdownify
+    from markdownify import MarkdownConverter
     MARKDOWNIFY_AVAILABLE = True
 except ImportError:
     MARKDOWNIFY_AVAILABLE = False
@@ -93,20 +93,20 @@ else:
 
 class HTMLExtractor(ExtractorBase):
 
-    def supported_extensions(self) -> List[str]:
+    def supported_extensions(self) -> list[str]:
         return [".html", ".htm"]
 
     def extract(self, input_path: Path) -> ExtractionResult:
         self.validate_file(input_path)
         file_metadata = self.get_file_info(input_path)
-        warnings: List[str] = []
+        warnings: list[str] = []
 
         try:
             content = input_path.read_text(encoding="utf-8")
         except UnicodeDecodeError:
             try:
                 content = input_path.read_text(encoding="latin-1")
-            except Exception as e:
+            except Exception:
                 raise CorruptedFileError(f"无法读取HTML文件: {input_path}")
 
         metadata = DocumentMetadata(
@@ -228,7 +228,7 @@ class HTMLExtractor(ExtractorBase):
             logger.debug(f"Docling extraction failed: {e}")
             return ""
 
-    def _md_to_paragraphs(self, md_text: str) -> List[ParagraphData]:
+    def _md_to_paragraphs(self, md_text: str) -> list[ParagraphData]:
         if not md_text:
             return []
 
@@ -267,7 +267,7 @@ class HTMLExtractor(ExtractorBase):
 
         return paragraphs
 
-    def extract_runs(self, element) -> List[RunData]:
+    def extract_runs(self, element) -> list[RunData]:
         from opp.utils.dataclasses import RunData
 
         runs = []
@@ -308,8 +308,8 @@ class HTMLExtractor(ExtractorBase):
 
         return runs
 
-    def _extract_images(self, html_content: str, base_dir: Path) -> List[ImageData]:
-        result: List[ImageData] = []
+    def _extract_images(self, html_content: str, base_dir: Path) -> list[ImageData]:
+        result: list[ImageData] = []
 
         try:
             soup = BeautifulSoup(html_content, "html.parser")
@@ -348,7 +348,7 @@ class HTMLExtractor(ExtractorBase):
 
         return result
 
-    def _parse_data_uri(self, src: str) -> Optional[ImageData]:
+    def _parse_data_uri(self, src: str) -> ImageData | None:
         match = _RE_DATA_URI.match(src)
         if not match:
             return None
@@ -380,36 +380,6 @@ class HTMLExtractor(ExtractorBase):
         return mime_map.get(ext, "application/octet-stream")
 
     def _detect_js_heavy(self, html_content: str) -> bool:
-        js_indicators = [
-            r"react",
-            r"vue",
-            r"angular",
-            r"ember\.js",
-            r"mithril\.js",
-            r"preact",
-            r"solid\.js",
-            r"svelte",
-            r"jquery",
-            r"prototype\.js",
-            r"dojo",
-            r"ext\.js",
-            r" mootools",
-            r"scriptaculous",
-            r"node_modules",
-            r"webpack",
-            r"vite",
-            r"next\.js",
-            r"nuxt",
-            r"gatsby",
-            r"11ty",
-            r"jekyll",
-            r"hugo",
-            r"angular\.js",
-            r"underscore\.js",
-            r"lazy\.js",
-            r" lodash",
-        ]
-
         content_lower = html_content.lower()
         for pattern in _RE_JS_PATTERNS:
             if pattern.search(content_lower):
@@ -422,7 +392,7 @@ class HTMLExtractor(ExtractorBase):
 
         return False
 
-    def _html_to_markdown(self, html_content: str, base_path: Optional[Path] = None) -> str:
+    def _html_to_markdown(self, html_content: str, base_path: Path | None = None) -> str:
         if not MARKDOWNIFY_AVAILABLE:
             return self._strip_scripts_and_styles(html_content)
 
@@ -489,7 +459,7 @@ class HTMLExtractor(ExtractorBase):
 
         return "\n".join(result)
 
-    def _check_table_broken(self, table_lines: List[str]) -> bool:
+    def _check_table_broken(self, table_lines: list[str]) -> bool:
         if len(table_lines) < 2:
             return False
 

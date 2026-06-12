@@ -86,8 +86,8 @@ class ErrorContext:
 
 class ErrorHandler:
     def __init__(self) -> None:
-        self._errors: List[ErrorContext] = []
-        self._warnings: List[ErrorContext] = []
+        self._errors: list[ErrorContext] = []
+        self._warnings: list[ErrorContext] = []
 
     def add_error(self, ctx: ErrorContext) -> None:
         self._errors.append(ctx)
@@ -95,16 +95,16 @@ class ErrorHandler:
     def add_warning(self, ctx: ErrorContext) -> None:
         self._warnings.append(ctx)
 
-    def get_stats(self) -> Dict[str, int]:
+    def get_stats(self) -> dict[str, int]:
         return {"errors": len(self._errors), "warnings": len(self._warnings)}
 
     def has_errors(self) -> bool:
         return len(self._errors) > 0
 
-    def get_errors(self) -> List[ErrorContext]:
+    def get_errors(self) -> list[ErrorContext]:
         return self._errors.copy()
 
-    def get_warnings(self) -> List[ErrorContext]:
+    def get_warnings(self) -> list[ErrorContext]:
         return self._warnings.copy()
 
     def _format_error_items_html(self) -> str:
@@ -147,7 +147,7 @@ class ErrorHandler:
             )
         return "\n".join(items) if items else "No errors or warnings recorded."
 
-    def generate_html_report(self, file_count: int = 0, template: Optional[str] = None) -> str:
+    def generate_html_report(self, file_count: int = 0, template: str | None = None) -> str:
         """Generate HTML report of errors and warnings.
 
         Args:
@@ -171,7 +171,7 @@ class ErrorHandler:
             error_list=error_list_html
         )
 
-    def generate_text_report(self, file_count: int = 0, template: Optional[str] = None) -> str:
+    def generate_text_report(self, file_count: int = 0, template: str | None = None) -> str:
         """Generate plain text report of errors and warnings.
 
         Args:

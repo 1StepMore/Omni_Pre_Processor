@@ -23,11 +23,11 @@ from opp.mcp._errors import mcp_error_boundary
 from opp.pipeline import OPPPipeline
 
 
-_mcp: Optional[FastMCP] = None
-_config: Optional[MCPConfig] = None
-_validator: Optional[PathValidator] = None
-_pipeline: Optional[OPPPipeline] = None
-_serializer: Optional[ExtractionResultSerializer] = None
+_mcp: FastMCP | None = None
+_config: MCPConfig | None = None
+_validator: PathValidator | None = None
+_pipeline: OPPPipeline | None = None
+_serializer: ExtractionResultSerializer | None = None
 
 
 def _init_server(config: MCPConfig) -> None:
@@ -81,10 +81,10 @@ def _safe_temp_output(suffix: str, parent: Path) -> Path:
 @mcp_error_boundary
 async def extract_document(
     file_path: str,
-    output_formats: Optional[List[str]] = None,
+    output_formats: list[str] | None = None,
     source_lang: str = "zh",
     target_lang: str = "en",
-    resource_dir: Optional[str] = None,
+    resource_dir: str | None = None,
 ) -> dict:
     if output_formats is None:
         output_formats = ["md"]
@@ -217,8 +217,8 @@ async def extract_document(
 
 @mcp_error_boundary
 async def batch_extract(
-    file_paths: List[str],
-    output_formats: Optional[List[str]] = None,
+    file_paths: list[str],
+    output_formats: list[str] | None = None,
     source_lang: str = "zh",
     target_lang: str = "en",
 ) -> dict:
@@ -371,7 +371,7 @@ async def generate_xliff(
     file_path: str,
     source_lang: str = "zh",
     target_lang: str = "en",
-    output_path: Optional[str] = None,
+    output_path: str | None = None,
 ) -> dict:
     if _validator is None:
         return {
@@ -452,7 +452,7 @@ async def ping() -> dict:
 @mcp_error_boundary
 async def generate_markdown(
     file_path: str,
-    output_path: Optional[str] = None,
+    output_path: str | None = None,
 ) -> dict:
     if _validator is None:
         return {
@@ -519,7 +519,7 @@ async def generate_markdown(
 async def save_skeleton(
     file_path: str,
     base_name: str = "document",
-    output_dir: Optional[str] = None,
+    output_dir: str | None = None,
 ) -> dict:
     """Save skeleton ZIP file from extracted document.
 

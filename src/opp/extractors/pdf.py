@@ -1,14 +1,12 @@
 from dataclasses import replace
 from pathlib import Path
 from typing import List, Optional
-import os
 import re
 
 import fitz
 
 from opp.extractors.base import ExtractorBase
 from opp.utils.dataclasses import (
-    DocumentMetadata,
     ExtractionResult,
     ImageData,
     ParagraphData,
@@ -34,10 +32,10 @@ class PDFExtractor(ExtractorBase):
         re.compile(r"^\d+\.\d+$"),  # 1.1 2.1
     ]
 
-    def supported_extensions(self) -> List[str]:
+    def supported_extensions(self) -> list[str]:
         return [".pdf"]
 
-    def _detect_heading_level(self, text: str) -> Optional[int]:
+    def _detect_heading_level(self, text: str) -> int | None:
         """Detect if text is a Chinese heading and return its level."""
         if not text:
             return None
@@ -52,7 +50,7 @@ class PDFExtractor(ExtractorBase):
     def extract(self, input_path: Path) -> ExtractionResult:
         self.validate_file(input_path)
         metadata = self.get_file_info(input_path)
-        warnings: List[str] = []
+        warnings: list[str] = []
 
         try:
             doc: fitz.Document = fitz.open(input_path)
@@ -118,7 +116,7 @@ class PDFExtractor(ExtractorBase):
             logger.warning("_init_rapidocr: rapidocr_onnxruntime not installed, OCR fallback unavailable")
             return None
 
-    def _ocr_tesseract(self, img, lang: str) -> Optional[str]:
+    def _ocr_tesseract(self, img, lang: str) -> str | None:
         try:
             import pytesseract
         except ImportError:
@@ -133,7 +131,7 @@ class PDFExtractor(ExtractorBase):
             logger.debug(f"Tesseract OCR failed, falling back to RapidOCR: {e}")
             return self._ocr_rapidocr(img, None)
 
-    def _ocr_rapidocr(self, img, engine) -> Optional[str]:
+    def _ocr_rapidocr(self, img, engine) -> str | None:
         if engine is None:
             try:
                 from rapidocr_onnxruntime import RapidOCRSentenceExtractor
@@ -167,8 +165,8 @@ class PDFExtractor(ExtractorBase):
             logger.debug(f"_ocr_rapidocr: RapidOCR extraction failed: {e}")
             return None
 
-    def extract_text_blocks(self, doc: fitz.Document) -> List[TextBlockData]:
-        result: List[TextBlockData] = []
+    def extract_text_blocks(self, doc: fitz.Document) -> list[TextBlockData]:
+        result: list[TextBlockData] = []
         for page_num in range(doc.page_count):
             page = doc[page_num]
             blocks = page.get_text("blocks")
@@ -186,8 +184,8 @@ class PDFExtractor(ExtractorBase):
                 ))
         return result
 
-    def detect_tables(self, doc: fitz.Document) -> List:
-        result: List[TableData] = []
+    def detect_tables(self, doc: fitz.Document) -> list:
+        result: list[TableData] = []
         for page_num in range(doc.page_count):
             page = doc[page_num]
             table_page = page.find_tables()
@@ -201,8 +199,8 @@ class PDFExtractor(ExtractorBase):
                     result.append(TableData(headers=headers, rows=rows))
         return result
 
-    def extract_images(self, doc: fitz.Document) -> List[ImageData]:
-        result: List[ImageData] = []
+    def extract_images(self, doc: fitz.Document) -> list[ImageData]:
+        result: list[ImageData] = []
         for page_num in range(doc.page_count):
             page = doc[page_num]
             image_list = page.get_images(full=True)
@@ -223,7 +221,7 @@ class PDFExtractor(ExtractorBase):
                     continue
         return result
 
-    def _extract_toc_from_doc(self, doc: fitz.Document) -> List[ParagraphData]:
+    def _extract_toc_from_doc(self, doc: fitz.Document) -> list[ParagraphData]:
         """Extract TOC from already-open PDF document."""
         toc_entries = doc.get_toc()
         if not toc_entries:
@@ -238,7 +236,7 @@ class PDFExtractor(ExtractorBase):
             for toc_entry in toc_entries
         ]
 
-    def _build_chapter_paragraph_map(self, toc_entries: List[ParagraphData], paragraphs: List[ParagraphData]) -> List[ParagraphData]:
+    def _build_chapter_paragraph_map(self, toc_entries: list[ParagraphData], paragraphs: list[ParagraphData]) -> list[ParagraphData]:
         """Map each paragraph to a chapter based on page number from TOC entries.
         
         TOC entries from fitz doc.get_toc() return [level, title, page, ...] where page is index 2.
@@ -269,7 +267,7 @@ class PDFExtractor(ExtractorBase):
         
         return result
 
-    def extract_toc(self, input_path: Path) -> List[ParagraphData]:
+    def extract_toc(self, input_path: Path) -> list[ParagraphData]:
         try:
             doc: fitz.Document = fitz.open(input_path)
         except Exception as e:

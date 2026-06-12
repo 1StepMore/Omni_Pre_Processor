@@ -32,7 +32,7 @@ def _extract_url_from_file(path: Path) -> str:
 
 
 class YouTubeExtractor(ExtractorBase):
-    def supported_extensions(self) -> List[str]:
+    def supported_extensions(self) -> list[str]:
         return [".url"]
 
     def extract(self, input_path: Path) -> ExtractionResult:
@@ -82,7 +82,7 @@ class YouTubeExtractor(ExtractorBase):
             ),
         )
 
-    def _parse_transcript(self, text_content: str, _url: str) -> List[ParagraphData]:
+    def _parse_transcript(self, text_content: str, _url: str) -> list[ParagraphData]:
         if not text_content:
             return []
 

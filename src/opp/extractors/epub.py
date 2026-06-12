@@ -1,4 +1,3 @@
-import re
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -12,7 +11,6 @@ from opp.utils.dataclasses import (
     ImageData,
     ParagraphData,
     RunData,
-    TableData,
 )
 from opp.utils.exceptions import CorruptedFileError
 from opp.logger import logger
@@ -21,13 +19,13 @@ from opp.logger import logger
 class EPUBExtractor(ExtractorBase):
     """Extracts content from EPUB files (chapters, cover, resources)."""
 
-    def supported_extensions(self) -> List[str]:
+    def supported_extensions(self) -> list[str]:
         return [".epub"]
 
     def extract(self, input_path: Path) -> ExtractionResult:
         self.validate_file(input_path)
         metadata = self.get_file_info(input_path)
-        warnings: List[str] = []
+        warnings: list[str] = []
 
         try:
             book, spine_items, image_items = self._parse_epub(input_path)
@@ -61,7 +59,7 @@ class EPUBExtractor(ExtractorBase):
 
     def _parse_epub(
         self, epub_path: Path
-    ) -> Tuple[epub.EpubBook, List, List[epub.EpubItem]]:
+    ) -> tuple[epub.EpubBook, list, list[epub.EpubItem]]:
         """Parse EPUB and return book, spine items, and image items."""
         import ebooklib
 
@@ -75,9 +73,8 @@ class EPUBExtractor(ExtractorBase):
 
         return book, spine_items, image_items
 
-    def _extract_cover(self, book: epub.EpubBook) -> Optional[ImageData]:
+    def _extract_cover(self, book: epub.EpubBook) -> ImageData | None:
         """Extract cover image from book manifest if present."""
-        import ebooklib
 
         for item in book.get_items():
             item_props = getattr(item, 'properties', set()) or set()
@@ -100,12 +97,12 @@ class EPUBExtractor(ExtractorBase):
         return None
 
     def _extract_chapters(
-        self, book: epub.EpubBook, spine_items: List
-    ) -> List[ParagraphData]:
+        self, book: epub.EpubBook, spine_items: list
+    ) -> list[ParagraphData]:
         """Extract chapter content from spine items in order."""
         import ebooklib
 
-        paragraphs: List[ParagraphData] = []
+        paragraphs: list[ParagraphData] = []
 
         for spine_ref in spine_items:
             if isinstance(spine_ref, tuple):
@@ -139,7 +136,7 @@ class EPUBExtractor(ExtractorBase):
 
         return paragraphs
 
-    def _parse_html_elements(self, html_content: str, chapter: Optional[str] = None) -> List[ParagraphData]:
+    def _parse_html_elements(self, html_content: str, chapter: str | None = None) -> list[ParagraphData]:
         """Parse HTML and extract text elements as separate ParagraphData objects."""
         if not html_content:
             return []
@@ -153,7 +150,7 @@ class EPUBExtractor(ExtractorBase):
         for ref in footnote_refs:
             ref.insert_after(soup.new_string(' [[footnote]]'))
 
-        paragraphs: List[ParagraphData] = []
+        paragraphs: list[ParagraphData] = []
         heading_tags = {'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}
 
         for tag in heading_tags | {'p'}:
@@ -184,7 +181,7 @@ class EPUBExtractor(ExtractorBase):
 
         return paragraphs
 
-    def extract_runs(self, element) -> List[RunData]:
+    def extract_runs(self, element) -> list[RunData]:
         runs = []
         tag_name = element.name if hasattr(element, 'name') else None
 
@@ -234,9 +231,9 @@ class EPUBExtractor(ExtractorBase):
         return runs
 
     def _extract_images(
-        self, image_items: List[epub.EpubItem], cover: Optional[ImageData]
-    ) -> List[ImageData]:
-        images: List[ImageData] = []
+        self, image_items: list[epub.EpubItem], cover: ImageData | None
+    ) -> list[ImageData]:
+        images: list[ImageData] = []
 
         for spine_idx, item in enumerate(image_items):
             try:

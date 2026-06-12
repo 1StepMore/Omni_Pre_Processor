@@ -9,12 +9,12 @@ class MarkdownGenerator:
     def generate(
         self,
         result: ExtractionResult,
-        images_dir: Optional[Path] = None,
-        stem: Optional[str] = None,
-        style_mapping: Optional[dict[str, int]] = None,
+        images_dir: Path | None = None,
+        stem: str | None = None,
+        style_mapping: dict[str, int] | None = None,
     ) -> str:
         output_lines = []
-        list_buffer: List[str] = []
+        list_buffer: list[str] = []
         list_type = None
 
         para_images: dict = defaultdict(list)
@@ -182,7 +182,7 @@ class MarkdownGenerator:
             content = self.generate(result, images_dir=None, stem=output_path.stem, style_mapping=style_mapping)
         output_path.write_text(content, encoding="utf-8")
 
-    def generate_headings(self, paragraphs: List[ParagraphData], style_mapping=None) -> str:
+    def generate_headings(self, paragraphs: list[ParagraphData], style_mapping=None) -> str:
         result_lines = []
         for para in paragraphs:
             level = para.level
@@ -196,7 +196,7 @@ class MarkdownGenerator:
             result_lines.append(heading)
         return '\n'.join(result_lines)
 
-    def generate_lists(self, paragraphs: List[ParagraphData]) -> str:
+    def generate_lists(self, paragraphs: list[ParagraphData]) -> str:
         result_lines = []
         ordered_item_num = 0
         has_deep_nesting = False
@@ -246,11 +246,9 @@ class MarkdownGenerator:
 
         return '\n'.join(result_lines)
 
-    def generate_tables_md(self, tables: List[TableData], alignment=None, has_header=True) -> str:
+    def generate_tables_md(self, tables: list[TableData], alignment=None, has_header=True) -> str:
         result_parts = []
         for table in tables:
-            num_cols = len(table.headers)
-
             header_cells = [self._escape_table_cell(h) for h in table.headers]
             result_parts.append("| " + " | ".join(header_cells) + " |")
 
@@ -281,9 +279,9 @@ class MarkdownGenerator:
 
     def _generate_images_section(
         self,
-        images: List[ImageData],
-        images_dir: Optional[Path] = None,
-        stem: Optional[str] = None,
+        images: list[ImageData],
+        images_dir: Path | None = None,
+        stem: str | None = None,
         offset: int = 0,
     ) -> str:
         lines = ["", "## Images", ""]

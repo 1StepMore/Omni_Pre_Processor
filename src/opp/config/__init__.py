@@ -1,18 +1,18 @@
 import os
 import threading
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any
 
 from opp.logger import logger
 
 
 class OPPConfig:
-    _instance: Optional["OPPConfig"] = None
+    _instance: "OPPConfig | None" = None
     _lock = threading.Lock()
 
-    def __init__(self, config_path: Optional[Path] = None):
+    def __init__(self, config_path: Path | None = None):
         self.config_path = config_path or self._find_config()
-        self._config: Dict[str, Any] = {}
+        self._config: dict[str, Any] = {}
         self._load()
 
     @classmethod
@@ -47,14 +47,32 @@ class OPPConfig:
                 return candidate
 
         # Tier 2: bundled config/default.yaml
-        for base in [Path.cwd(), Path(__file__).parent.parent.parent]:
+        # Walk up from __file__ to find repo root (handles editable installs
+        # where __file__ is at src/opp/config/__init__.py and config/ sits at
+        # the project root, one level above src/).
+        candidates = [Path.cwd()]
+        _f = Path(__file__).resolve().parent  # start from config/ dir
+        for _ in range(5):  # max 5 levels up
+            candidates.append(_f)
+            _f = _f.parent
+        seen = set()
+        for base in candidates:
+            base_s = str(base.resolve())
+            if base_s in seen:
+                continue
+            seen.add(base_s)
             for rel in ["config/default.yaml", "config/default.yml"]:
                 candidate = base / rel
                 if candidate.exists():
                     return candidate
 
         # Tier 3: legacy opp_config.yaml (back-compat with deprecation warning)
-        for base in [Path.cwd(), Path(__file__).parent.parent.parent]:
+        seen = set()
+        for base in candidates:
+            base_s = str(base.resolve())
+            if base_s in seen:
+                continue
+            seen.add(base_s)
             candidate = base / "opp_config.yaml"
             if candidate.exists():
                 warnings.warn(
@@ -82,7 +100,7 @@ class OPPConfig:
             logger.warning(f"Failed to load config from {self.config_path}: {e}")
             self._config = self._default_config()
 
-    def _default_config(self) -> Dict[str, Any]:
+    def _default_config(self) -> dict[str, Any]:
         return {
             "pdf": "simple",
             "html": "simple",
@@ -92,7 +110,7 @@ class OPPConfig:
         return self._config.get(fmt, "simple")
 
 
-def load_config(config_path: Optional[Path] = None) -> OPPConfig:
+def load_config(config_path: Path | None = None) -> OPPConfig:
     OPPConfig.reset_instance()
     return OPPConfig(config_path)
 

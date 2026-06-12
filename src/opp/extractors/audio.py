@@ -12,7 +12,7 @@ _MAX_FILE_SIZE_BYTES = 500 * 1024 * 1024
 
 
 class AudioExtractor(ExtractorBase):
-    def supported_extensions(self) -> List[str]:
+    def supported_extensions(self) -> list[str]:
         return [".wav", ".mp3"]
 
     def extract(self, input_path: Path) -> ExtractionResult:
@@ -61,7 +61,7 @@ class AudioExtractor(ExtractorBase):
         self,
         result: TranscriptionResult,
         input_path: Path,
-        warnings: List[str],
+        warnings: list[str],
     ) -> ExtractionResult:
         paragraphs = [
             ParagraphData(text=result.text, style="Normal", level=0)

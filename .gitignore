@@ -15,7 +15,7 @@ htmlcov/
 .venv
 *.swp
 *.swo
-*~logs/
+*~
 .ci-venv/
 
 # Chinese documentation files - never commit

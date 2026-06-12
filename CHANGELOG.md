@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2026-06-12
+
+### Changed
+- **`Optional[X]` → `X | None` migration**: All 108 `Optional[X]` usage converted to Python 3.12+ union syntax across OPP codebase (ruff UP045/UP006/UP035).
+- **pyright 4/5 checks re-enabled**: `reportMissingTypeStubs`, `reportDeprecated`, `reportUnusedVariable`, `reportUnusedImport` now active. `reportMissingParameterType` remains suppressed (35+ annotation gaps).
+
+### Fixed
+- **`print()` → `logger.warning()`** in `opp/cli.py:536` for file-skip reporting.
+- **Unused imports and dead code** cleaned across `extractors/html.py`, `markdown/generator.py`, `config/__init__.py`, `opp_hermes/opp_tool.py`.
+
 ## [0.6.0] - 2026-06-03
 
 ### Added

@@ -1,9 +1,9 @@
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional
 import logging
-import os
 
 from opp.detector import detect_format, FormatType
 from opp.error_handler import ErrorHandler, ErrorContext
@@ -22,11 +22,11 @@ class ProcessingResult:
     content: str
     format_type: FormatType
     images_stored: int
-    errors: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
     duration_ms: float = 0.0
-    extraction_result: Optional[ExtractionResult] = None
-    attachment_results: List["ProcessingResult"] = field(default_factory=list)
+    extraction_result: ExtractionResult | None = None
+    attachment_results: list["ProcessingResult"] = field(default_factory=list)
 
 
 @dataclass
@@ -34,26 +34,28 @@ class BatchResult:
     successful: int
     failed: int
     total_duration_ms: float
-    results: List[ProcessingResult] = field(default_factory=list)
+    results: list[ProcessingResult] = field(default_factory=list)
 
 
 @dataclass
 class GenerationResult:
-    md_path: Optional[Path] = None
-    xliff_path: Optional[Path] = None
-    errors: List[str] = field(default_factory=list)
+    md_path: Path | None = None
+    xliff_path: Path | None = None
+    errors: list[str] = field(default_factory=list)
 
 
 class OPPPipeline:
-    def __init__(self, resource_storage_dir: Path, config_path: Optional[Path] = None) -> None:
-        from opp.config import load_config, get_config
+    def __init__(self, resource_storage_dir: Path, config_path: Path | None = None, max_file_size_mb: int = 100) -> None:
+        from opp.config import load_config
         load_config(config_path)
 
         self.resource_storage_dir = Path(resource_storage_dir)
+        self.config_path = config_path
         self.resource_manager = ResourceManager(self.resource_storage_dir)
         self.error_handler = ErrorHandler()
+        self.max_file_size_mb = max_file_size_mb
         self.logger = logging.getLogger(__name__)
-        self.extractors: Dict[FormatType, ExtractorBase] = {
+        self.extractors: dict[FormatType, ExtractorBase] = {
             FormatType.DOCX: DOCXExtractor(),
             FormatType.PPTX: PPTXExtractor(),
             FormatType.PDF: PDFExtractor(),
@@ -76,8 +78,8 @@ class OPPPipeline:
         self,
         result: ExtractionResult,
         output_path: Path,
-        _attachment_results: Optional[List["ProcessingResult"]] = None,
-        style_mapping: Optional[dict[str, int]] = None,
+        _attachment_results: list["ProcessingResult"] | None = None,
+        style_mapping: dict[str, int] | None = None,
         embed_images: bool = True,
     ) -> Path:
         """Generate Markdown file from extraction result.
@@ -157,7 +159,7 @@ class OPPPipeline:
         result: ExtractionResult,
         base_name: str,
         output_dir: Path,
-    ) -> Optional[Path]:
+    ) -> Path | None:
         """Save skeleton ZIP file.
 
         Args:
@@ -193,6 +195,18 @@ class OPPPipeline:
         """
         start_time = datetime.now()
         file_path = Path(file_path)
+
+        if self.max_file_size_mb is not None:
+            try:
+                size_bytes = file_path.stat().st_size
+            except (FileNotFoundError, OSError):
+                pass
+            else:
+                limit_bytes = self.max_file_size_mb * 1024 * 1024
+                if size_bytes > limit_bytes:
+                    raise ValueError(
+                        f"File size ({size_bytes} bytes) exceeds limit of {limit_bytes} bytes"
+                    )
 
         # Step 1: Detect format
         fmt, confidence = detect_format(file_path)
@@ -241,8 +255,8 @@ class OPPPipeline:
             )
 
         # Step 4: Extract content
-        errors: List[str] = []
-        warnings: List[str] = []
+        errors: list[str] = []
+        warnings: list[str] = []
         images_stored = 0
 
         try:
@@ -254,16 +268,28 @@ class OPPPipeline:
             # Step 5: Store images via resource manager
             for image in result.images:
                 try:
-                    # Create a temporary file for the image data
-                    ext = image.mime_type.split("/")[-1] if "/" in image.mime_type else "bin"
-                    temp_path = self.resource_storage_dir / f"temp_img_{datetime.now().timestamp()}.{ext}"
-                    temp_path.parent.mkdir(parents=True, exist_ok=True)
-                    with open(temp_path, "wb") as f:
-                        f.write(image.data)
-                    self.resource_manager.add_image(temp_path)
-                    images_stored += 1
-                    # Clean up temp file
-                    temp_path.unlink()
+                    if image.temp_path is not None and image.temp_path.exists():
+                        # Large image already streamed to disk — use directly
+                        self.resource_manager.add_image(image.temp_path)
+                        images_stored += 1
+                        # Clean up temp file and its directory if empty
+                        temp_dir = image.temp_path.parent
+                        image.temp_path.unlink(missing_ok=True)
+                        try:
+                            temp_dir.rmdir()
+                        except OSError:
+                            pass  # dir not empty, leave it
+                    elif image.data:
+                        # Small image in memory — write to temp for resource manager
+                        ext = image.mime_type.split("/")[-1] if "/" in image.mime_type else "bin"
+                        temp_path = self.resource_storage_dir / f"temp_img_{datetime.now().timestamp()}.{ext}"
+                        temp_path.parent.mkdir(parents=True, exist_ok=True)
+                        with open(temp_path, "wb") as f:
+                            f.write(image.data)
+                        self.resource_manager.add_image(temp_path)
+                        images_stored += 1
+                        # Clean up temp file
+                        temp_path.unlink()
                 except Exception as e:
                     err_msg = f"Failed to store image: {str(e)}"
                     errors.append(err_msg)
@@ -311,7 +337,7 @@ class OPPPipeline:
         duration_ms = (datetime.now() - start_time).total_seconds() * 1000
 
         # Process email attachments recursively
-        attachment_results: List[ProcessingResult] = []
+        attachment_results: list[ProcessingResult] = []
         if fmt == FormatType.EMAIL and result.attachments:
             att_handler = AttachmentHandler(self, max_depth=3)
             for att in result.attachments:
@@ -330,48 +356,90 @@ class OPPPipeline:
             attachment_results=attachment_results,
         )
 
-    def process_batch(self, file_paths: List[Path]) -> BatchResult:
-        """Process multiple files through the pipeline.
+    def process_batch(self, file_paths: list[Path], max_workers: int | None = 4) -> BatchResult:
+        """Process multiple files through the pipeline with optional parallel execution.
 
         Args:
             file_paths: List of file paths to process.
+            max_workers: Maximum number of parallel workers. Defaults to 4.
+                When <= 1, processes sequentially (same as before for testing).
+                When None, lets ThreadPoolExecutor choose the default.
 
         Returns:
             BatchResult with statistics and individual results.
         """
         start_time = datetime.now()
-        results: List[ProcessingResult] = []
+        results: list[ProcessingResult] = []
         successful = 0
         failed = 0
 
-        for file_path in file_paths:
-            try:
-                result = self.process_file(file_path)
-                results.append(result)
-                if not result.errors:
-                    successful += 1
-                else:
+        def _process_single(file_path: Path) -> ProcessingResult:
+            pipeline = OPPPipeline(
+                self.resource_storage_dir,
+                config_path=self.config_path,
+                max_file_size_mb=self.max_file_size_mb,
+            )
+            return pipeline.process_file(file_path)
+
+        if max_workers is not None and max_workers <= 1:
+            for file_path in file_paths:
+                try:
+                    result = _process_single(file_path)
+                    results.append(result)
+                    if not result.errors:
+                        successful += 1
+                    else:
+                        failed += 1
+                except Exception as e:
                     failed += 1
-            except Exception as e:
-                # Graceful error handling - continue on individual file failure
-                failed += 1
-                error_result = ProcessingResult(
-                    content="",
-                    format_type=FormatType.UNKNOWN,
-                    images_stored=0,
-                    errors=[f"Batch processing error: {str(e)}"],
-                    warnings=[],
-                    duration_ms=0.0,
-                )
-                results.append(error_result)
-                self.error_handler.add_error(
-                    ErrorContext(
-                        file_path=str(file_path),
-                        error_type="BatchError",
-                        timestamp=datetime.now(),
-                        details=str(e),
+                    error_result = ProcessingResult(
+                        content="",
+                        format_type=FormatType.UNKNOWN,
+                        images_stored=0,
+                        errors=[f"Batch processing error: {str(e)}"],
+                        warnings=[],
+                        duration_ms=0.0,
                     )
-                )
+                    results.append(error_result)
+                    self.error_handler.add_error(
+                        ErrorContext(
+                            file_path=str(file_path),
+                            error_type="BatchError",
+                            timestamp=datetime.now(),
+                            details=str(e),
+                        )
+                    )
+        else:
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = [executor.submit(_process_single, fp) for fp in file_paths]
+                for i, future in enumerate(futures):
+                    file_path = file_paths[i]
+                    try:
+                        result = future.result()
+                        results.append(result)
+                        if not result.errors:
+                            successful += 1
+                        else:
+                            failed += 1
+                    except Exception as e:
+                        failed += 1
+                        error_result = ProcessingResult(
+                            content="",
+                            format_type=FormatType.UNKNOWN,
+                            images_stored=0,
+                            errors=[f"Batch processing error: {str(e)}"],
+                            warnings=[],
+                            duration_ms=0.0,
+                        )
+                        results.append(error_result)
+                        self.error_handler.add_error(
+                            ErrorContext(
+                                file_path=str(file_path),
+                                error_type="BatchError",
+                                timestamp=datetime.now(),
+                                details=str(e),
+                            )
+                        )
 
         total_duration_ms = (datetime.now() - start_time).total_seconds() * 1000
         return BatchResult(
@@ -381,7 +449,7 @@ class OPPPipeline:
             results=results,
         )
 
-    def get_error_stats(self) -> Dict[str, int]:
+    def get_error_stats(self) -> dict[str, int]:
         """Get error and warning statistics from the error handler.
 
         Returns:

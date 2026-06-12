@@ -37,8 +37,8 @@ class ValidationResult:
         resolved_path: The resolved Path object if successful, None otherwise.
     """
     success: bool
-    error: Optional[str] = None
-    resolved_path: Optional[Path] = None
+    error: str | None = None
+    resolved_path: Path | None = None
 
 
 class PathValidator:
@@ -60,7 +60,7 @@ class PathValidator:
 
     def __init__(
         self,
-        allowed_directories: List[Path],
+        allowed_directories: list[Path],
         max_file_size_bytes: int = 100_000_000,
     ):
         self.allowed_directories = [Path(d).resolve() for d in allowed_directories]

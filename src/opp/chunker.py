@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Optional
 
 from opp.utils.dataclasses import DocumentMetadata, ParagraphData
@@ -8,7 +8,7 @@ from opp.utils.dataclasses import DocumentMetadata, ParagraphData
 class Chunk:
     """Represents a chunk of text with its metadata."""
     index: int
-    title: Optional[str]
+    title: str | None
     start_char: int
     end_char: int
     char_count: int
@@ -18,7 +18,7 @@ class Chunk:
 @dataclass
 class ChunkedResult:
     """Result of chunking operation with metadata."""
-    chunks: List[Chunk]
+    chunks: list[Chunk]
     total_chars: int
     estimated_chunks: int
     metadata: DocumentMetadata
@@ -31,7 +31,7 @@ class ChunkMetaBuilder:
     Actual chunk boundary splitting is handled by Pipeline/OLL.
     """
 
-    def build(self, paragraphs: List[ParagraphData], source_md5: str) -> ChunkedResult:
+    def build(self, paragraphs: list[ParagraphData], source_md5: str) -> ChunkedResult:
         """Build chunk metadata from paragraphs grouped by chapter.
         
         Args:
@@ -47,7 +47,7 @@ class ChunkMetaBuilder:
             Actual chunk boundary determination is done by Pipeline/OLL.
         """
         # Group paragraphs by chapter
-        chapter_groups: dict[str, List[ParagraphData]] = {}
+        chapter_groups: dict[str, list[ParagraphData]] = {}
         for p in paragraphs:
             chapter = p.chapter if p.chapter else "Untitled"
             if chapter not in chapter_groups:

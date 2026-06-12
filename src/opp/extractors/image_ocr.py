@@ -28,7 +28,7 @@ RAPIDOCR_INSTALL_GUIDE = (
 
 class ImageOCRExtractor(ExtractorBase):
 
-    def supported_extensions(self) -> List[str]:
+    def supported_extensions(self) -> list[str]:
         return [".png", ".jpg", ".jpeg", ".tiff", ".bmp"]
 
     def extract(self, input_path: Path) -> ExtractionResult:

@@ -15,7 +15,7 @@ class TableChannel:
         Returns:
             Markdown table string
         """
-        parts: List[str] = []
+        parts: list[str] = []
         num_cols = len(df.columns)
 
         if num_cols > 10:

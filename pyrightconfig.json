@@ -3,9 +3,9 @@
   "exclude": ["tests", "**/__pycache__"],
   "reportMissingTypeStubs": false,
   "reportDeprecated": false,
-  "reportUnusedVariable": false,
-  "reportUnusedImport": false,
-  "reportMissingParameterType": false,
+  "reportUnusedVariable": "warning",
+  "reportUnusedImport": "warning",
+  "reportMissingParameterType": "warning",
   "pythonVersion": "3.12",
   "typeCheckingMode": "basic"
 }

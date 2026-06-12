@@ -5,23 +5,20 @@ from lxml import etree
 
 from opp.extractors.base import ExtractorBase
 from opp.utils.dataclasses import (
-    DocumentMetadata,
     ExtractionResult,
-    ImageData,
     ParagraphData,
-    TableData,
 )
 from opp.utils.exceptions import CorruptedFileError
 
 
 class XMLExtractor(ExtractorBase):
-    def supported_extensions(self) -> List[str]:
+    def supported_extensions(self) -> list[str]:
         return [".xml"]
 
     def extract(self, input_path: Path) -> ExtractionResult:
         self.validate_file(input_path)
         metadata = self.get_file_info(input_path)
-        warnings: List[str] = []
+        warnings: list[str] = []
 
         try:
             tree = etree.parse(str(input_path))
@@ -43,7 +40,7 @@ class XMLExtractor(ExtractorBase):
             warnings=warnings,
         )
 
-    def extract_nodes(self, input_path: Path, xpath: str) -> List[Dict[str, Any]]:
+    def extract_nodes(self, input_path: Path, xpath: str) -> list[dict[str, Any]]:
         """Extract nodes from XML using XPath expression.
         
         Args:
@@ -75,7 +72,7 @@ class XMLExtractor(ExtractorBase):
         
         return result
 
-    def _node_to_dict(self, node: etree._Element) -> Dict[str, Any]:
+    def _node_to_dict(self, node: etree._Element) -> dict[str, Any]:
         """Convert an lxml element to a dict with tag, text, attributes, children."""
         children = []
         for child in node:
@@ -90,8 +87,8 @@ class XMLExtractor(ExtractorBase):
             "children": children,
         }
 
-    def _build_namespace_map(self, root: etree._Element) -> Dict[str, str]:
-        namespace_map: Dict[str, str] = {}
+    def _build_namespace_map(self, root: etree._Element) -> dict[str, str]:
+        namespace_map: dict[str, str] = {}
         for elem in root.iter():
             tag = elem.tag
             if tag.startswith("{"):
@@ -109,10 +106,10 @@ class XMLExtractor(ExtractorBase):
     def _extract_element(
         self,
         element: etree._Element,
-        namespace_map: Dict[str, str],
-        level: Optional[int] = None,
-    ) -> List[ParagraphData]:
-        paragraphs: List[ParagraphData] = []
+        namespace_map: dict[str, str],
+        level: int | None = None,
+    ) -> list[ParagraphData]:
+        paragraphs: list[ParagraphData] = []
 
         if element.tag is etree.Comment:
             return paragraphs
@@ -151,7 +148,7 @@ class XMLExtractor(ExtractorBase):
             return local_name
         return tag
 
-    def _get_style_name(self, local_name: str, namespace_map: Dict[str, str]) -> str:
+    def _get_style_name(self, local_name: str, namespace_map: dict[str, str]) -> str:
         default_ns = namespace_map.get("default", "")
         if default_ns:
             return f"{default_ns}:{local_name}"

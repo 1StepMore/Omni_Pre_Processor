@@ -23,7 +23,7 @@ class TranscriptionResult:
     """Result of audio transcription."""
     text: str
     language: str
-    segments: List[TranscriptionSegment] = field(default_factory=list)
+    segments: list[TranscriptionSegment] = field(default_factory=list)
 
 
 class AudioTranscriber:
@@ -64,9 +64,9 @@ class AudioTranscriber:
             )
 
         self.model_name = model
-        self._model: Optional["WhisperModel"] = None
-        self._device: Optional[str] = None
-        self._compute_type: Optional[str] = None
+        self._model: "WhisperModel" | None = None
+        self._device: str | None = None
+        self._compute_type: str | None = None
 
     def _get_model(self) -> "WhisperModel":
         """Load and cache the faster-whisper model.

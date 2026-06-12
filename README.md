@@ -369,8 +369,8 @@ export OPP_MCP_ALLOWED_DIRS="/allowed/documents,/allowed/output"
 ```yaml
 security:
   allowed_directories:
-    - /mnt/d/贯维/Documents
-    - /mnt/d/贯维/Output
+    - <your-documents-dir>
+    - <your-output-dir>
     - ./documents
 
 server:

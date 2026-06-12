@@ -26,7 +26,7 @@ class InlineElement:
     id: str
     type: str
     position: int
-    text_covered: Optional[str] = None
+    text_covered: str | None = None
 
 
 @dataclass
@@ -34,24 +34,24 @@ class XLIFFTransUnit:
     id: str
     source: str
     source_language: str
-    target: Optional[str] = None
-    target_language: Optional[str] = None
-    location: Optional[str] = None
-    context: Optional[str] = None
-    state: Optional[XLIFFUnitState] = None
+    target: str | None = None
+    target_language: str | None = None
+    location: str | None = None
+    context: str | None = None
+    state: XLIFFUnitState | None = None
     translate: bool = True
-    inline_elements: List[InlineElement] = field(default_factory=list)
-    resname: Optional[str] = None
+    inline_elements: list[InlineElement] = field(default_factory=list)
+    resname: str | None = None
 
 
 @dataclass
 class XLIFFFileAttributes:
     source_language: str
     target_language: str
-    original: Optional[str] = None
+    original: str | None = None
     datatype: str = "plaintext"
-    tool_id: Optional[str] = None
-    tool_version: Optional[str] = None
+    tool_id: str | None = None
+    tool_version: str | None = None
     xliff_version: str = "1.2"
 
     def __post_init__(self):

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file original="NoName" source-language="en" datatype="plaintext" target-language="zh">
+    <body>
+      <trans-unit xml:space="preserve" id="1" resname="para_index_0">
+        <source>Normal Document</source>
+      </trans-unit>
+      <trans-unit xml:space="preserve" id="2" resname="para_index_1">
+        <source>This is a normal paragraph.</source>
+      </trans-unit>
+      <trans-unit xml:space="preserve" id="3" resname="para_index_2">
+        <source>Section One</source>
+      </trans-unit>
+      <trans-unit xml:space="preserve" id="4" resname="para_index_3">
+        <source>Content under section one.</source>
+      </trans-unit>
+      <trans-unit xml:space="preserve" id="5" resname="para_index_4">
+        <source>Section Two</source>
+      </trans-unit>
+      <trans-unit xml:space="preserve" id="6" resname="para_index_5">
+        <source>Content under section two.</source>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

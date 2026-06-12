@@ -12,7 +12,7 @@ from opp.utils.exceptions import CorruptedFileError
 
 class IPYNBExtractor(ExtractorBase):
 
-    def supported_extensions(self) -> List[str]:
+    def supported_extensions(self) -> list[str]:
         return [".ipynb"]
 
     def extract(self, input_path: Path) -> ExtractionResult:
@@ -29,10 +29,10 @@ class IPYNBExtractor(ExtractorBase):
         try:
             with open(input_path, "r", encoding="utf-8") as f:
                 notebook = nbformat.read(f, as_version=4)
-        except Exception as e:
+        except Exception:
             raise CorruptedFileError(f"Cannot parse notebook file: {input_path}")
 
-        paragraphs: List[ParagraphData] = []
+        paragraphs: list[ParagraphData] = []
 
         for cell in notebook.cells:
             cell_type = cell.cell_type

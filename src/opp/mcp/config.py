@@ -15,16 +15,16 @@ logger = logging.getLogger(__name__)
 class MCPConfig:
     """Immutable MCP-specific configuration."""
 
-    allowed_directories: List[Path]
+    allowed_directories: list[Path]
     max_file_size_bytes: int = 100_000_000
     request_timeout_seconds: int = 60
     max_images_per_extraction: int = 100
     max_extraction_depth: int = 3
     resource_storage_dir: Path = field(default_factory=lambda: Path("./mcp_resources"))
-    output_dir: Optional[Path] = None
+    output_dir: Path | None = None
 
 
-def _parse_allowed_dirs(value: str) -> List[Path]:
+def _parse_allowed_dirs(value: str) -> list[Path]:
     """Parse colon/semicolon separated paths into a list of Path objects."""
     separators = [":", ";"]
     for sep in separators:
@@ -36,7 +36,7 @@ def _parse_allowed_dirs(value: str) -> List[Path]:
     return []
 
 
-def _load_from_yaml(config_path: Path) -> Optional[dict]:
+def _load_from_yaml(config_path: Path) -> dict | None:
     """Load configuration from a YAML file."""
     if not config_path.exists():
         return None
@@ -77,7 +77,7 @@ def _load_from_env() -> dict:
     return config
 
 
-def load_config(config_path: Optional[Path] = None) -> MCPConfig:
+def load_config(config_path: Path | None = None) -> MCPConfig:
     """Load MCP configuration from YAML file or environment variables.
 
     Args:

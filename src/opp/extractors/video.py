@@ -8,7 +8,6 @@ from typing import List
 from opp.extractors.base import ExtractorBase
 from opp.transcriber import AudioTranscriber, TranscriptionResult
 from opp.utils.dataclasses import DocumentMetadata, ExtractionResult, ParagraphData
-from opp.error_handler import ExtractionError
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +24,7 @@ class VideoExtractor(ExtractorBase):
         >>> print(result.content)
     """
 
-    def supported_extensions(self) -> List[str]:
+    def supported_extensions(self) -> list[str]:
         return [".mp4"]
 
     def extract(self, input_path: Path) -> ExtractionResult:

@@ -2,10 +2,9 @@ from email import policy
 from email.parser import BytesParser
 from os.path import basename
 from pathlib import Path
-from typing import List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 import logging
 import re
-import tempfile
 
 from opp.extractors.base import ExtractorBase
 from opp.utils.dataclasses import (
@@ -24,7 +23,7 @@ if TYPE_CHECKING:
 
 class EmailExtractor(ExtractorBase):
 
-    def supported_extensions(self) -> List[str]:
+    def supported_extensions(self) -> list[str]:
         return [".eml", ".msg"]
 
     def extract(self, input_path: Path) -> ExtractionResult:
@@ -40,10 +39,10 @@ class EmailExtractor(ExtractorBase):
         try:
             with open(path, "rb") as f:
                 msg = BytesParser(policy=policy.default).parse(f)
-        except Exception as e:
+        except Exception:
             raise CorruptedFileError(f"Cannot parse EML file: {path}")
 
-        warnings: List[str] = []
+        warnings: list[str] = []
         body = ""
         if msg.is_multipart():
             for part in msg.walk():
@@ -80,7 +79,7 @@ class EmailExtractor(ExtractorBase):
 
         paragraphs = [ParagraphData(text=body or "", level=0, style="Normal")]
 
-        attachments: List[AttachmentData] = []
+        attachments: list[AttachmentData] = []
         for part in msg.iter_attachments():
             filename = part.get_filename()
             if not filename:
@@ -203,7 +202,7 @@ class AttachmentHandler:
             filename = "attachment"
         return filename
 
-    def process_attachment(self, attachment_data: AttachmentData) -> Optional["ProcessingResult"]:
+    def process_attachment(self, attachment_data: AttachmentData) -> "ProcessingResult | None":
         if self._current_depth >= self.max_depth:
             self._logger.debug(
                 "process_attachment: skipping attachment '%s' (recursion depth %d >= max %d)",

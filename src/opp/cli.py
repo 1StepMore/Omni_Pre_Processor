@@ -12,7 +12,6 @@ from typing import List, Optional
 from opp.detector import FormatType, detect_format
 from opp.error_handler import ErrorHandler, ErrorContext
 from opp.pipeline import OPPPipeline
-from opp.resource_manager import ResourceManager
 from opp.logger import setup_logger, get_logger
 
 
@@ -252,14 +251,20 @@ def create_parser() -> argparse.ArgumentParser:
         help="Remove all cached OPP outputs and exit"
     )
 
+    parser.add_argument(
+        "--max-file-size", "--max-file-size-mb",
+        type=int, default=0,
+        help="拒绝超过此大小 (MB) 的文件 (默认: 不限制)"
+    )
+
     return parser
 
 
-def get_supported_extensions() -> List[str]:
+def get_supported_extensions() -> list[str]:
     return ['.docx', '.pptx', '.pdf', '.html', '.epub', '.eml', '.msg', '.png', '.jpg', '.jpeg', '.tiff', '.bmp']
 
 
-def expand_directories(paths: List[Path]) -> List[Path]:
+def expand_directories(paths: list[Path]) -> list[Path]:
     files = []
     for path in paths:
         if path.is_dir():
@@ -457,7 +462,7 @@ def process_single_file(
         return False
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = create_parser()
     args = parser.parse_args(argv)
 
@@ -524,6 +529,14 @@ def main(argv: Optional[List[str]] = None) -> int:
                 continue
 
         if args.target_format:
+            # P0-3: file size limit check before any expensive work.
+            if args.max_file_size > 0:
+                file_size_mb = file_path.stat().st_size / (1024 * 1024)
+                if file_size_mb > args.max_file_size:
+                    logger.warning("跳过 %s: 文件大小 %.1fMB 超过限制 %dMB", file_path, file_size_mb, args.max_file_size)
+                    stats["errors"] += 1
+                    continue
+
             # A6: cache check before any expensive work. If the input+config
             # key is in the cache, copy the .xlf to the output dir and skip
             # the full extraction pipeline for this file.

@@ -8,13 +8,11 @@ import zipfile
 from lxml import etree
 
 import docx
-import warnings
 from docx.document import Document as DocxDocument
 from docx.table import Table as DocxTable
 
 from opp.extractors.base import ExtractorBase
 from opp.utils.dataclasses import (
-    DocumentMetadata,
     ExtractionResult,
     ImageData,
     ParagraphData,
@@ -70,13 +68,13 @@ def _extract_anchor_offsets(drawing, WP_NS: str, ns_map: dict) -> tuple[int, int
 
 
 class DOCXExtractor(ExtractorBase):
-    def supported_extensions(self) -> List[str]:
+    def supported_extensions(self) -> list[str]:
         return [".docx"]
 
     def extract(self, input_path: Path) -> ExtractionResult:
         self.validate_file(input_path)
         metadata = self.get_file_info(input_path)
-        warnings: List[str] = []
+        warnings: list[str] = []
 
         try:
             doc: DocxDocument = docx.Document(str(input_path))
@@ -98,8 +96,8 @@ class DOCXExtractor(ExtractorBase):
             if t._tbl is not None:
                 doc_tbl_lookup[t._tbl] = t
 
-        paragraphs: List[ParagraphData] = []
-        tables: List[TableData] = []
+        paragraphs: list[ParagraphData] = []
+        tables: list[TableData] = []
         position = 0
 
         body_children = list(doc.element.body)
@@ -161,16 +159,6 @@ class DOCXExtractor(ExtractorBase):
                     tables.append(table_data)
                     position += 1
 
-        # Append table cell paragraphs
-        for p_elem, text in self._walk_table_paragraphs(doc.element.body, W_NS):
-            paragraphs.append(ParagraphData(
-                text=text,
-                runs=[],
-                position=position,
-                para_index_in_body=None,
-            ))
-            position += 1
-
         # Append text box paragraphs (tagged with [TextBox] style)
         for p_elem, text in self._walk_textbox_paragraphs(doc.element.body, W_NS):
             paragraphs.append(ParagraphData(
@@ -185,8 +173,8 @@ class DOCXExtractor(ExtractorBase):
         para_index_map = self._build_paragraph_index_map(doc)
         images = self.extract_images(doc, input_path, para_index_map)
 
-        skeleton_bytes: Optional[bytes] = None
-        skeleton_files: Optional[List[str]] = None
+        skeleton_bytes: bytes | None = None
+        skeleton_files: list[str] | None = None
         try:
             with open(input_path, 'rb') as f:
                 skeleton_bytes = f.read()
@@ -219,8 +207,8 @@ class DOCXExtractor(ExtractorBase):
             skeleton_files=skeleton_files,
         )
 
-    def extract_paragraphs(self, doc: DocxDocument) -> List[ParagraphData]:
-        result: List[ParagraphData] = []
+    def extract_paragraphs(self, doc: DocxDocument) -> list[ParagraphData]:
+        result: list[ParagraphData] = []
         position = 0
         W_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
         body_children = list(doc.element.body)
@@ -277,15 +265,6 @@ class DOCXExtractor(ExtractorBase):
             ))
             position += 1
 
-        for p_elem, text in self._walk_table_paragraphs(doc.element.body, W_NS):
-            result.append(ParagraphData(
-                text=text,
-                runs=[],
-                position=position,
-                para_index_in_body=None,
-            ))
-            position += 1
-
         for p_elem, text in self._walk_textbox_paragraphs(doc.element.body, W_NS):
             result.append(ParagraphData(
                 text=text,
@@ -295,20 +274,6 @@ class DOCXExtractor(ExtractorBase):
             ))
             position += 1
         return result
-
-    def _walk_table_paragraphs(self, body_elem, W_NS: str):
-        """Yield (w:p element, text) for each non-empty w:p inside w:tbl cells.
-
-        Body-level doc.paragraphs excludes table cell paragraphs. This recovers
-        them so the OPP XLIFF includes table content for translation.
-        """
-        tc_tag = f"{W_NS}tc"
-        p_tag = f"{W_NS}p"
-        for tc in body_elem.iter(tc_tag):
-            for p_elem in tc.iter(p_tag):
-                text = "".join((t.text or "") for t in p_elem.iter(f"{W_NS}t")).strip()
-                if text:
-                    yield p_elem, text
 
     def _walk_textbox_paragraphs(self, body_elem, W_NS: str):
         """Yield (w:p element, text) for each non-empty w:p inside w:txbxContent.
@@ -347,8 +312,8 @@ class DOCXExtractor(ExtractorBase):
             return 2
         return 3
 
-    def extract_tables(self, doc: DocxDocument) -> List[TableData]:
-        result: List[TableData] = []
+    def extract_tables(self, doc: DocxDocument) -> list[TableData]:
+        result: list[TableData] = []
         position = 0
         for table in doc.tables:
             table_data = self._parse_table(table, position=position)
@@ -362,92 +327,199 @@ class DOCXExtractor(ExtractorBase):
         doc: DocxDocument,
         input_path: Path,
         paragraph_index_map: dict,
-    ) -> List[ImageData]:
+    ) -> list[ImageData]:
         """Extract w:drawing images from word/document.xml.
 
-        Deduplicates mc:Choice/mc:Fallback renderings (each drawing is
-        only counted once even if it has both primary and fallback blips).
-        Gets the real paragraph position by walking up the XML tree to
-        find the enclosing w:p element. Distinguishes wp:inline from
-        wp:anchor (floating) drawings.
+        Uses lxml DOM parsing (``fromstring`` + ``iter()``) instead of
+        streaming ``iterparse``.  The previous iterparse-implementation
+        suffered from a destructive-clear bug: ``elem.clear()`` in the
+        ``finally`` block cleared ``a:blip`` descendant element
+        *attributes* before the parent ``w:drawing`` end-event fired,
+        making ``blip.get(embed_attr)`` always return ``None``.
+
+        This approach parses the full XML into memory (safe for typical
+        office documents; even a dense 6.7 MB document.xml peaks at
+        ~40 MB DOM) and walks the tree cleanly.
+
+        Paragraph assignment: only direct children of ``w:body`` count
+        as body paragraphs.  Drawings inside ``w:txbxContent`` (text
+        boxes) or ``w:tc`` (table cells) get ``paragraph_index=None``
+        because they are not body-level paragraphs.
+
+        Deduplicates mc:AlternateContent renderings: when the same
+        ``w:p`` contains both a direct ``w:drawing`` and an
+        ``mc:Choice`` variant with the same relationship ID, only
+        the first occurrence (document order) is extracted.
+
+        Distinguishes ``wp:inline`` from ``wp:anchor`` (floating)
+        drawings.  Floating drawings always get ``paragraph_index=None``
+        since they are not anchored to a text flow position.
         """
-        result: List[ImageData] = []
-        try:
-            with zipfile.ZipFile(input_path, 'r') as zf:
-                if 'word/document.xml' not in zf.namelist():
-                    return result
-                document_xml = zf.read('word/document.xml')
-        except zipfile.BadZipFile:
-            return result
+        result: list[ImageData] = []
 
         W_NS = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
         A_NS = '{http://schemas.openxmlformats.org/drawingml/2006/main}'
         R_NS = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'
         WP_NS = '{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}'
-        MC_NS = '{http://schemas.openxmlformats.org/markup-compatibility/2006}'
         ns_map = {'w': W_NS, 'wp': WP_NS}
+        body_tag = f'{W_NS}body'
+        p_tag = f'{W_NS}p'
+        drawing_tag = f'{W_NS}drawing'
+        t_tag = f'{W_NS}t'
 
         try:
-            tree = etree.fromstring(document_xml)
-        except etree.XMLSyntaxError:
+            with zipfile.ZipFile(input_path, 'r') as zf:
+                if 'word/document.xml' not in zf.namelist():
+                    return result
+                doc_xml_bytes = zf.read('word/document.xml')
+        except (zipfile.BadZipFile, KeyError) as e:
+            logger.warning(f"Cannot read document.xml for image extraction: {e}")
             return result
 
-        body = tree.find(f'{W_NS}body')
+        try:
+            tree = etree.fromstring(doc_xml_bytes)
+        except etree.XMLSyntaxError as e:
+            logger.warning(f"Cannot parse document.xml for image extraction: {e}")
+            return result
+
+        # Locate the <w:body> element (root is <w:document> which contains <w:body>).
+        body = tree if tree.tag == body_tag else tree.find(body_tag)
         if body is None:
+            logger.warning("No <w:body> found in document.xml — cannot extract drawings")
             return result
 
-        # Use body-direct w:p children only so paragraph_index aligns with
-        # the shared position counter from the body-walking extract() loop.
-        all_paragraphs = [c for c in body if c.tag == f'{W_NS}p']
-        para_to_idx = {p: i for i, p in enumerate(all_paragraphs)}
+        # Build position mapping from body-level paragraphs only.
+        # Uses body-child index (via body.index()) as stable key: lxml recycles
+        # Element proxy objects during iteration, so Python id() is unreliable.
+        # body.index() compares C-level xmlNode pointers and works across
+        # separate lxml proxies for the same XML node.
+        p_positions: dict[int, int] = {}
+        for child_idx, child in enumerate(body):
+            if child.tag == p_tag:
+                text_content = "".join(
+                    t.text or "" for t in child.iter(t_tag)
+                ).strip()
+                if text_content:
+                    p_positions[child_idx] = len(p_positions)
 
-        for drawing in tree.findall(f'.//{W_NS}drawing'):
-            parent = drawing.getparent()
-            if parent is not None and parent.tag == f'{MC_NS}Fallback':
+        # Track seen relationship-IDs per paragraph for AlternateContent dedup.
+        # Uses XPath path (via ElementTree.getpath()) as stable paragraph key:
+        # `body.index()` only works for body-level children, but paragraphs
+        # inside text boxes or table cells need a unique identifier too.
+        # `getpath()` returns an XPath like "/w:document/w:body/w:p[7]" which
+        # is unique across the entire document and stable across lxml proxies.
+        MC_NS = '{http://schemas.openxmlformats.org/markup-compatibility/2006}'
+        alt_content_tag = f'{MC_NS}AlternateContent'
+        et_element_tree = etree.ElementTree(tree)
+        seen_r_ids: set[tuple[str, str]] = set()
+
+        def _is_alternate_content_drawing(elem):
+            """Check if a drawing element is inside mc:AlternateContent."""
+            parent = elem.getparent()
+            while parent is not None:
+                if parent.tag == alt_content_tag:
+                    return True
+                parent = parent.getparent()
+            return False
+
+        for drawing_elem in tree.iter(drawing_tag):
+            # Walk up to find the enclosing w:p.
+            p_elem = drawing_elem.getparent()
+            while p_elem is not None and p_elem.tag != p_tag:
+                p_elem = p_elem.getparent()
+            if p_elem is None:
                 continue
 
-            p = None
-            if parent is not None and parent.tag == f'{W_NS}p':
-                p = parent
-            elif parent is not None:
-                p = parent
-                while p is not None and p.tag != f'{W_NS}p':
-                    p = p.getparent()
+            # Unique paragraph path for dedup.
+            try:
+                p_path = et_element_tree.getpath(p_elem)
+            except Exception:
+                p_path = None
 
-            if p is not None and p in para_to_idx:
-                para_idx = para_to_idx[p]
-            else:
-                para_idx = None
+            # Body-level check: does this w:p live directly under w:body?
+            is_body_level = (
+                p_elem.getparent() is not None
+                and p_elem.getparent().tag == body_tag
+            )
+            para_idx = None
+            child_idx = None
+            if is_body_level:
+                # body.index() compares C-level xmlNode — reliable across proxies.
+                try:
+                    child_idx = body.index(p_elem)
+                    para_idx = p_positions.get(child_idx)
+                except ValueError:
+                    pass
 
-            is_floating = drawing.find(f'.//{WP_NS}anchor', ns_map) is not None
-            assigned_index = para_idx  # Place images near their enclosing paragraph regardless of floating status
-            anchor_h, anchor_v = _extract_anchor_offsets(drawing, WP_NS, ns_map)
+            is_floating = drawing_elem.find(f'.//{WP_NS}anchor', ns_map) is not None
+            assigned_index = None if is_floating else para_idx
+            anchor_h, anchor_v = _extract_anchor_offsets(drawing_elem, WP_NS, ns_map)
 
-            for blip in drawing.iter(f'{A_NS}blip'):
+            # Extract wp:extent cx/cy (already in EMU) for width/height.
+            # Both wp:inline and wp:anchor drawings carry <wp:extent cx cy/>.
+            extent = drawing_elem.find(f'.//{WP_NS}extent', ns_map)
+            cx = extent.get('cx') if extent is not None else None
+            cy = extent.get('cy') if extent is not None else None
+            img_width = int(cx) if cx is not None else None
+            img_height = int(cy) if cy is not None else None
+
+            for blip in drawing_elem.iter(f'{A_NS}blip'):
                 embed_attr = blip.get(f'{R_NS}embed')
                 if not embed_attr:
                     continue
+
+                # Dedup: only for mc:AlternateContent pairs (Choice+Fallback)
+                # that reference the same image rId.  Separate legitimate
+                # drawings in the same paragraph are NOT deduplicated even
+                # if they share an rId (e.g. repeated logo in a paragraph).
+                if _is_alternate_content_drawing(drawing_elem):
+                    dedup_key = (p_path, embed_attr)
+                    if dedup_key in seen_r_ids:
+                        continue
+                    seen_r_ids.add(dedup_key)
+
                 try:
                     rel = doc.part.rels.get(embed_attr)
                     if rel and "image" in rel.reltype:
                         image_part = rel.target_part
-                        result.append(ImageData(
-                            data=image_part.blob,
-                            mime_type=image_part.content_type,
-                            paragraph_index=assigned_index,
-                            is_floating=is_floating,
-                            wp_anchor_h=anchor_h,
-                            wp_anchor_v=anchor_v,
-                        ))
+                        img_bytes = image_part.blob
+                        mime = image_part.content_type
+                        img_kwargs = {
+                            "mime_type": mime,
+                            "paragraph_index": assigned_index,
+                            "is_floating": is_floating,
+                            "wp_anchor_h": anchor_h,
+                            "wp_anchor_v": anchor_v,
+                            "width": img_width,
+                            "height": img_height,
+                        }
+                        if len(img_bytes) > 100 * 1024:
+                            ext = mime.split("/")[-1] if "/" in mime else "bin"
+                            temp_dir = Path(input_path).parent / f"{Path(input_path).stem}_images"
+                            temp_dir.mkdir(parents=True, exist_ok=True)
+                            temp_path = temp_dir / f"image_{len(result)}.{ext}"
+                            temp_path.write_bytes(img_bytes)
+                            result.append(ImageData(
+                                data=b"",
+                                temp_path=temp_path,
+                                **img_kwargs,
+                            ))
+                        else:
+                            result.append(ImageData(
+                                data=img_bytes,
+                                **img_kwargs,
+                            ))
                         break
                 except Exception as e:
-                    logger.warning(f"Failed to extract inline drawing image: {e}")
+                    logger.warning(
+                        f"Failed to extract inline drawing image: {e}"
+                    )
 
         return result
 
     def _parse_table(self, table: DocxTable, position: int = 0) -> TableData:
-        headers: List[str] = []
-        rows: List[List[str]] = []
+        headers: list[str] = []
+        rows: list[list[str]] = []
 
         if table.rows:
             first_row = table.rows[0]
@@ -480,14 +552,14 @@ class DOCXExtractor(ExtractorBase):
     def extract_images(
         self,
         doc: DocxDocument,
-        input_path: Optional[Path] = None,
-        para_index_map: Optional[dict] = None,
-    ) -> List[ImageData]:
+        input_path: Path | None = None,
+        para_index_map: dict | None = None,
+    ) -> list[ImageData]:
         if input_path and para_index_map is not None:
             return self._extract_inline_drawings(doc, input_path, para_index_map)
         return []
 
-    def extract_runs(self, para) -> List[RunData]:
+    def extract_runs(self, para) -> list[RunData]:
         """Extract individual runs with formatting properties from a paragraph.
 
         Args:

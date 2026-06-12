@@ -16,8 +16,8 @@ class ResourceManager:
 
     def __init__(self, storage_dir: Path):
         self.storage_dir = Path(storage_dir)
-        self._mapping: Dict[str, Tuple[Path, str]] = {}
-        self._cross_ref: Dict[str, str] = {}
+        self._mapping: dict[str, tuple[Path, str]] = {}
+        self._cross_ref: dict[str, str] = {}
         self._lock = threading.RLock()
 
     def add_image(self, source_path: Path) -> Path:
@@ -61,7 +61,7 @@ class ResourceManager:
 
             return stored_path
 
-    def get_mapping(self) -> Dict[str, Path]:
+    def get_mapping(self) -> dict[str, Path]:
         with self._lock:
             return {original_name: stored_path for stored_path, original_name in self._mapping.values()}
 

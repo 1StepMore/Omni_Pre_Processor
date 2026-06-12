@@ -8,7 +8,6 @@ from pptx.enum.shapes import MSO_SHAPE_TYPE, PP_PLACEHOLDER
 
 from opp.extractors.base import ExtractorBase
 from opp.utils.dataclasses import (
-    DocumentMetadata,
     ExtractionResult,
     ImageData,
     ParagraphData,
@@ -19,17 +18,17 @@ from opp.utils.exceptions import CorruptedFileError, UnsupportedFormatError
 
 
 class PPTXExtractor(ExtractorBase):
-    def supported_extensions(self) -> List[str]:
+    def supported_extensions(self) -> list[str]:
         return [".pptx"]
 
     def extract(self, input_path: Path) -> ExtractionResult:
         self.validate_file(input_path)
         metadata = self.get_file_info(input_path)
-        warnings: List[str] = []
+        warnings: list[str] = []
 
         try:
             prs = Presentation(str(input_path))
-        except Exception as e:
+        except Exception:
             if ".pptm" in str(input_path).lower():
                 raise UnsupportedFormatError(f"不支持的PPTX格式（宏已启用）: {input_path}")
             raise CorruptedFileError(f"文件损坏或无法解析: {input_path}")
@@ -37,8 +36,8 @@ class PPTXExtractor(ExtractorBase):
         slides = self.extract_slides(prs)
         images = self.extract_images(prs)
 
-        skeleton_bytes: Optional[bytes] = None
-        skeleton_files: Optional[List[str]] = None
+        skeleton_bytes: bytes | None = None
+        skeleton_files: list[str] | None = None
         try:
             with open(input_path, 'rb') as f:
                 skeleton_bytes = f.read()
@@ -49,7 +48,7 @@ class PPTXExtractor(ExtractorBase):
             skeleton_bytes = None
             skeleton_files = None
 
-        all_paragraphs: List[ParagraphData] = []
+        all_paragraphs: list[ParagraphData] = []
         for slide_data in slides:
             all_paragraphs.extend(slide_data.shapes)
 
@@ -68,8 +67,8 @@ class PPTXExtractor(ExtractorBase):
             skeleton_files=skeleton_files,
         )
 
-    def extract_slides(self, prs: Presentation) -> List[SlideData]:
-        result: List[SlideData] = []
+    def extract_slides(self, prs: Presentation) -> list[SlideData]:
+        result: list[SlideData] = []
         for i, slide in enumerate(prs.slides):
             shapes = self.extract_shapes(slide)
             notes = self.extract_notes(slide)
@@ -88,7 +87,7 @@ class PPTXExtractor(ExtractorBase):
         except (ValueError, AttributeError):
             return False
 
-    def extract_runs(self, shape) -> List[RunData]:
+    def extract_runs(self, shape) -> list[RunData]:
         runs = []
         for para in shape.text_frame.paragraphs:
             for run in para.runs:
@@ -106,8 +105,8 @@ class PPTXExtractor(ExtractorBase):
                 runs.append(run_data)
         return runs
 
-    def extract_shapes(self, slide) -> List[ParagraphData]:
-        result: List[ParagraphData] = []
+    def extract_shapes(self, slide) -> list[ParagraphData]:
+        result: list[ParagraphData] = []
         for shape in slide.shapes:
             if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
                 result.extend(self._flatten_group(shape))
@@ -132,8 +131,8 @@ class PPTXExtractor(ExtractorBase):
                         ))
         return result
 
-    def _flatten_group(self, group) -> List[ParagraphData]:
-        result: List[ParagraphData] = []
+    def _flatten_group(self, group) -> list[ParagraphData]:
+        result: list[ParagraphData] = []
         for shape in group.shapes:
             if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
                 result.extend(self._flatten_group(shape))
@@ -164,8 +163,8 @@ class PPTXExtractor(ExtractorBase):
             return notes_slide.notes_text_frame.text.strip()
         return ""
 
-    def extract_images(self, prs: Presentation) -> List[ImageData]:
-        result: List[ImageData] = []
+    def extract_images(self, prs: Presentation) -> list[ImageData]:
+        result: list[ImageData] = []
         for slide_idx, slide in enumerate(prs.slides):
             for shape in slide.shapes:
                 if hasattr(shape, "image"):

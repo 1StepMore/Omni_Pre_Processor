@@ -6,9 +6,7 @@ import pandas as pd
 
 from opp.extractors.base import ExtractorBase
 from opp.utils.dataclasses import (
-    DocumentMetadata,
     ExtractionResult,
-    ImageData,
     ParagraphData,
     TableData,
 )
@@ -17,13 +15,13 @@ from opp.logger import logger
 
 
 class CSVExtractor(ExtractorBase):
-    def supported_extensions(self) -> List[str]:
+    def supported_extensions(self) -> list[str]:
         return [".csv", ".tsv"]
 
     def extract(self, input_path: Path) -> ExtractionResult:
         self.validate_file(input_path)
         metadata = self.get_file_info(input_path)
-        warnings: List[str] = []
+        warnings: list[str] = []
 
         df = self._read_csv_with_encoding(input_path)
 
@@ -61,7 +59,7 @@ class CSVExtractor(ExtractorBase):
             warnings=warnings,
         )
 
-    def extract_tables(self, input_path: Path) -> List[TableData]:
+    def extract_tables(self, input_path: Path) -> list[TableData]:
         """Extract tables from a CSV file.
 
         Args:

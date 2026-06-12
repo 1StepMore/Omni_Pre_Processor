@@ -27,7 +27,7 @@ class KeyValueChannel:
         """
         self._skip_empty = skip_empty
 
-    def convert(self, data: Dict[str, str]) -> str:
+    def convert(self, data: dict[str, str]) -> str:
         """Convert a dictionary of key-value pairs to XLIFF 1.2 XML string.
 
         Args:
@@ -59,7 +59,7 @@ class KeyValueChannel:
         # Return XLIFF 1.2 XML string
         return bytes(store).decode("utf-8")
 
-    def convert_to_file(self, data: Dict[str, str], path: Optional[str] = None) -> bytes:
+    def convert_to_file(self, data: dict[str, str], path: str | None = None) -> bytes:
         """Convert data and optionally write to a file.
 
         Args:

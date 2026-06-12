@@ -4,7 +4,6 @@ from typing import Any, Dict, List, Optional
 
 from opp.extractors.base import ExtractorBase
 from opp.utils.dataclasses import (
-    DocumentMetadata,
     ExtractionResult,
     ParagraphData,
 )
@@ -13,7 +12,7 @@ from opp.utils.dataclasses import (
 class JSONExtractor(ExtractorBase):
     MAX_DEPTH = 8
 
-    def supported_extensions(self) -> List[str]:
+    def supported_extensions(self) -> list[str]:
         return [".json"]
 
     def _flatten(
@@ -21,9 +20,9 @@ class JSONExtractor(ExtractorBase):
         obj,
         prefix: str = "",
         depth: int = 0,
-        result: Optional[Dict[str, str]] = None,
-        warnings: Optional[List[str]] = None,
-    ) -> Dict[str, str]:
+        result: dict[str, str] | None = None,
+        warnings: list[str] | None = None,
+    ) -> dict[str, str]:
         if result is None:
             result = {}
         if warnings is None:
@@ -51,7 +50,7 @@ class JSONExtractor(ExtractorBase):
         return result
 
 
-    def extract_key_values(self, input_path: Path) -> Dict[str, Any]:
+    def extract_key_values(self, input_path: Path) -> dict[str, Any]:
         """Extract key-value pairs from JSON file as a flat dictionary.
 
         Args:
@@ -75,8 +74,8 @@ class JSONExtractor(ExtractorBase):
         obj,
         prefix: str = "",
         depth: int = 0,
-        result: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        result: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Flatten nested JSON to dict with dot-notation keys, preserving value types."""
         if result is None:
             result = {}
@@ -104,7 +103,7 @@ class JSONExtractor(ExtractorBase):
     def extract(self, input_path: Path) -> ExtractionResult:
         self.validate_file(input_path)
         metadata = self.get_file_info(input_path)
-        warnings: List[str] = []
+        warnings: list[str] = []
 
         with open(input_path, encoding="utf-8-sig") as f:
             data = json.load(f)

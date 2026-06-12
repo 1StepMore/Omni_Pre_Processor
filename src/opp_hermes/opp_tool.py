@@ -1,7 +1,5 @@
 """OPP tool implementation for Hermes plugin."""
 
-import subprocess
-import json
 import os
 from typing import Any, Optional
 
@@ -42,21 +40,20 @@ OPP_SCHEMA = {
 }
 
 
-def check_opp_requirements() -> tuple[bool, Optional[str]]:
+def check_opp_requirements() -> tuple[bool, str | None]:
     """Check if OPP MCP server is available and configured."""
-    try:
-        import opp
+    import importlib.util
+    if importlib.util.find_spec("opp"):
         return True, None
-    except ImportError:
-        return False, "OPP package not installed. Install with: pip install opp[mcp]"
+    return False, "OPP package not installed. Install with: pip install opp[mcp]"
 
 
 def opp_handler(
     file_path: str,
-    output_formats: Optional[list[str]] = None,
+    output_formats: list[str] | None = None,
     source_lang: str = "en",
     target_lang: str = "zh",
-    resource_dir: Optional[str] = None,
+    resource_dir: str | None = None,
     **kwargs: Any,
 ) -> dict:
     """Handle OPP document extraction via Python API.

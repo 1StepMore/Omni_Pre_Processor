@@ -6,7 +6,6 @@ import openpyxl
 
 from opp.extractors.base import ExtractorBase
 from opp.utils.dataclasses import (
-    DocumentMetadata,
     ExtractionResult,
     ParagraphData,
     TableData,
@@ -17,10 +16,10 @@ from opp.utils.exceptions import ValidationError
 class XLSXExtractor(ExtractorBase):
     MAX_ROWS_WARNING = 10000
 
-    def supported_extensions(self) -> List[str]:
+    def supported_extensions(self) -> list[str]:
         return [".xlsx"]
 
-    def extract_tables(self, input_path: Path) -> List[TableData]:
+    def extract_tables(self, input_path: Path) -> list[TableData]:
         self.validate_file(input_path)
 
         try:
@@ -30,11 +29,11 @@ class XLSXExtractor(ExtractorBase):
                 raise ValidationError(f"文件受密码保护: {input_path}")
             raise ValueError(f"无法打开XLSX文件: {input_path}")
 
-        result: List[TableData] = []
+        result: list[TableData] = []
         for sheet_name in wb.sheetnames:
             ws = wb[sheet_name]
-            headers: List[str] = []
-            rows: List[List[str]] = []
+            headers: list[str] = []
+            rows: list[list[str]] = []
 
             max_row = ws.max_row or 0
             max_col = ws.max_column or 0
@@ -61,7 +60,7 @@ class XLSXExtractor(ExtractorBase):
 
             # Extract data rows (skip header row)
             for row_idx in range(2, max_row + 1):
-                row_values: List[str] = []
+                row_values: list[str] = []
                 for col_idx in range(1, max_col + 1):
                     cell = ws.cell(row=row_idx, column=col_idx)
                     val = cell.value
@@ -81,7 +80,7 @@ class XLSXExtractor(ExtractorBase):
     def extract(self, input_path: Path) -> ExtractionResult:
         self.validate_file(input_path)
         metadata = self.get_file_info(input_path)
-        warnings: List[str] = []
+        warnings: list[str] = []
 
         try:
             wb = openpyxl.load_workbook(input_path, data_only=True)
@@ -90,7 +89,7 @@ class XLSXExtractor(ExtractorBase):
                 raise ValidationError(f"文件受密码保护: {input_path}")
             raise ValueError(f"无法打开XLSX文件: {input_path}")
 
-        paragraphs: List[ParagraphData] = []
+        paragraphs: list[ParagraphData] = []
         for sheet_name in wb.sheetnames:
             ws = wb[sheet_name]
             paragraphs.append(ParagraphData(
