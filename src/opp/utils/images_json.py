@@ -1,6 +1,7 @@
 """Utility for generating images.json structure for ORF's apply_md --images-json parameter."""
 
 import base64
+import hashlib
 import json
 from pathlib import Path
 
@@ -26,6 +27,10 @@ def generate_images_json(result: ExtractionResult, output_path: Path) -> dict:
     """
     Generate images.json structure from ExtractionResult.
 
+    Deduplicates images by MD5 content hash to prevent identical images
+    (e.g. same icon appearing in multiple paragraphs) from being emitted
+    multiple times.
+
     Args:
         result: ExtractionResult containing images
         output_path: Path to write the JSON file
@@ -33,9 +38,21 @@ def generate_images_json(result: ExtractionResult, output_path: Path) -> dict:
     Returns:
         dict with the images.json structure
     """
+    seen_content_hashes: set[str] = set()
     images_list = []
 
     for img in result.images:
+        content_hash = None
+        if img.data:
+            content_hash = hashlib.md5(img.data).hexdigest()
+        elif img.temp_path is not None and img.temp_path.exists():
+            content_hash = hashlib.md5(img.temp_path.read_bytes()).hexdigest()
+
+        if content_hash is not None:
+            if content_hash in seen_content_hashes:
+                continue
+            seen_content_hashes.add(content_hash)
+
         position = _get_position(img)
         image_entry: dict[str, object] = {
             "paragraph_index": position,
@@ -56,7 +73,6 @@ def generate_images_json(result: ExtractionResult, output_path: Path) -> dict:
         if img.height is not None:
             image_entry["height"] = img.height
 
-        # Convert bytes data to base64 if data field is available
         if img.data:
             image_entry["data_base64"] = base64.b64encode(img.data).decode("ascii")
 

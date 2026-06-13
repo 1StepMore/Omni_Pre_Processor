@@ -184,3 +184,34 @@ class TestGenerateImagesJson:
         output = generate_images_json(result, output_path)
 
         assert "data_base64" not in output["images"][0]
+
+    def test_large_image_dedup_via_temp_path(self, tmp_path: Path):
+        """L1-04 TDD RED: images with empty data but same temp_path must be deduplicated.
+
+        Bug: images_json.py:47-48 dedup checks ``if img.data:`` — but for large
+        images streamed to disk via temp_path, img.data is b"" (falsy), so the
+        dedup is silently skipped. Two identical large images are emitted twice.
+        """
+        img_file = tmp_path / "large_image.png"
+        img_file.write_bytes(b"\x89PNG_FAKE_LARGE_IMAGE_BYTES")
+
+        img1 = ImageData(
+            data=b"",
+            mime_type="image/png",
+            paragraph_index=0,
+            temp_path=img_file,
+        )
+        img2 = ImageData(
+            data=b"",
+            mime_type="image/png",
+            paragraph_index=1,
+            temp_path=img_file,
+        )
+        result = ExtractionResult(paragraphs=[], tables=[], images=[img1, img2])
+        output_path = tmp_path / "images.json"
+        output = generate_images_json(result, output_path)
+
+        assert len(output["images"]) == 1, (
+            f"L1-04 bug: expected 1 image after dedup of identical temp_path images, "
+            f"got {len(output['images'])}. Both images were emitted despite same temp_path."
+        )
