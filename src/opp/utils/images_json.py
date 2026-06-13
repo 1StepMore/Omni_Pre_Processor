@@ -46,7 +46,11 @@ def generate_images_json(result: ExtractionResult, output_path: Path) -> dict:
         if img.data:
             content_hash = hashlib.md5(img.data).hexdigest()
         elif img.temp_path is not None and img.temp_path.exists():
-            content_hash = hashlib.md5(img.temp_path.read_bytes()).hexdigest()
+            hasher = hashlib.md5()
+            with open(img.temp_path, "rb") as f:
+                for chunk in iter(lambda: f.read(65536), b""):
+                    hasher.update(chunk)
+            content_hash = hasher.hexdigest()
 
         if content_hash is not None:
             if content_hash in seen_content_hashes:
