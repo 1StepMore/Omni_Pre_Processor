@@ -2,6 +2,7 @@
 
 import pytest
 from docx import Document
+from docx.shared import Pt, RGBColor
 from docx.text.paragraph import Paragraph
 from docx.text.run import Run
 
@@ -199,3 +200,48 @@ class TestDOCXExtractRuns:
         runs = extractor.extract_runs(para)
 
         assert len(runs) == 0
+
+    def test_extract_runs_font_name(self):
+        """L1-10 TDD RED: font.name must be extracted into RunData.font_name."""
+        doc = Document()
+        para = doc.add_paragraph()
+        run = para.add_run("Arial Text")
+        run.font.name = "Arial"
+
+        extractor = DOCXExtractor()
+        runs = extractor.extract_runs(para)
+
+        assert len(runs) == 1
+        assert runs[0].font_name == "Arial", (
+            f"L1-10 bug: expected font_name='Arial', got {runs[0].font_name!r}"
+        )
+
+    def test_extract_runs_font_size(self):
+        """L1-11 TDD RED: font.size must be extracted as half-points."""
+        doc = Document()
+        para = doc.add_paragraph()
+        run = para.add_run("Twelve Pt")
+        run.font.size = Pt(12)
+
+        extractor = DOCXExtractor()
+        runs = extractor.extract_runs(para)
+
+        assert len(runs) == 1
+        assert runs[0].font_size == 24, (
+            f"L1-11 bug: expected font_size=24 half-points (12pt), got {runs[0].font_size!r}"
+        )
+
+    def test_extract_runs_font_color(self):
+        """L1-11 TDD RED: font.color.rgb must be extracted as hex string."""
+        doc = Document()
+        para = doc.add_paragraph()
+        run = para.add_run("Red Text")
+        run.font.color.rgb = RGBColor(0xFF, 0x00, 0x00)
+
+        extractor = DOCXExtractor()
+        runs = extractor.extract_runs(para)
+
+        assert len(runs) == 1
+        assert runs[0].color == "FF0000", (
+            f"L1-11 bug: expected color='FF0000', got {runs[0].color!r}"
+        )

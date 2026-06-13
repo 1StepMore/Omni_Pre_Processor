@@ -579,12 +579,21 @@ class DOCXExtractor(ExtractorBase):
                 continue
             text = run_text
 
+            font_size_hp = None
+            if run.font.size is not None:
+                font_size_hp = int(run.font.size.pt * 2)
+            color_hex = None
+            if run.font.color.rgb is not None:
+                color_hex = str(run.font.color.rgb)
             run_data = RunData(
                 text=text,
                 bold=bool(run.bold) if run.bold else False,
                 italic=bool(run.italic) if run.italic else False,
                 underline=bool(run.underline) if run.underline else False,
                 strike=bool(run.font.strike) if run.font.strike else False,
+                font_size=font_size_hp,
+                font_name=run.font.name,
+                color=color_hex,
             )
             runs.append(run_data)
 
