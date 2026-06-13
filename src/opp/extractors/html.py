@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 from typing import List, Optional
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
 from lxml import html
 
 from opp.extractors.base import ExtractorBase
@@ -267,6 +267,43 @@ class HTMLExtractor(ExtractorBase):
 
         return paragraphs
 
+    @staticmethod
+    def _parse_style_attrs(element) -> dict:
+        """Parse font-family, font-size, color from an element's inline style."""
+        style = element.get('style', '') if hasattr(element, 'get') else ''
+        if not style:
+            return {}
+        result: dict = {}
+        m = re.search(r'font-family\s*:\s*([^;]+)', style, re.IGNORECASE)
+        if m:
+            family = m.group(1).strip().strip('"\'')
+            family = family.split(',')[0].strip().strip('"\'')
+            if family:
+                result['font_name'] = family
+        m = re.search(r'font-size\s*:\s*([^;]+)', style, re.IGNORECASE)
+        if m:
+            size_str = m.group(1).strip().lower()
+            if size_str.endswith('pt'):
+                try:
+                    result['font_size'] = int(float(size_str[:-2].strip()) * 2)
+                except ValueError:
+                    pass
+        m = re.search(r'color\s*:\s*([^;]+)', style, re.IGNORECASE)
+        if m:
+            color_str = m.group(1).strip()
+            if color_str.startswith('#'):
+                hex_color = color_str[1:].upper()
+                if len(hex_color) == 3:
+                    hex_color = ''.join(c * 2 for c in hex_color)
+                if len(hex_color) == 6:
+                    result['color'] = hex_color
+            elif color_str.startswith('rgb'):
+                rgb_match = re.search(r'rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)', color_str)
+                if rgb_match:
+                    r, g, b = rgb_match.groups()
+                    result['color'] = f'{int(r):02X}{int(g):02X}{int(b):02X}'
+        return result
+
     def extract_runs(self, element) -> list[RunData]:
         from opp.utils.dataclasses import RunData
 
@@ -276,12 +313,16 @@ class HTMLExtractor(ExtractorBase):
         if tag_name in ('strong', 'b', 'em', 'i', 'u', 's', 'del'):
             text = element.get_text()
             if text and text.strip():
+                style_attrs = self._parse_style_attrs(element)
                 runs.append(RunData(
                     text=text,
                     bold=tag_name in ('strong', 'b'),
                     italic=tag_name in ('em', 'i'),
                     underline=tag_name == 'u',
                     strike=tag_name in ('s', 'del'),
+                    font_size=style_attrs.get('font_size'),
+                    font_name=style_attrs.get('font_name'),
+                    color=style_attrs.get('color'),
                 ))
             return runs
 
@@ -294,17 +335,35 @@ class HTMLExtractor(ExtractorBase):
 
                 text = child.get_text()
                 if text and text.strip():
+                    style_attrs = self._parse_style_attrs(child)
                     runs.append(RunData(
                         text=text,
                         bold=bold,
                         italic=italic,
                         underline=underline,
                         strike=strike,
+                        font_size=style_attrs.get('font_size'),
+                        font_name=style_attrs.get('font_name'),
+                        color=style_attrs.get('color'),
                     ))
 
                 if child.name == 'span':
                     child_runs = self.extract_runs(child)
                     runs.extend(child_runs)
+            elif isinstance(child, NavigableString):
+                text = str(child).strip()
+                if text:
+                    style_attrs = self._parse_style_attrs(element)
+                    runs.append(RunData(
+                        text=text,
+                        bold=False,
+                        italic=False,
+                        underline=False,
+                        strike=False,
+                        font_size=style_attrs.get('font_size'),
+                        font_name=style_attrs.get('font_name'),
+                        color=style_attrs.get('color'),
+                    ))
 
         return runs
 

@@ -90,3 +90,24 @@ class TestEPUBExtractRuns:
         extractor = EPUBExtractor()
         runs = extractor.extract_runs(element)
         assert len(runs) == 0
+
+    def test_extract_runs_inline_style_font(self):
+        """L1-10 TDD RED: EPUB inline style font-family/size/color must populate RunData."""
+        soup = self._make_soup(
+            '<span style="font-family: Arial; font-size: 12pt; color: #FF0000;">Styled</span>'
+        )
+        element = soup.find('span')
+        extractor = EPUBExtractor()
+        runs = extractor.extract_runs(element)
+
+        assert len(runs) >= 1
+        run = runs[0]
+        assert run.font_name == "Arial", (
+            f"L1-10 bug: expected font_name='Arial', got {run.font_name!r}"
+        )
+        assert run.font_size == 24, (
+            f"L1-11 bug: expected font_size=24 half-points (12pt), got {run.font_size!r}"
+        )
+        assert run.color == "FF0000", (
+            f"L1-11 bug: expected color='FF0000', got {run.color!r}"
+        )
