@@ -1,30 +1,28 @@
-"""Path validation with directory allowlist and file size limits."""
+"""Path validation with directory allowlist and file size limits.
+
+Delegates core validation checks to ``opp.utils.security.validate_path()``
+(the shared unified validator) while adding OPP/MCP-specific features:
+- Extension whitelist (``ALLOWED_EXTENSIONS``)
+- ``ValidationResult`` dataclass API for structured success/error returns
+"""
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
 
-# System directories that should never be accessed
-SYSTEM_DIRS: set = {
-    '/etc',
-    '/usr',
-    '/var',
-    '/System',
-    '/Library',
-    '/C:/Windows',
-    'C:\\Windows',
-}
+from opp.utils.security import (
+    BLOCKED_EXTENSIONS,
+    SYSTEM_DIRS,
+    PathValidationError,
+    validate_path as _shared_validate,
+)
 
-# Blocked file extensions (executables and scripts)
-BLOCKED_EXTENSIONS: set = {
-    '.exe',
-    '.bat',
-    '.cmd',
-    '.sh',
-    '.ps1',
-    '.vbs',
-    '.js',
-}
+# Re-export constants for backward compatibility
+__all__ = [
+    "SYSTEM_DIRS",
+    "BLOCKED_EXTENSIONS",
+    "ValidationResult",
+    "PathValidator",
+]
 
 
 @dataclass
@@ -36,6 +34,7 @@ class ValidationResult:
         error: Error message if validation failed, None otherwise.
         resolved_path: The resolved Path object if successful, None otherwise.
     """
+
     success: bool
     error: str | None = None
     resolved_path: Path | None = None
@@ -49,7 +48,8 @@ class PathValidator:
     - Path resolves to an allowed directory
     - Path is not a symlink pointing outside allowed directories
     - Path doesn't target system directories
-    - File has allowed extension
+    - File has allowed extension (document whitelist)
+    - File extension is not blocked (executable blacklist)
     - File size is within limit
     - File exists and is accessible
 
@@ -57,6 +57,12 @@ class PathValidator:
         allowed_directories: List of root directories that are allowed to access.
         max_file_size_bytes: Maximum allowed file size in bytes (default: 100MB).
     """
+
+    # Document format extensions allowed through MCP
+    ALLOWED_EXTENSIONS: set[str] = {
+        ".md", ".docx", ".pptx", ".xliff", ".xlf", ".xml",
+        ".html", ".odt", ".epub", ".zip",
+    }
 
     def __init__(
         self,
@@ -66,7 +72,9 @@ class PathValidator:
         self.allowed_directories = [Path(d).resolve() for d in allowed_directories]
         self.max_file_size_bytes = max_file_size_bytes
 
-    def validate_path(self, path: str, allow_missing: bool = False) -> ValidationResult:
+    def validate_path(
+        self, path: str, allow_missing: bool = False
+    ) -> ValidationResult:
         """Validate a file path against security rules.
 
         Args:
@@ -77,126 +85,71 @@ class PathValidator:
         Returns:
             ValidationResult with success=True if valid, or success=False with error message.
         """
+        # --- Phase 1: Core shared validation (traversal, symlink, system dirs,
+        #              blocked extensions, directory containment, size) ---
         try:
-            input_path = Path(path)
-        except (ValueError, OSError) as e:
-            return ValidationResult(
-                success=False,
-                error=f"Invalid path format: {e}",
+            _shared_validate(
+                path,
+                self.allowed_directories,
+                max_file_size_bytes=self.max_file_size_bytes,
+                allow_missing=allow_missing,
             )
+        except PathValidationError as e:
+            return ValidationResult(success=False, error=str(e))
 
-        # Check for path traversal attempts
-        if '..' in input_path.parts:
-            return ValidationResult(
-                success=False,
-                error="Path traversal detected (.. components are not allowed)",
-            )
-
-        # Resolve the path (follows symlinks)
+        # Phase 1 succeeded — get the resolved path
         try:
-            resolved = input_path.resolve()
+            p = Path(path)
+            resolved = p.resolve()
         except (ValueError, OSError) as e:
-            return ValidationResult(
-                success=False,
-                error=f"Cannot resolve path: {e}",
-            )
-
-        # Check if path points to a system directory
-        for sys_dir in SYSTEM_DIRS:
-            sys_path = Path(sys_dir)
-            try:
-                # Check if the resolved path is or is under a system directory
-                resolved_parts = resolved.parts
-                sys_parts = sys_path.parts
-                if len(resolved_parts) >= len(sys_parts):
-                    if all(
-                        a == b for a, b in zip(resolved_parts[:len(sys_parts)], sys_parts)
-                    ):
-                        return ValidationResult(
-                            success=False,
-                            error=f"Access to system directory not allowed: {sys_dir}",
-                        )
-            except ValueError:
-                pass
-
-        # Check if resolved path is within allowed directories
-        is_in_allowed = False
-        for allowed_dir in self.allowed_directories:
-            try:
-                resolved.relative_to(allowed_dir)
-                is_in_allowed = True
-                break
-            except ValueError:
-                # Not relative to this allowed directory
-                pass
-
-        if not is_in_allowed:
-            return ValidationResult(
-                success=False,
-                error=f"Path is not within allowed directories: {', '.join(str(d) for d in self.allowed_directories)}",
-            )
-
-        # Check if path is a symlink pointing outside allowed directories
-        if input_path.is_symlink():
-            try:
-                link_target = input_path.resolve()
-                # Verify symlink target is also in allowed directories
-                link_in_allowed = False
-                for allowed_dir in self.allowed_directories:
-                    try:
-                        link_target.relative_to(allowed_dir)
-                        link_in_allowed = True
-                        break
-                    except ValueError:
-                        pass
-                if not link_in_allowed:
-                    return ValidationResult(
-                        success=False,
-                        error="Symlink points outside allowed directories",
-                    )
-            except (ValueError, OSError):
-                return ValidationResult(
-                    success=False,
-                    error="Symlink target is not accessible",
-                )
-
-        # Check blocked extensions
-        if input_path.suffix.lower() in BLOCKED_EXTENSIONS:
-            return ValidationResult(
-                success=False,
-                error=f"File extension '{input_path.suffix}' is blocked",
-            )
+            return ValidationResult(success=False, error=f"Invalid path: {e}")
 
         if not resolved.exists():
             if allow_missing:
                 return ValidationResult(success=True, resolved_path=resolved)
+            return ValidationResult(success=False, error="File does not exist")
+
+        # --- Phase 2: Extension whitelist (OPP/ORF specific) ---
+        if p.suffix.lower() not in self.ALLOWED_EXTENSIONS:
             return ValidationResult(
                 success=False,
-                error="File does not exist",
+                error=f"Extension '{p.suffix}' not in allowed set",
             )
 
-        # Check if it's a file (not a directory)
-        if not resolved.is_file():
-            return ValidationResult(
-                success=False,
-                error="Path must be a file, not a directory",
-            )
+        return ValidationResult(success=True, resolved_path=resolved)
 
-        # Check file size
+    @staticmethod
+    def validate(
+        input_path: str, base_dir: Path | None = None
+    ) -> tuple[bool, str]:
+        """[Legacy] Static path validation for backward compatibility.
+
+        This is a simplified wrapper that checks path traversal and allowed
+        extensions only. For full validation (directory containment, system
+        dir blocking, symlink checks, file size limits), use the instance
+        method ``validate_path()`` via ``PathValidator(allowed_directories=...).validate_path(path)``.
+
+        Returns:
+            (is_valid, error_message) tuple matching the original API.
+        """
+        path = Path(input_path)
+
+        # Check for directory traversal
         try:
-            file_size = resolved.stat().st_size
-            if file_size > self.max_file_size_bytes:
-                return ValidationResult(
-                    success=False,
-                    error=f"File size ({file_size} bytes) exceeds limit of {self.max_file_size_bytes} bytes",
-                )
-        except OSError as e:
-            return ValidationResult(
-                success=False,
-                error=f"Cannot access file to check size: {e}",
-            )
+            resolved = path.resolve()
+        except (OSError, RuntimeError):
+            return False, "Invalid path"
 
-        return ValidationResult(
-            success=True,
-            resolved_path=resolved,
-        )
+        if ".." in path.parts:
+            return False, "Path traversal not allowed"
+
+        if path.suffix.lower() not in PathValidator.ALLOWED_EXTENSIONS:
+            return False, f"Extension '{path.suffix}' not in allowed set"
+
+        if base_dir:
+            try:
+                resolved.relative_to(base_dir.resolve())
+            except ValueError:
+                return False, "Path outside allowed directory"
+
+        return True, ""

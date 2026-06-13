@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from opp.logger import logger
+from opp.config.constants import DEFAULT_CONFIG_NAME
 
 
 class OPPConfig:
@@ -61,7 +62,7 @@ class OPPConfig:
             if base_s in seen:
                 continue
             seen.add(base_s)
-            for rel in ["config/default.yaml", "config/default.yml"]:
+            for rel in [DEFAULT_CONFIG_NAME, "config/default.yml"]:
                 candidate = base / rel
                 if candidate.exists():
                     return candidate
@@ -76,7 +77,7 @@ class OPPConfig:
             candidate = base / "opp_config.yaml"
             if candidate.exists():
                 warnings.warn(
-                    "opp_config.yaml is deprecated; migrate to config/default.yaml",
+                    f"opp_config.yaml is deprecated; migrate to {DEFAULT_CONFIG_NAME}",
                     DeprecationWarning,
                     stacklevel=2,
                 )
@@ -84,7 +85,7 @@ class OPPConfig:
 
         raise FileNotFoundError(
             "No OPP config found. Set OPP_CONFIG_PATH or place "
-            "config/default.yaml in repo root or CWD."
+            f"{DEFAULT_CONFIG_NAME} in repo root or CWD."
         )
 
     def _load(self):

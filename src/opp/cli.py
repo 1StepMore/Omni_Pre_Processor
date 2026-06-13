@@ -13,6 +13,7 @@ from opp.detector import FormatType, detect_format
 from opp.error_handler import ErrorHandler, ErrorContext
 from opp.pipeline import OPPPipeline
 from opp.logger import setup_logger, get_logger
+from opp.utils.cache import cache_root
 
 
 # ========== A6: Content-addressed cache (~/.omni_cache/opp/) ==========
@@ -26,11 +27,8 @@ CACHE_DIR_NAME = "opp"
 
 
 def _cache_root() -> Path:
-    root = Path(
-        os.environ.get("OMNI_CACHE_DIR", str(Path.home() / ".omni_cache"))
-    ) / CACHE_DIR_NAME
-    root.mkdir(parents=True, exist_ok=True, mode=0o700)
-    return root
+    """Return the OPP cache root, delegating to the shared utility."""
+    return cache_root(CACHE_DIR_NAME)
 
 
 def _cache_key(input_path: Path, config: dict) -> str:

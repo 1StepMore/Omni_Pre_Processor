@@ -19,7 +19,7 @@ from opp.mcp.serializers import ExtractionResultSerializer
 # for any UNCAUGHT exception; the existing inner try/except blocks still
 # handle expected error conditions, but their `str(e)` values no longer
 # reach the client in failure paths handled by the decorator.
-from opp.mcp._errors import mcp_error_boundary
+from opp.mcp._errors import mcp_error_boundary, validate_file_paths
 from opp.pipeline import OPPPipeline
 
 
@@ -241,6 +241,9 @@ async def batch_extract(
             "success": False,
             "error": "Server not initialized",
         }
+
+    # S-5: enforce file count limit before processing
+    validate_file_paths(file_paths)
 
     # Validate ALL paths BEFORE processing any (fail-fast)
     validation_errors = []
