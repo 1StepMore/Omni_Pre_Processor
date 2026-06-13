@@ -1,4 +1,5 @@
 from pptx import Presentation
+from pptx.dml.color import RGBColor
 from pptx.util import Pt
 from opp.extractors.pptx import PPTXExtractor
 from opp.utils.dataclasses import RunData
@@ -90,3 +91,56 @@ class TestPPTXExtractRuns:
         extractor = PPTXExtractor()
         runs = extractor.extract_runs(shape)
         assert len(runs) == 0
+
+    def _create_shape_with_font(self, prs, text, font_name=None, font_size=None, color_rgb=None):
+        slide = prs.slides.add_slide(prs.slide_layouts[5])
+        txBox = slide.shapes.add_textbox(Pt(100), Pt(100), Pt(300), Pt(50))
+        tf = txBox.text_frame
+        p = tf.paragraphs[0]
+        run = p.add_run()
+        run.text = text
+        if font_name is not None:
+            run.font.name = font_name
+        if font_size is not None:
+            run.font.size = font_size
+        if color_rgb is not None:
+            run.font.color.rgb = color_rgb
+        return slide.shapes[-1]
+
+    def test_extract_runs_font_name(self):
+        """L1-10 TDD RED: PPTX run.font.name must be extracted into RunData.font_name."""
+        prs = Presentation()
+        shape = self._create_shape_with_font(prs, "Arial Text", font_name="Arial")
+        extractor = PPTXExtractor()
+        runs = extractor.extract_runs(shape)
+
+        assert len(runs) == 1
+        assert runs[0].font_name == "Arial", (
+            f"L1-10 bug: expected font_name='Arial', got {runs[0].font_name!r}"
+        )
+
+    def test_extract_runs_font_size(self):
+        """L1-11 TDD RED: PPTX run.font.size must be extracted as half-points."""
+        prs = Presentation()
+        shape = self._create_shape_with_font(prs, "Twelve Pt", font_size=Pt(12))
+        extractor = PPTXExtractor()
+        runs = extractor.extract_runs(shape)
+
+        assert len(runs) == 1
+        assert runs[0].font_size == 24, (
+            f"L1-11 bug: expected font_size=24 half-points (12pt), got {runs[0].font_size!r}"
+        )
+
+    def test_extract_runs_font_color(self):
+        """L1-11 TDD RED: PPTX run.font.color.rgb must be extracted as hex string."""
+        prs = Presentation()
+        shape = self._create_shape_with_font(
+            prs, "Red Text", color_rgb=RGBColor(0xFF, 0x00, 0x00)
+        )
+        extractor = PPTXExtractor()
+        runs = extractor.extract_runs(shape)
+
+        assert len(runs) == 1
+        assert runs[0].color == "FF0000", (
+            f"L1-11 bug: expected color='FF0000', got {runs[0].color!r}"
+        )

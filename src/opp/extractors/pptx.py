@@ -95,12 +95,21 @@ class PPTXExtractor(ExtractorBase):
                 if not text or not text.strip():
                     continue
                 font = run.font
+                font_size_hp = None
+                if font.size is not None:
+                    font_size_hp = int(font.size.pt * 2)
+                color_hex = None
+                if font.color.type is not None and font.color.rgb is not None:
+                    color_hex = str(font.color.rgb)
                 run_data = RunData(
                     text=text,
                     bold=bool(font.bold) if font.bold else False,
                     italic=bool(font.italic) if font.italic else False,
                     underline=bool(font.underline) if font.underline else False,
                     strike=False,
+                    font_size=font_size_hp,
+                    font_name=font.name,
+                    color=color_hex,
                 )
                 runs.append(run_data)
         return runs
