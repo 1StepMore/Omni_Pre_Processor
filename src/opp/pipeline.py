@@ -106,6 +106,7 @@ class OPPPipeline:
         output_path: Path,
         source_lang: str,
         target_lang: str,
+        request_id: str | None = None,
     ) -> Path:
         """Generate XLIFF file from extraction result.
 
@@ -114,6 +115,7 @@ class OPPPipeline:
             output_path: Path to write the XLIFF file to
             source_lang: Source language code (e.g., 'en')
             target_lang: Target language code (e.g., 'fr')
+            request_id: Optional UUID for end-to-end tracing (B2).
 
         Returns:
             Path to the generated XLIFF file
@@ -133,7 +135,9 @@ class OPPPipeline:
             )
             raise ValueError(error_msg)
 
-        generator = XLIFFFileGenerator.from_extraction_result(result, source_lang, target_lang)
+        generator = XLIFFFileGenerator.from_extraction_result(
+            result, source_lang, target_lang, request_id=request_id
+        )
         generator.write_to_file(output_path)
         return output_path
 
@@ -390,6 +394,17 @@ class OPPPipeline:
                         successful += 1
                     else:
                         failed += 1
+                        # Propagate result-level errors to the parent error_handler
+                        # so callers using get_error_stats() see batch-level failures.
+                        for err_msg in result.errors:
+                            self.error_handler.add_error(
+                                ErrorContext(
+                                    file_path=str(file_path),
+                                    error_type="BatchError",
+                                    timestamp=datetime.now(),
+                                    details=str(err_msg),
+                                )
+                            )
                 except Exception as e:
                     failed += 1
                     error_result = ProcessingResult(
@@ -421,6 +436,15 @@ class OPPPipeline:
                             successful += 1
                         else:
                             failed += 1
+                            for err_msg in result.errors:
+                                self.error_handler.add_error(
+                                    ErrorContext(
+                                        file_path=str(file_path),
+                                        error_type="BatchError",
+                                        timestamp=datetime.now(),
+                                        details=str(err_msg),
+                                    )
+                                )
                     except Exception as e:
                         failed += 1
                         error_result = ProcessingResult(

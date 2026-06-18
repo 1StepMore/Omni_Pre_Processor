@@ -381,6 +381,14 @@ class XLIFFFileGenerator:
             path: Path to write the file to
         """
         path.parent.mkdir(parents=True, exist_ok=True)
+        if self._attributes.request_id:
+            try:
+                self._store.addnote(
+                    f"request_id={self._attributes.request_id}",
+                    origin="OPP",
+                )
+            except AttributeError:
+                pass
         path.write_bytes(self.to_bytes())
 
     @classmethod
@@ -389,6 +397,7 @@ class XLIFFFileGenerator:
         result: ExtractionResult,
         source_lang: str,
         target_lang: str,
+        request_id: str | None = None,
     ) -> "XLIFFFileGenerator":
         """Create a generator from an extraction result.
 
@@ -396,6 +405,7 @@ class XLIFFFileGenerator:
             result: The extraction result containing paragraphs
             source_lang: Source language code (e.g., 'en')
             target_lang: Target language code (e.g., 'fr')
+            request_id: Optional UUID for end-to-end tracing (B2).
 
         Returns:
             Configured XLIFFFileGenerator instance
@@ -403,6 +413,7 @@ class XLIFFFileGenerator:
         attributes = XLIFFFileAttributes(
             source_language=source_lang,
             target_language=target_lang,
+            request_id=request_id,
         )
         generator = cls(attributes)
 

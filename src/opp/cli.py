@@ -5,6 +5,7 @@ import os
 import shutil
 import sys
 import time
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
@@ -169,8 +170,9 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--target-lang",
         type=str,
-        default="en",
-        help="Target language code (default: en — required when --target-format is xlf or both)"
+        default=None,
+        help="Target language code (required when --target-format is xlf or both). "
+             "Falls back to 'en' for md-only extraction."
     )
 
     parser.add_argument(
@@ -329,6 +331,8 @@ def process_single_file(
             os.environ["OPP_MODEL_SIZE"] = args.model_size
 
         proc_result = pipeline.process_file(file_path)
+        # 2026-06-18 round 16 Phase B2: end-to-end request_id.
+        request_id = str(uuid.uuid4())
 
         if proc_result.errors:
             stats["errors"] += 1
@@ -361,7 +365,8 @@ def process_single_file(
                 proc_result.extraction_result,
                 xliff_path,
                 args.source_lang,
-                args.target_lang
+                args.target_lang,
+                request_id=request_id,
             )
             get_logger().info(f"Generated: {xliff_path}")
 
@@ -387,6 +392,7 @@ def process_single_file(
 
         manifest = {
             "manifest_version": "1.0",
+            "request_id": request_id,
             "generated_at": datetime.now().isoformat() + "Z",
             "tool": "OPP",
             "tool_version": get_opp_version(),

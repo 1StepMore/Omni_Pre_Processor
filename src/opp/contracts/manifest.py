@@ -206,6 +206,10 @@ class Manifest(BaseModel):
         ...,
         description="Semantic version of the manifest format (currently '1.0').",
     )
+    request_id: Optional[str] = Field(
+        default=None,
+        description="UUID for end-to-end tracing across OPP -> OL -> ORF (B2).",
+    )
     generated_at: str = Field(
         ...,
         description="ISO 8601 timestamp when the manifest was generated.",

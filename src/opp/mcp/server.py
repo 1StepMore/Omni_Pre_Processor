@@ -3,6 +3,7 @@
 import os
 import tempfile
 import time
+import uuid
 from pathlib import Path
 from typing import List, Optional
 
@@ -93,6 +94,8 @@ async def extract_document(
     auth_ok, _ = check_auth(auth_token)
     if not auth_ok:
         return auth_failure_response()
+    # 2026-06-18 round 16 Phase B2: end-to-end request_id.
+    request_id = str(uuid.uuid4())
     if output_formats is None:
         output_formats = ["md"]
 
@@ -203,7 +206,11 @@ async def extract_document(
             # C3 fix: write to a tempfile; safe_unlink in finally
             xliff_output_path = _safe_temp_output(".xlf", Path(file_path).parent)
             try:
-                _pipeline.generate_xliff(result.extraction_result, xliff_output_path, source_lang, target_lang)
+                _pipeline.generate_xliff(
+                    result.extraction_result, xliff_output_path,
+                    source_lang, target_lang,
+                    request_id=request_id,
+                )
                 if xliff_output_path.exists():
                     with open(xliff_output_path, "r", encoding="utf-8") as f:
                         xliff_content = f.read()
@@ -234,6 +241,8 @@ async def batch_extract(
     auth_ok, _ = check_auth(auth_token)
     if not auth_ok:
         return auth_failure_response()
+    # 2026-06-18 round 16 Phase B2: end-to-end request_id.
+    request_id = str(uuid.uuid4())
     if output_formats is None:
         output_formats = ["md"]
 
@@ -312,7 +321,11 @@ async def batch_extract(
                     # C3 fix: tempfile + safe_unlink
                     xliff_output_path = _safe_temp_output(".xlf", Path(file_path).parent)
                     try:
-                        _pipeline.generate_xliff(result.extraction_result, xliff_output_path, source_lang, target_lang)
+                        _pipeline.generate_xliff(
+                            result.extraction_result, xliff_output_path,
+                            source_lang, target_lang,
+                            request_id=request_id,
+                        )
                         if xliff_output_path.exists():
                             with open(xliff_output_path, "r", encoding="utf-8") as f:
                                 xliff_content = f.read()
@@ -395,6 +408,8 @@ async def generate_xliff(
 ) -> dict:
     # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
     auth_ok, _ = check_auth(auth_token)
+    # 2026-06-18 round 16 Phase B2: end-to-end request_id.
+    request_id = str(uuid.uuid4())
     if not auth_ok:
         return auth_failure_response()
     if _validator is None:
@@ -435,6 +450,7 @@ async def generate_xliff(
             Path(output_path),
             source_lang,
             target_lang,
+            request_id=request_id,
         )
 
         with open(xliff_output_path, "r", encoding="utf-8") as f:

@@ -53,6 +53,7 @@ class XLIFFFileAttributes:
     tool_id: str | None = None
     tool_version: str | None = None
     xliff_version: str = "1.2"
+    request_id: str | None = None
 
     def __post_init__(self):
         if self.source_language not in _VALID_LANGUAGE_CODES:
