@@ -22,10 +22,23 @@ class MCPConfig:
     max_extraction_depth: int = 3
     resource_storage_dir: Path = field(default_factory=lambda: Path("./mcp_resources"))
     output_dir: Path | None = None
+    # 2026-06-18 round 16 Phase A3: explicit host/port so the server
+    # doesn't default to FastMCP's 0.0.0.0:8000 (binds to all
+    # interfaces, no auth). Default 127.0.0.1:8766 (loopback only,
+    # different port from ORF's 8765 so both can run simultaneously).
+    host: str = "127.0.0.1"
+    port: int = 8766
 
 
 def _parse_allowed_dirs(value: str) -> list[Path]:
-    """Parse colon/semicolon separated paths into a list of Path objects."""
+    """Parse colon/semicolon separated paths into a list of Path objects.
+
+    Single paths (no separator) are returned as a one-element list.
+    Fix for the same bug ORF patched in round 12
+    (commit 6741143): a single-path env var was returning [].
+    """
+    if not value or not value.strip():
+        return []
     separators = [":", ";"]
     for sep in separators:
         if sep in value:
@@ -33,7 +46,8 @@ def _parse_allowed_dirs(value: str) -> list[Path]:
             if paths:
                 return paths
             break
-    return []
+    # 2026-06-18 round 16 A3: single path without separator
+    return [Path(value.strip())]
 
 
 def _load_from_yaml(config_path: Path) -> dict | None:
@@ -72,6 +86,22 @@ def _load_from_env() -> dict:
         except ValueError:
             logger.warning(
                 "Invalid OPP_MCP_TIMEOUT=%r; falling back to default", timeout
+            )
+
+    # 2026-06-18 round 16 Phase A3: host/port env vars. Without
+    # these, the MCP server defaults to FastMCP's 0.0.0.0:8000
+    # which binds to all interfaces with no auth.
+    host = os.environ.get("OPP_MCP_HOST")
+    if host:
+        config["host"] = host
+
+    port = os.environ.get("OPP_MCP_PORT")
+    if port:
+        try:
+            config["port"] = int(port)
+        except ValueError:
+            logger.warning(
+                "Invalid OPP_MCP_PORT=%r; falling back to default", port
             )
 
     return config
@@ -114,6 +144,10 @@ def load_config(config_path: Path | None = None) -> MCPConfig:
         config_data["resource_storage_dir"] = Path("./mcp_resources")
     if "output_dir" not in config_data:
         config_data["output_dir"] = None
+    if "host" not in config_data:
+        config_data["host"] = "127.0.0.1"
+    if "port" not in config_data:
+        config_data["port"] = 8766
 
     # Validate required field
     allowed_dirs = config_data.get("allowed_directories")
@@ -128,4 +162,6 @@ def load_config(config_path: Path | None = None) -> MCPConfig:
         max_extraction_depth=config_data["max_extraction_depth"],
         resource_storage_dir=config_data["resource_storage_dir"],
         output_dir=config_data["output_dir"],
+        host=config_data["host"],
+        port=config_data["port"],
     )
