@@ -15,6 +15,8 @@ from opp.detector import detect_format
 from opp.mcp.config import MCPConfig, load_config
 from opp.mcp.security import PathValidator
 from opp.mcp.serializers import ExtractionResultSerializer
+# 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
+from opp.mcp.auth import check_auth, auth_failure_response
 # C12 fix: shared error boundary. The decorator provides a final safety net
 # for any UNCAUGHT exception; the existing inner try/except blocks still
 # handle expected error conditions, but their `str(e)` values no longer
@@ -85,7 +87,12 @@ async def extract_document(
     source_lang: str = "zh",
     target_lang: str = "en",
     resource_dir: str | None = None,
+    auth_token: str | None = None,
 ) -> dict:
+    # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
+    auth_ok, _ = check_auth(auth_token)
+    if not auth_ok:
+        return auth_failure_response()
     if output_formats is None:
         output_formats = ["md"]
 
@@ -221,7 +228,12 @@ async def batch_extract(
     output_formats: list[str] | None = None,
     source_lang: str = "zh",
     target_lang: str = "en",
+    auth_token: str | None = None,
 ) -> dict:
+    # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
+    auth_ok, _ = check_auth(auth_token)
+    if not auth_ok:
+        return auth_failure_response()
     if output_formats is None:
         output_formats = ["md"]
 
@@ -341,7 +353,11 @@ async def batch_extract(
 
 
 @mcp_error_boundary
-async def detect_format_tool(file_path: str) -> dict:
+async def detect_format_tool(file_path: str, auth_token: str | None = None) -> dict:
+    # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
+    auth_ok, _ = check_auth(auth_token)
+    if not auth_ok:
+        return auth_failure_response()
     if _validator is None:
         return {
             "success": False,
@@ -375,7 +391,12 @@ async def generate_xliff(
     source_lang: str = "zh",
     target_lang: str = "en",
     output_path: str | None = None,
+    auth_token: str | None = None,
 ) -> dict:
+    # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
+    auth_ok, _ = check_auth(auth_token)
+    if not auth_ok:
+        return auth_failure_response()
     if _validator is None:
         return {
             "success": False,
@@ -447,8 +468,12 @@ async def generate_xliff(
         }
 
 
-async def ping() -> dict:
+async def ping(auth_token: str | None = None) -> dict:
     """Health check endpoint."""
+    # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
+    auth_ok, _ = check_auth(auth_token)
+    if not auth_ok:
+        return auth_failure_response()
     return {"success": True}
 
 
@@ -456,7 +481,12 @@ async def ping() -> dict:
 async def generate_markdown(
     file_path: str,
     output_path: str | None = None,
+    auth_token: str | None = None,
 ) -> dict:
+    # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
+    auth_ok, _ = check_auth(auth_token)
+    if not auth_ok:
+        return auth_failure_response()
     if _validator is None:
         return {
             "success": False,
@@ -523,7 +553,12 @@ async def save_skeleton(
     file_path: str,
     base_name: str = "document",
     output_dir: str | None = None,
+    auth_token: str | None = None,
 ) -> dict:
+    # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
+    auth_ok, _ = check_auth(auth_token)
+    if not auth_ok:
+        return auth_failure_response()
     """Save skeleton ZIP file from extracted document.
 
     Runs OPP extraction (process_file), then saves the skeleton via
