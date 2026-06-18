@@ -195,12 +195,38 @@ class CSVExtractor(ExtractorBase):
             return True
         if raw_data[:4] in (b'\x89PNG', b'\xff\xd8\xff', b'%PDF', b'GIF8', b'RIFF'):
             return True
-        printable = sum(1 for b in raw_data[:512] if 32 <= b <= 126 or b in (9, 10, 13))
-        total = min(len(raw_data), 512)
+        # 2026-06-18 round 14 #2: count CJK + extended-Latin UTF-8 bytes as
+        # printable. The previous ASCII-only check (32-126) false-positived
+        # on Chinese/Japanese/Korean content: a 3-byte UTF-8 sequence like
+        # 风冷无霜 has 0 printable bytes by the old metric, tripping the 0.5
+        # threshold and rejecting perfectly valid CJK CSV files.
+        printable = 0
+        i = 0
+        sample = raw_data[:2048]
+        n = len(sample)
+        while i < n:
+            b = sample[i]
+            if 32 <= b <= 126 or b in (9, 10, 13):
+                printable += 1
+                i += 1
+            elif b < 0x80:
+                printable += 1
+                i += 1
+            else:
+                # Count UTF-8 multi-byte sequences as 1 printable char each.
+                # Skip continuation bytes (10xxxxxx = 0x80-0xBF).
+                if 0xC0 <= b <= 0xF7:
+                    printable += 1
+                    i += 1
+                    while i < n and (sample[i] & 0xC0) == 0x80:
+                        i += 1
+                else:
+                    i += 1
+        total = n
         if total == 0:
             return True
         ratio = printable / total
-        return ratio < 0.5
+        return ratio < 0.3
 
     def _detect_encoding(self, input_path: Path):
         with open(input_path, "rb") as f:

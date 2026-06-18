@@ -69,6 +69,13 @@ def detect_format(path: Path | str) -> tuple[FormatType, float]:
         return (FormatType.JSON, 1.0)
     elif ext == ".xml":
         return (FormatType.XML, 1.0)
+    elif ext == ".ipynb":
+        # 2026-06-18 round 14 #4: check .ipynb extension FIRST. The .ipynb
+        # file IS valid JSON (notebook is a JSON array of cells), so the
+        # "first byte is { or [" check at the bottom of this function
+        # would otherwise misclassify it as JSON. The IPYNBExtractor is
+        # wired in pipeline.py:72 and produces proper cells/code extraction.
+        return (FormatType.IPYNB, 1.0)
 
     # JSON detection: UTF-8 BOM or first char { or [ (no extension case)
     if header.startswith(b"\xef\xbb\xbf"):
