@@ -108,15 +108,9 @@ class JSONExtractor(ExtractorBase):
         with open(input_path, encoding="utf-8-sig") as f:
             data = json.load(f)
 
-        if isinstance(data, list):
-            data = {"root": data}
-
-        flat_data = self._flatten(data, warnings=warnings)
-
-        paragraphs = [
-            ParagraphData(text=f"{key} = {value}")
-            for key, value in flat_data.items()
-        ]
+        # Present JSON as a fenced code block (preserves structure, handles arbitrary nesting)
+        pretty = json.dumps(data, indent=2, ensure_ascii=False)
+        paragraphs = [ParagraphData(text=f"```json\n{pretty}\n```")]
 
         return ExtractionResult(
             paragraphs=paragraphs,

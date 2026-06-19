@@ -39,10 +39,12 @@ class CSVExtractor(ExtractorBase):
                 padded_row.append("")
             padded_rows.append(padded_row)
 
-        paragraphs = []
-        for idx, row in enumerate(padded_rows):
-            row_text = "\t".join(str(val) for val in row)
-            paragraphs.append(ParagraphData(text=row_text))
+        # Summary paragraph instead of tab-separated rows (tables handle formatting in MarkdownGenerator)
+        if padded_rows:
+            summary = f"CSV file with {len(headers)} columns and {len(padded_rows)} data rows"
+            paragraphs = [ParagraphData(text=summary)]
+        else:
+            paragraphs = []
 
         tables = [
             TableData(

@@ -69,10 +69,10 @@ class TestCSVExtractor:
         assert len(result.tables) == 1
 
     def test_extract_paragraphs_created(self, csv_files_normal: Path):
-        """Normal: Verify paragraphs are created from rows."""
+        """Normal: Verify summary paragraph is created (not tab-separated rows)."""
         extractor = CSVExtractor()
         result = extractor.extract(csv_files_normal / "utf8_header.csv")
-        assert len(result.paragraphs) == 2  # 2 data rows
+        assert len(result.paragraphs) == 1  # 1 summary paragraph
 
     def test_extract_returns_metadata(self, csv_files_normal: Path):
         """Normal: Verify metadata is returned."""
@@ -81,6 +81,21 @@ class TestCSVExtractor:
         assert result.metadata is not None
         assert result.metadata.file_size > 0
         assert result.metadata.format_type == "csv"
+
+    def test_csv_produces_markdown_table(self, csv_files_normal: Path):
+        """TDD: MarkdownGenerator output must contain pipe table syntax, not tab-separated raw rows."""
+        from opp.markdown.generator import MarkdownGenerator
+
+        extractor = CSVExtractor()
+        result = extractor.extract(csv_files_normal / "utf8_header.csv")
+        md_output = MarkdownGenerator().generate(result)
+
+        assert "|" in md_output, "Missing pipe table syntax — MarkdownGenerator not producing tables"
+        assert "\t" not in md_output, (
+            "Tab character found in markdown output — "
+            "CSV extractor is producing tab-separated ParagraphData rows "
+            "instead of letting tables handle formatting"
+        )
 
     # ===== Boundary Cases =====
 

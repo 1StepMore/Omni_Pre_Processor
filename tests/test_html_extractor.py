@@ -128,6 +128,27 @@ class TestHTMLExtractor:
         assert result is not None
         # Content may have encoding artifacts but should not crash
 
+    def test_html_produces_proper_markdown_with_headings(self, html_sample_files: Path):
+        """TDD: extraction must preserve heading structure so OL can parse it.
+        
+        The news_article fixture has <h2>Article Title</h2>.
+        After the fix, markdownify converts <h2> → "## Article Title",
+        and _md_to_paragraphs() sets level=2 on the ParagraphData.
+        Before the fix, _extract_text_from_tree() strips ALL HTML tags,
+        so headings are lost and no paragraph has level≥1.
+        """
+        extractor = HTMLExtractor()
+        result = extractor.extract(html_sample_files / "news_article.html")
+
+        # At least one paragraph must have a heading level ≥ 1
+        heading_paragraphs = [
+            p for p in result.paragraphs
+            if p.level is not None and p.level >= 1
+        ]
+        assert len(heading_paragraphs) > 0, \
+            "Expected at least one heading (level≥1) in extracted result, but found none. " \
+            "Bug: _extract_with_readability() strips HTML tags before markdownify."
+
 
 # Fixture for HTML sample files
 @pytest.fixture

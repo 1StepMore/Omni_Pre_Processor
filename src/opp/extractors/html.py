@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import List, Optional
 
 from bs4 import BeautifulSoup, NavigableString
-from lxml import html
 
 from opp.extractors.base import ExtractorBase
 from opp.utils.dataclasses import DocumentMetadata, ExtractionResult, ImageData, ParagraphData, RunData
@@ -161,13 +160,12 @@ class HTMLExtractor(ExtractorBase):
 
     def _extract_with_readability(self, html_content: str) -> str:
         if not READABILITY_AVAILABLE:
-            return self._strip_scripts_and_styles(html_content)
+            stripped = self._strip_scripts_and_styles(html_content)
+            return stripped
 
         try:
             doc = readability.Document(html_content)
-            summary = doc.summary()
-            tree = html.fromstring(summary)
-            return self._extract_text_from_tree(tree)
+            return doc.summary()  # Return raw HTML for markdownify conversion
         except Exception as e:
             logger.debug(f"Readability extraction failed: {e}")
             return self._strip_scripts_and_styles(html_content)
@@ -456,8 +454,8 @@ class HTMLExtractor(ExtractorBase):
             return self._strip_scripts_and_styles(html_content)
 
         try:
-            tree = html.fromstring(html_content)
-            md_content = _HTMLMarkdownConverter().convert_soup(tree)
+            soup = BeautifulSoup(html_content, "html.parser")
+            md_content = _HTMLMarkdownConverter().convert_soup(soup)
 
             if base_path:
                 md_content = self._resolve_relative_paths(md_content, base_path)
