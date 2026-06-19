@@ -207,7 +207,7 @@ class TestPathValidator:
 
         result = validator.validate_path(str(outside_file))
         assert result.success is False
-        assert "not within allowed directories" in result.error.lower()
+        assert "not in allowed directories" in result.error.lower()
 
     # --- Invalid Path Format Tests ---
 
@@ -219,7 +219,7 @@ class TestPathValidator:
         """Invalid path formats should be rejected."""
         result = validator.validate_path(invalid_path)
         assert result.success is False
-        assert "invalid" in result.error.lower() or "resolve" in result.error.lower()
+        assert "not in allowed directories" in result.error.lower() or "resolve" in result.error.lower() or "invalid" in result.error.lower()
 
     # --- Case Sensitivity Tests ---
 

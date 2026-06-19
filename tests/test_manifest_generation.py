@@ -1,5 +1,6 @@
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -7,10 +8,17 @@ import pytest
 from opp.pipeline import OPPPipeline
 
 
-VENV_PYTHON = "/mnt/d/贯维/Omni_Pre_Processor/.venv/bin/python"
+# Use the unified suite venv (Python 3.13, all 3 modules installed in editable mode)
+# The deprecated Omni_Pre_Processor/.venv (Python 3.12) no longer has OPP installed.
+VENV_PYTHON = sys.executable
 
 
 def run_opp(args: list, tmp_path: Path) -> subprocess.CompletedProcess:
+    # Always pass --no-cache so repeated test invocations (and other test files
+    # that share the same input content) don't get served from OPP's content-hash
+    # cache, which would skip manifest generation.
+    if "--no-cache" not in args:
+        args = ["--no-cache"] + args
     cmd = [VENV_PYTHON, "-m", "opp.cli"] + args
     return subprocess.run(
         cmd,

@@ -411,16 +411,20 @@ class TestFlags:
         stems = {f.stem for f in out.glob("*.md")}
         assert len(stems) >= 2, f"expected 2 stems, got {stems}"
 
-    def test_xlf_works_with_default_target_lang(self, tmp_path):
+    def test_xlf_requires_target_lang(self, tmp_path):
+        """OPP CLI now REQUIRES --target-lang when --target-format is xlf.
+
+        Previously the default was 'en' (truthy) and the check never fired.
+        See TestTargetLangFlag.test_target_lang_is_required_for_xlf.
+        """
         proc = run_opp(
             str(MERIDIAN_DOCX),
             "--target-format", "xlf",
             "--source-lang", "zh",
             "--output-dir", str(tmp_path),
         )
-        assert proc.returncode == 0, f"stderr: {proc.stderr[:1500]}"
-        xlf_files = list(tmp_path.glob("*.xlf"))
-        assert len(xlf_files) >= 1, "expected at least one .xlf output"
+        assert proc.returncode != 0
+        assert "target-lang is required" in proc.stderr.lower()
 
 
 # --- Module-level timing/diagnostic -----------------------------------------

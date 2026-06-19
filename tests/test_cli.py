@@ -68,7 +68,15 @@ class TestSourceLangFlag:
 
 
 class TestTargetLangFlag:
-    def test_target_lang_has_default_en(self, tmp_path):
+    def test_target_lang_is_required_for_xlf(self, tmp_path):
+        """OPP CLI now REQUIRES --target-lang when --target-format is xlf or both.
+
+        Previously the default was 'en' and the validation check never fired
+        because 'en' is truthy. We changed the default to None so the
+        requirement check at cli.py:467 can enforce it. This test pins the
+        new contract: the CLI exits with a non-zero code and a clear error
+        message when --target-lang is missing.
+        """
         test_file = tmp_path / "test.docx"
         test_file.write_bytes(b"PK\x03\x04\x14\x00\x00\x00\x08\x00")
         result = run_opp([
@@ -76,7 +84,8 @@ class TestTargetLangFlag:
             "--source-lang=zh",
             str(test_file)
         ])
-        assert result.returncode == 0 or "error" not in result.stderr.lower()
+        assert result.returncode != 0
+        assert "target-lang is required" in result.stderr.lower()
 
     def test_target_lang_works_when_provided(self, tmp_path):
         test_file = tmp_path / "test.docx"
@@ -105,23 +114,31 @@ class TestOutputDirFlag:
 
 
 class TestValidation:
-    def test_target_format_xlf_works_with_default_target_lang(self, tmp_path):
+    def test_target_format_xlf_requires_target_lang(self, tmp_path):
+        """OPP CLI now REQUIRES --target-lang when --target-format is xlf.
+
+        This test pins the new contract: the CLI exits with a non-zero
+        code and a clear error message when --target-lang is missing.
+        See TestTargetLangFlag.test_target_lang_is_required_for_xlf.
+        """
         test_file = tmp_path / "test.docx"
         test_file.write_bytes(b"PK\x03\x04\x14\x00\x00\x00\x08\x00")
         result = run_opp([
             "--target-format=xlf",
             str(test_file)
         ])
-        assert result.returncode == 0 or "error" not in result.stderr.lower()
+        assert result.returncode != 0
+        assert "target-lang is required" in result.stderr.lower()
 
-    def test_target_format_both_works_with_default_target_lang(self, tmp_path):
+    def test_target_format_both_requires_target_lang(self, tmp_path):
         test_file = tmp_path / "test.docx"
         test_file.write_bytes(b"PK\x03\x04\x14\x00\x00\x00\x08\x00")
         result = run_opp([
             "--target-format=both",
             str(test_file)
         ])
-        assert result.returncode == 0 or "error" not in result.stderr.lower()
+        assert result.returncode != 0
+        assert "target-lang is required" in result.stderr.lower()
 
 
 class TestExistingFlagsRegression:

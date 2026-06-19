@@ -246,7 +246,7 @@ class TestOPPtoOLContract:
                 source_lang="en",
                 target_lang="zh",
             )
-            result_str = translate_xliff(params)
+            result_str = asyncio.run(translate_xliff(params))
             result_data = json.loads(result_str)
 
         assert result_data["success"], f"OL failed: {result_data}"
@@ -301,7 +301,7 @@ class TestOLtoORFContract:
                 source_lang="en",
                 target_lang="zh",
             )
-            result_str = translate_xliff(params)
+            result_str = asyncio.run(translate_xliff(params))
             result_data = json.loads(result_str)
         assert result_data["success"], f"OL failed: {result_data}"
 
@@ -309,7 +309,7 @@ class TestOLtoORFContract:
         converter = XLIFF2DOCXConverter()
         docx_output = tmp_path / "result.docx"
         conv_result = converter.convert(
-            input_skeleton=skeleton_zip,
+            input_path=skeleton_zip,
             xliff_path=ol_xliff_path,
             output_path=docx_output,
         )
@@ -382,7 +382,7 @@ class TestFullPipelineContracts:
                 source_lang="en",
                 target_lang="zh",
             )
-            ol_result_str = translate_xliff(params)
+            ol_result_str = asyncio.run(translate_xliff(params))
             ol_data = json.loads(ol_result_str)
         assert ol_data["success"], f"OL step failed: {ol_data}"
 
@@ -407,7 +407,7 @@ class TestFullPipelineContracts:
         converter = XLIFF2DOCXConverter()
         docx_output = tmp_path / "step3_orf_result.docx"
         conv_result = converter.convert(
-            input_skeleton=skeleton_zip,
+            input_path=skeleton_zip,
             xliff_path=ol_xliff_path,
             output_path=docx_output,
         )

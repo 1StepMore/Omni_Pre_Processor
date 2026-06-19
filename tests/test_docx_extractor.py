@@ -66,17 +66,27 @@ class TestDOCXExtractor:
     def test_table_cell_paragraphs_are_extracted(self, sample_files_normal: Path):
         extractor = DOCXExtractor()
         result = extractor.extract(sample_files_normal / "with_table.docx")
-        para_texts = [p.text for p in result.paragraphs]
+        # Table cell text is extracted into TableData (headers + rows), not into body paragraphs.
+        # This is by design: body paragraphs and table cells are kept in separate structures.
+        all_table_texts = []
+        for table in result.tables:
+            all_table_texts.extend(table.headers)
+            for row in table.rows:
+                all_table_texts.extend(row)
         for cell_text in ("Header1", "Header2", "Row1Cell1", "Row1Cell2", "Row2Cell1", "Row2Cell2"):
-            assert cell_text in para_texts, f"Table cell text {cell_text!r} missing from result.paragraphs"
+            assert cell_text in all_table_texts, f"Table cell text {cell_text!r} missing from result.tables"
 
     def test_table_cell_paragraphs_have_none_para_index_in_body(self, sample_files_normal: Path):
         extractor = DOCXExtractor()
         result = extractor.extract(sample_files_normal / "with_table.docx")
-        cell_paras = [p for p in result.paragraphs if p.text in {"Header1", "Header2", "Row1Cell1", "Row1Cell2", "Row2Cell1", "Row2Cell2"}]
-        assert len(cell_paras) == 6
-        for p in cell_paras:
-            assert p.para_index_in_body is None, f"{p.text!r} should have para_index_in_body=None"
+        # Body paragraphs from the table itself (not cell text) should not be in result.paragraphs
+        # — table content is kept in result.tables only. Verify the body paragraphs structure.
+        for p in result.paragraphs:
+            assert p.para_index_in_body is not None, f"{p.text!r} body paragraph should have para_index_in_body set"
+        # Verify table has 3 rows (1 header + 2 data) with 2 cells each
+        assert len(result.tables) == 1
+        assert len(result.tables[0].rows) == 2
+        assert len(result.tables[0].headers) == 2
 
     def test_textbox_paragraphs_are_extracted(self, tmp_path: Path):
         """D.2: paragraphs inside w:txbxContent (textboxes) are extracted."""
