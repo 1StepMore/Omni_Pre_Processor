@@ -36,6 +36,19 @@ pip install -e ".[office]"
 pip install -e ".[email]"
 ```
 
+### 可选依赖
+
+除 `office`、`email` 外，以下可选依赖组支持特定输入格式：
+
+| 依赖组 | 命令 | 用途 | 体积 |
+|--------|------|------|------|
+| `[ocr]` | `pip install -e ".[ocr]"` | 图片 OCR（RapidOCR） | ~100MB |
+| `[youtube]` | `pip install -e ".[youtube]"` | YouTube `.url` 自动检测 | ~50MB |
+| `[audio]` | `pip install -e ".[audio]"` | 音频转录（Whisper） | ~2GB |
+
+- PDF 输入生成 XLIFF 已被正确拦截——此前 `format_type == "PDF"` 因大小写匹配错误从未生效，现已修复为 `"pdf"`。
+- `.url` 文件现在被自动检测为 YouTube 源（读取首行 URL 并匹配 YouTube 域名）。
+
 ## Quick Start
 
 ### Python API
