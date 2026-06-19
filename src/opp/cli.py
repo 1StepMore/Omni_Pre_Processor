@@ -481,6 +481,20 @@ def main(argv: list[str] | None = None) -> int:
         logger.info(f"Cleared {n} cached file(s) from {_cache_root()}")
         return 0
 
+    # B1: Restrict --resource-dir to prevent path traversal.
+    # Allowlist: project root, /tmp, and OPP_ALLOWED_DIRECTORIES env var.
+    if args.resource_dir:
+        resolved = args.resource_dir.resolve()
+        allowed_dirs = [Path.cwd().resolve(), Path("/tmp").resolve()]
+        env_allowed = os.environ.get("OPP_ALLOWED_DIRECTORIES", "")
+        if env_allowed.strip():
+            allowed_dirs.extend(Path(d).resolve() for d in env_allowed.split(",") if d.strip())
+        if not any(str(resolved).startswith(str(a)) for a in allowed_dirs):
+            parser.error(
+                f"Error: --resource-dir '{resolved}' is not within allowed directories. "
+                f"Allowed: {', '.join(str(d) for d in allowed_dirs)}"
+            )
+
     if args.verbose:
         logger.info(f"OPP CLI v0.1.0")
         logger.info(f"Processing {len(args.files)} input(s)")

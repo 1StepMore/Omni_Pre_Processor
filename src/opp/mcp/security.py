@@ -60,8 +60,8 @@ class PathValidator:
 
     # Document format extensions allowed through MCP
     ALLOWED_EXTENSIONS: set[str] = {
-        ".md", ".docx", ".pptx", ".xliff", ".xlf", ".xml",
-        ".html", ".odt", ".epub", ".zip",
+        ".md", ".docx", ".pptx", ".pdf", ".xliff", ".xlf", ".xml",
+        ".html", ".odt", ".epub", ".zip", ".txt",
     }
 
     def __init__(
