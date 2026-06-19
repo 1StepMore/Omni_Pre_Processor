@@ -123,7 +123,7 @@ class OPPPipeline:
         Raises:
             ValueError: If the source format is PDF (XLIFF not supported for PDF)
         """
-        if result.metadata and result.metadata.format_type == "PDF":
+        if result.metadata and result.metadata.format_type == "pdf":
             error_msg = "XLIFF not supported for PDF format"
             self.error_handler.add_error(
                 ErrorContext(

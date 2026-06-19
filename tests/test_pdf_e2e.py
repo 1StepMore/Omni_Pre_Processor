@@ -59,19 +59,18 @@ class TestPDFToXLIFF:
     """Tests for PDF XLIFF output."""
 
     def test_pdf_xliff_case_sensitivity_bug(self, sample_files_normal: Path, tmp_path: Path):
-        """PDF to XLIFF has case-sensitivity bug: checks 'PDF' but format is 'pdf'."""
+        """PDF XLIFF guard now correctly blocks PDF XLIFF generation (case fix: 'PDF' -> 'pdf')."""
         pdf_path = sample_files_normal / "native_text.pdf"
         extractor = PDFExtractor()
         result = extractor.extract(pdf_path)
 
         assert result.metadata.format_type == "pdf"
-        assert result.metadata.format_type != "PDF"
 
         pipeline = OPPPipeline(tmp_path / "resources")
         output_xliff = tmp_path / "output.xliff"
 
-        pipeline.generate_xliff(result, output_xliff, source_lang="en", target_lang="fr")
-        assert output_xliff.exists()
+        with pytest.raises(ValueError, match="XLIFF not supported for PDF format"):
+            pipeline.generate_xliff(result, output_xliff, source_lang="en", target_lang="fr")
 
 
 class TestPDFComplexLayouts:

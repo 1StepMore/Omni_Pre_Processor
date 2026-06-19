@@ -5,6 +5,15 @@ from typing import Tuple, Union
 
 from opp.logger import logger
 
+YOUTUBE_URL_PATTERN = re.compile(
+    r"^https?://(www\.)?(youtube\.com|youtu\.be)/(watch\?v=|embed/|shorts/|live/)?[\w-]+"
+)
+
+
+def _is_youtube_url(url: str) -> bool:
+    """Check if a URL is a YouTube URL (watch, embed, shorts, or live)."""
+    return bool(YOUTUBE_URL_PATTERN.match(url))
+
 
 class FormatType(Enum):
     DOCX = "docx"
@@ -166,6 +175,16 @@ def detect_format(path: Path | str) -> tuple[FormatType, float]:
         except Exception as e:
             logger.warning(f"IPYNB detection failed: {e}")
         return (FormatType.IPYNB, 0.5)
+
+    # YouTube .url file detection
+    if ext == ".url":
+        try:
+            with open(path, encoding="utf-8") as f:
+                first_line = f.readline().strip()
+            if first_line.startswith("URL=") and _is_youtube_url(first_line[4:]):
+                return (FormatType.YOUTUBE, 1.0)
+        except (OSError, UnicodeDecodeError):
+            pass
 
     # YouTube URL detection
     youtube_pattern = re.compile(

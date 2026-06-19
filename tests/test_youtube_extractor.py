@@ -104,3 +104,31 @@ class TestYouTubeExtractor:
         assert result.paragraphs is not None
         assert result.metadata is not None
         assert result.metadata.format_type == "youtube"
+
+    def test_detect_youtube_url_file(self, tmp_path: Path):
+        from opp.detector import detect_format, FormatType
+
+        url_file = tmp_path / "video.url"
+        url_file.write_text("URL=https://www.youtube.com/watch?v=dQw4w9WgXcQ\n")
+
+        fmt, confidence = detect_format(url_file)
+        assert fmt == FormatType.YOUTUBE
+        assert confidence == 1.0
+
+    def test_detect_non_youtube_url_file(self, tmp_path: Path):
+        from opp.detector import detect_format, FormatType
+
+        url_file = tmp_path / "generic.url"
+        url_file.write_text("URL=https://www.example.com/page\n")
+
+        fmt, _ = detect_format(url_file)
+        assert fmt == FormatType.UNKNOWN
+
+    def test_detect_url_file_no_url_line(self, tmp_path: Path):
+        from opp.detector import detect_format, FormatType
+
+        url_file = tmp_path / "empty.url"
+        url_file.write_text("Some other content\n")
+
+        fmt, _ = detect_format(url_file)
+        assert fmt == FormatType.UNKNOWN

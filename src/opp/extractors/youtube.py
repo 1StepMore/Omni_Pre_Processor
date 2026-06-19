@@ -45,9 +45,9 @@ class YouTubeExtractor(ExtractorBase):
         try:
             from markitdown import MarkItDown
         except ImportError:
-            raise ExtractionError(
-                "markitdown is required for YouTube extraction. "
-                "Install it with: pip install markitdown[youtube-transcription]"
+            raise ImportError(
+                "markitdown with youtube-transcription extra not installed. "
+                "Install with: pip install 'markitdown[youtube-transcription]'"
             )
 
         try:
