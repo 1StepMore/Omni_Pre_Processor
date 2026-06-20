@@ -8,7 +8,6 @@ import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
 
 from opp.detector import FormatType, detect_format
 from opp.error_handler import ErrorHandler, ErrorContext

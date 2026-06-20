@@ -1,7 +1,7 @@
 """OPP tool implementation for Hermes plugin."""
 
 import os
-from typing import Any, Optional
+from typing import Any
 
 
 OPP_SCHEMA = {

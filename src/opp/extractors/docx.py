@@ -1,10 +1,11 @@
 from dataclasses import replace
 from pathlib import Path
-from typing import List, Optional
 
 import logging
 import re
 import zipfile
+from typing import Any
+
 from lxml import etree
 
 import docx
@@ -35,7 +36,7 @@ CHINESE_HEADING_PATTERNS = [
 ]
 
 
-def _parse_position_value(pos_elem) -> int:
+def _parse_position_value(pos_elem: Any) -> int:
     """Read a numeric offset from a wp:positionH/wp:positionV element.
 
     Prefers <wp:posOffset> (EMU integer text), falls back to 0. wp:align
@@ -54,7 +55,7 @@ def _parse_position_value(pos_elem) -> int:
     return 0
 
 
-def _extract_anchor_offsets(drawing, WP_NS: str, ns_map: dict) -> tuple[int, int]:
+def _extract_anchor_offsets(drawing: Any, WP_NS: str, ns_map: dict) -> tuple[int, int]:
     """Extract (horizontal, vertical) EMU offsets from a wp:anchor.
 
     Returns (0, 0) for inline drawings or when positionH/positionV is absent.
@@ -275,7 +276,7 @@ class DOCXExtractor(ExtractorBase):
             position += 1
         return result
 
-    def _walk_textbox_paragraphs(self, body_elem, W_NS: str):
+    def _walk_textbox_paragraphs(self, body_elem: Any, W_NS: str) -> Any:
         """Yield (w:p element, text) for each non-empty w:p inside w:txbxContent.
 
         Body-level doc.paragraphs excludes textbox paragraphs (which live in
@@ -413,7 +414,7 @@ class DOCXExtractor(ExtractorBase):
         et_element_tree = etree.ElementTree(tree)
         seen_r_ids: set[tuple[str, str]] = set()
 
-        def _is_alternate_content_drawing(elem):
+        def _is_alternate_content_drawing(elem: Any) -> bool:
             """Check if a drawing element is inside mc:AlternateContent."""
             parent = elem.getparent()
             while parent is not None:
@@ -559,7 +560,7 @@ class DOCXExtractor(ExtractorBase):
             return self._extract_inline_drawings(doc, input_path, para_index_map)
         return []
 
-    def extract_runs(self, para) -> list[RunData]:
+    def extract_runs(self, para: Any) -> list[RunData]:
         """Extract individual runs with formatting properties from a paragraph.
 
         Args:

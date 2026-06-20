@@ -1,7 +1,6 @@
 import hashlib
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List
 
 from opp.utils.dataclasses import DocumentMetadata, ExtractionResult
 from opp.utils.exceptions import CorruptedFileError, ValidationError

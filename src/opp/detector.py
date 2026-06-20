@@ -1,7 +1,6 @@
 from enum import Enum
 from pathlib import Path
 import re
-from typing import Tuple, Union
 
 from opp.logger import logger
 

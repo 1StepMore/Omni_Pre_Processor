@@ -1,7 +1,6 @@
 """Audio transcription module using faster-whisper."""
 
 from dataclasses import dataclass, field
-from typing import List, Optional
 
 try:
     from faster_whisper import WhisperModel

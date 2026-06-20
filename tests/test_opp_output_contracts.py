@@ -56,11 +56,11 @@ class TestOPPExtractDocument:
 
         content = xliff_output.read_text(encoding="utf-8")
 
-        # Contract: OPP XLIFF should have <source>
-        assert "<source>" in content, "OPP XLIFF should have <source> elements"
+        # Contract: OPP XLIFF should have <source> (may include xml:space="preserve")
+        assert "<source" in content, "OPP XLIFF should have <source> elements"
 
         # Contract: OPP XLIFF should NOT have <target> (OL adds them)
-        assert "<target>" not in content or "<target/>" in content or "<target></target>" in content, \
+        assert "<target" not in content or "<target/>" in content or "<target></target>" in content, \
             "OPP XLIFF should NOT have <target> elements - OL adds them"
 
     def test_opp_extract_with_json_format_includes_images_json_path(self, temp_dir):
@@ -128,14 +128,13 @@ class TestOPPOLContracts:
             XLIFFFileGenerator.from_extraction_result(result, "en", "zh").write_to_file(output_path)
             content = output_path.read_text(encoding="utf-8")
 
-            # Contract verification
-            assert "<source>Hello World</source>" in content
-            assert "<source>Second paragraph</source>" in content
+            # Contract verification (source elements may include xml:space="preserve")
+            assert "<source" in content and "Hello World" in content
+            assert "<source" in content and "Second paragraph" in content
             # OPP should NOT add <target> - OL adds them
-            # Check that <target> is NOT in the content (except as self-closing <target/> which is empty)
             import re
-            target_pattern = re.compile(r'<target>[^<]+</target>')
-            matches = target_pattern.findall(content)
+            target_tag_re = re.compile(r'<target\b[^>]*>')
+            matches = target_tag_re.findall(content)
             assert len(matches) == 0, f"OPP should not generate <target> elements, found: {matches}"
 
         finally:

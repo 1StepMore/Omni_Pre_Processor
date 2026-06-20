@@ -89,7 +89,7 @@ def mcp_error_boundary(fn: Callable[..., Any]) -> Callable[..., Any]:
     tool_name = getattr(fn, "__name__", "<unknown>")
 
     @functools.wraps(fn)
-    async def async_wrapper(*args, **kwargs):
+    async def async_wrapper(*args: Any, **kwargs: Any):
         t0 = time.time()
         try:
             result = await fn(*args, **kwargs)
@@ -111,7 +111,7 @@ def mcp_error_boundary(fn: Callable[..., Any]) -> Callable[..., Any]:
             }
 
     @functools.wraps(fn)
-    def sync_wrapper(*args, **kwargs):
+    def sync_wrapper(*args: Any, **kwargs: Any):
         t0 = time.time()
         try:
             result = fn(*args, **kwargs)

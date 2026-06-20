@@ -1,6 +1,5 @@
 import logging
 from pathlib import Path
-from typing import List
 
 from opp.extractors.base import ExtractorBase
 from opp.transcriber import AudioTranscriber, TranscriptionResult

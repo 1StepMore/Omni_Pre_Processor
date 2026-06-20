@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional
 
 _VALID_LANGUAGE_CODES = frozenset([
     "en", "fr", "de", "es", "it", "pt", "ru", "zh", "ja", "ko",

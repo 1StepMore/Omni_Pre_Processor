@@ -5,7 +5,6 @@ import tempfile
 import time
 import uuid
 from pathlib import Path
-from typing import List, Optional
 
 try:
     from fastmcp import FastMCP
@@ -18,6 +17,8 @@ from opp.mcp.security import PathValidator
 from opp.mcp.serializers import ExtractionResultSerializer
 # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
 from opp.mcp.auth import check_auth, auth_failure_response
+# H5: token bucket DoS rate limiter (2026-06-20)
+from opp.mcp.rate_limiter import check_rate_limit, rate_limit_failure_response
 # C12 fix: shared error boundary. The decorator provides a final safety net
 # for any UNCAUGHT exception; the existing inner try/except blocks still
 # handle expected error conditions, but their `str(e)` values no longer
@@ -90,6 +91,10 @@ async def extract_document(
     resource_dir: str | None = None,
     auth_token: str | None = None,
 ) -> dict:
+    # H5: token bucket rate limiter
+    rate_ok, rate_err = check_rate_limit()
+    if not rate_ok:
+        return {**rate_limit_failure_response(), "error": rate_err}
     # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
     auth_ok, _ = check_auth(auth_token)
     if not auth_ok:
@@ -237,6 +242,10 @@ async def batch_extract(
     target_lang: str = "en",
     auth_token: str | None = None,
 ) -> dict:
+    # H5: token bucket rate limiter
+    rate_ok, rate_err = check_rate_limit()
+    if not rate_ok:
+        return {**rate_limit_failure_response(), "error": rate_err}
     # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
     auth_ok, _ = check_auth(auth_token)
     if not auth_ok:
@@ -367,6 +376,10 @@ async def batch_extract(
 
 @mcp_error_boundary
 async def detect_format_tool(file_path: str, auth_token: str | None = None) -> dict:
+    # H5: token bucket rate limiter
+    rate_ok, rate_err = check_rate_limit()
+    if not rate_ok:
+        return {**rate_limit_failure_response(), "error": rate_err}
     # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
     auth_ok, _ = check_auth(auth_token)
     if not auth_ok:
@@ -406,6 +419,10 @@ async def generate_xliff(
     output_path: str | None = None,
     auth_token: str | None = None,
 ) -> dict:
+    # H5: token bucket rate limiter
+    rate_ok, rate_err = check_rate_limit()
+    if not rate_ok:
+        return {**rate_limit_failure_response(), "error": rate_err}
     # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
     auth_ok, _ = check_auth(auth_token)
     # 2026-06-18 round 16 Phase B2: end-to-end request_id.
@@ -486,6 +503,10 @@ async def generate_xliff(
 
 async def ping(auth_token: str | None = None) -> dict:
     """Health check endpoint."""
+    # H5: token bucket rate limiter
+    rate_ok, rate_err = check_rate_limit()
+    if not rate_ok:
+        return {**rate_limit_failure_response(), "error": rate_err}
     # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
     auth_ok, _ = check_auth(auth_token)
     if not auth_ok:
@@ -499,6 +520,10 @@ async def generate_markdown(
     output_path: str | None = None,
     auth_token: str | None = None,
 ) -> dict:
+    # H5: token bucket rate limiter
+    rate_ok, rate_err = check_rate_limit()
+    if not rate_ok:
+        return {**rate_limit_failure_response(), "error": rate_err}
     # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
     auth_ok, _ = check_auth(auth_token)
     if not auth_ok:
@@ -571,6 +596,10 @@ async def save_skeleton(
     output_dir: str | None = None,
     auth_token: str | None = None,
 ) -> dict:
+    # H5: token bucket rate limiter
+    rate_ok, rate_err = check_rate_limit()
+    if not rate_ok:
+        return {**rate_limit_failure_response(), "error": rate_err}
     # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
     auth_ok, _ = check_auth(auth_token)
     if not auth_ok:

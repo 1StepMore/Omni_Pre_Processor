@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from opp.extractors.base import ExtractorBase
 from opp.utils.dataclasses import (
@@ -17,7 +17,7 @@ class JSONExtractor(ExtractorBase):
 
     def _flatten(
         self,
-        obj,
+        obj: Any,
         prefix: str = "",
         depth: int = 0,
         result: dict[str, str] | None = None,
@@ -71,7 +71,7 @@ class JSONExtractor(ExtractorBase):
 
     def _flatten_to_any(
         self,
-        obj,
+        obj: Any,
         prefix: str = "",
         depth: int = 0,
         result: dict[str, Any] | None = None,

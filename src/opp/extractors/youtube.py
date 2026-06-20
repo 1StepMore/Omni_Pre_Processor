@@ -1,7 +1,6 @@
 import logging
 import re
 from pathlib import Path
-from typing import List
 
 from opp.extractors.base import ExtractorBase
 from opp.utils.dataclasses import DocumentMetadata, ExtractionResult, ParagraphData

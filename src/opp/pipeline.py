@@ -2,7 +2,6 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Optional
 import logging
 
 from opp.detector import detect_format, FormatType

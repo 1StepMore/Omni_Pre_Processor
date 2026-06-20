@@ -1,6 +1,6 @@
 from pathlib import Path
 import re
-from typing import List, Optional, Tuple
+from typing import Any
 
 from bs4 import BeautifulSoup, NavigableString
 from ebooklib import epub
@@ -183,7 +183,7 @@ class EPUBExtractor(ExtractorBase):
         return paragraphs
 
     @staticmethod
-    def _parse_style_attrs(element) -> dict:
+    def _parse_style_attrs(element: Any) -> dict:
         """Parse font-family, font-size, color from an element's inline style."""
         style = element.get('style', '') if hasattr(element, 'get') else ''
         if not style:
@@ -219,7 +219,7 @@ class EPUBExtractor(ExtractorBase):
                     result['color'] = f'{int(r):02X}{int(g):02X}{int(b):02X}'
         return result
 
-    def extract_runs(self, element) -> list[RunData]:
+    def extract_runs(self, element: Any) -> list[RunData]:
         runs = []
         tag_name = element.name if hasattr(element, 'name') else None
 
@@ -319,7 +319,7 @@ class EPUBExtractor(ExtractorBase):
         return mime_types.get(ext, "application/octet-stream")
 
 
-def _should_process_element(element, heading_tags):
+def _should_process_element(element: Any, heading_tags: list[str]) -> bool:
     for child in element.children:
         if hasattr(child, 'name') and child.name in heading_tags:
             return False

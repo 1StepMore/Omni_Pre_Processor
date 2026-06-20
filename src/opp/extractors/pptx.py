@@ -1,7 +1,7 @@
 from dataclasses import replace
 from pathlib import Path
-from typing import List, Optional
 import zipfile
+from typing import Any
 
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE, PP_PLACEHOLDER
@@ -79,7 +79,7 @@ class PPTXExtractor(ExtractorBase):
             ))
         return result
 
-    def _is_title_shape(self, shape) -> bool:
+    def _is_title_shape(self, shape: Any) -> bool:
         if not shape.is_placeholder:
             return False
         try:
@@ -87,7 +87,7 @@ class PPTXExtractor(ExtractorBase):
         except (ValueError, AttributeError):
             return False
 
-    def extract_runs(self, shape) -> list[RunData]:
+    def extract_runs(self, shape: Any) -> list[RunData]:
         runs = []
         for para in shape.text_frame.paragraphs:
             for run in para.runs:
@@ -114,7 +114,7 @@ class PPTXExtractor(ExtractorBase):
                 runs.append(run_data)
         return runs
 
-    def extract_shapes(self, slide) -> list[ParagraphData]:
+    def extract_shapes(self, slide: Any) -> list[ParagraphData]:
         result: list[ParagraphData] = []
         for shape in slide.shapes:
             if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
@@ -140,7 +140,7 @@ class PPTXExtractor(ExtractorBase):
                         ))
         return result
 
-    def _flatten_group(self, group) -> list[ParagraphData]:
+    def _flatten_group(self, group: Any) -> list[ParagraphData]:
         result: list[ParagraphData] = []
         for shape in group.shapes:
             if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
@@ -166,7 +166,7 @@ class PPTXExtractor(ExtractorBase):
                         ))
         return result
 
-    def extract_notes(self, slide) -> str:
+    def extract_notes(self, slide: Any) -> str:
         notes_slide = slide.notes_slide
         if notes_slide and notes_slide.notes_text_frame:
             return notes_slide.notes_text_frame.text.strip()

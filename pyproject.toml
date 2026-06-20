@@ -7,10 +7,10 @@
 # (underscores + mixed case are not allowed in distribution names)
 # and would have caused the publish.yml job to fail at upload time.
 name = "opp"
-version = "0.5.7"
+version = "0.6.1"
 description = "Omni Pre-Processor: Document content extraction package"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 license = {text = "MIT"}
 authors = [
     {name = "OPP Contributors"}
@@ -22,7 +22,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Text Processing",
     "Topic :: Text Processing :: General",
 ]
@@ -117,8 +117,4 @@ exclude_lines = [
 [tool.pyright]
 include = ["src"]
 exclude = ["tests", "**/__pycache__"]
-# reportMissingParameterType is suppressed because adding correct type
-# annotations to 35+ function parameters requires understanding the actual
-# expected types (lxml elements, callbacks, etc.) — a larger refactor.
-reportMissingParameterType = false
-pythonVersion = "3.12"
+pythonVersion = "3.13"

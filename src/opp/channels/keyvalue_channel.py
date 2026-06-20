@@ -1,6 +1,5 @@
 """KeyValueChannel - converts flat dict to XLIFF 1.2 trans-unit elements."""
 
-from typing import Dict, Optional
 
 from translate.storage.xliff import xlifffile
 
@@ -55,6 +54,14 @@ class KeyValueChannel:
             if unit is not None:
                 unit.setid(str(key))
                 unit.addnote(f"Context: {key}", origin="KeyValueChannel")
+                # Preserve whitespace on <source> element
+                ns_uri = "urn:oasis:names:tc:xliff:document:1.1"
+                xml_space_attr = "{http://www.w3.org/XML/1998/namespace}space"
+                source_elem = unit.xmlelement.find(f"{{{ns_uri}}}source")
+                if source_elem is None:
+                    source_elem = unit.xmlelement.find("source")
+                if source_elem is not None:
+                    source_elem.set(xml_space_attr, "preserve")
 
         # Return XLIFF 1.2 XML string
         return bytes(store).decode("utf-8")

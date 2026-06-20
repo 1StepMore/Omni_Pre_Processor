@@ -3,7 +3,6 @@ import threading
 import uuid
 from pathlib import Path
 from shutil import copy2, move
-from typing import Dict, Tuple
 
 from opp.utils.exceptions import OPPError
 

@@ -1,7 +1,7 @@
 from dataclasses import replace
 from pathlib import Path
-from typing import List, Optional
 import re
+from typing import Any
 
 import fitz
 
@@ -116,7 +116,7 @@ class PDFExtractor(ExtractorBase):
             logger.warning("_init_rapidocr: rapidocr_onnxruntime not installed, OCR fallback unavailable")
             return None
 
-    def _ocr_tesseract(self, img, lang: str) -> str | None:
+    def _ocr_tesseract(self, img: Any, lang: str) -> str | None:
         try:
             import pytesseract
         except ImportError:
@@ -131,7 +131,7 @@ class PDFExtractor(ExtractorBase):
             logger.debug(f"Tesseract OCR failed, falling back to RapidOCR: {e}")
             return self._ocr_rapidocr(img, None)
 
-    def _ocr_rapidocr(self, img, engine) -> str | None:
+    def _ocr_rapidocr(self, img: Any, engine: Any) -> str | None:
         if engine is None:
             try:
                 from rapidocr_onnxruntime import RapidOCRSentenceExtractor

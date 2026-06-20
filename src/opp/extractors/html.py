@@ -1,7 +1,7 @@
 import base64
 import re
 from pathlib import Path
-from typing import List, Optional
+from typing import Any
 
 from bs4 import BeautifulSoup, NavigableString
 
@@ -71,13 +71,13 @@ except ImportError:
 
 if MARKDOWNIFY_AVAILABLE:
     class _HTMLMarkdownConverter(MarkdownConverter):
-        def __init__(self, **options):
+        def __init__(self, **options: Any) -> None:
             options.setdefault("heading_style", "atx")
             options.setdefault("bullets", "-")
             options.setdefault("strip", ["script", "style"])
             super().__init__(**options)
 
-        def convert_img(self, el, _text, _convert_as_inline=False, **_kwargs):
+        def convert_img(self, el: Any, _text: Any, _convert_as_inline: bool = False, **_kwargs: Any) -> str:
             alt = el.get("alt", "") or ""
             src = el.get("src", "") or el.get("data-src", "") or ""
             title = el.get("title", "") or ""
@@ -170,7 +170,7 @@ class HTMLExtractor(ExtractorBase):
             logger.debug(f"Readability extraction failed: {e}")
             return self._strip_scripts_and_styles(html_content)
 
-    def _extract_text_from_tree(self, tree) -> str:
+    def _extract_text_from_tree(self, tree: Any) -> str:
         for elem in tree.findall(".//script"):
             elem.getparent().remove(elem)
         for elem in tree.findall(".//style"):
@@ -266,7 +266,7 @@ class HTMLExtractor(ExtractorBase):
         return paragraphs
 
     @staticmethod
-    def _parse_style_attrs(element) -> dict:
+    def _parse_style_attrs(element: Any) -> dict:
         """Parse font-family, font-size, color from an element's inline style."""
         style = element.get('style', '') if hasattr(element, 'get') else ''
         if not style:
@@ -302,7 +302,7 @@ class HTMLExtractor(ExtractorBase):
                     result['color'] = f'{int(r):02X}{int(g):02X}{int(b):02X}'
         return result
 
-    def extract_runs(self, element) -> list[RunData]:
+    def extract_runs(self, element: Any) -> list[RunData]:
         from opp.utils.dataclasses import RunData
 
         runs = []
@@ -467,7 +467,7 @@ class HTMLExtractor(ExtractorBase):
             return self._strip_scripts_and_styles(html_content)
 
     def _resolve_relative_paths(self, md_content: str, base_path: Path) -> str:
-        def replace_src(match):
+        def replace_src(match: Any) -> str:
             alt = match.group(1)
             src = match.group(2)
             title = match.group(3) or ""

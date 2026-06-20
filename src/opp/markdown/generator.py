@@ -1,6 +1,6 @@
 from collections import defaultdict
 from pathlib import Path
-from typing import List, Optional
+from typing import Any
 
 from opp.utils.dataclasses import ExtractionResult, ParagraphData, TableData, ImageData
 
@@ -152,7 +152,14 @@ class MarkdownGenerator:
             parts.append(text)
         return "".join(parts)
 
-    def generate_to_file(self, result: ExtractionResult, output_path: Path, _attachment_results=None, style_mapping=None, embed_images=True) -> None:
+    def generate_to_file(
+        self,
+        result: ExtractionResult,
+        output_path: Path,
+        _attachment_results: list[Any] | None = None,
+        style_mapping: dict[str, int] | None = None,
+        embed_images: bool = True,
+    ) -> None:
         """Generate markdown output and write to a file.
 
         Image files are referenced in the markdown using the pattern
@@ -182,7 +189,7 @@ class MarkdownGenerator:
             content = self.generate(result, images_dir=None, stem=output_path.stem, style_mapping=style_mapping)
         output_path.write_text(content, encoding="utf-8")
 
-    def generate_headings(self, paragraphs: list[ParagraphData], style_mapping=None) -> str:
+    def generate_headings(self, paragraphs: list[ParagraphData], style_mapping: dict[str, int] | None = None) -> str:
         result_lines = []
         for para in paragraphs:
             level = para.level
@@ -246,7 +253,12 @@ class MarkdownGenerator:
 
         return '\n'.join(result_lines)
 
-    def generate_tables_md(self, tables: list[TableData], alignment=None, has_header=True) -> str:
+    def generate_tables_md(
+        self,
+        tables: list[TableData],
+        alignment: list[str] | None = None,
+        has_header: bool = True,
+    ) -> str:
         result_parts = []
         for table in tables:
             header_cells = [self._escape_table_cell(h) for h in table.headers]

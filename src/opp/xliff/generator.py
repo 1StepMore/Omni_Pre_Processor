@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from translate.storage.xliff import xlifffile
 
@@ -201,7 +201,9 @@ class XLIFFFileGenerator:
             for _elem_name_inline in ("source", "target"):
                 _elem_inline = elem.find(
                     f'{{urn:oasis:names:tc:xliff:document:1.1}}{_elem_name_inline}'
-                ) or elem.find(_elem_name_inline)
+                )
+                if _elem_inline is None:
+                    _elem_inline = elem.find(_elem_name_inline)
                 if _elem_inline is not None:
                     _elem_inline.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
 
@@ -225,13 +227,22 @@ class XLIFFFileGenerator:
 
         # Preserve whitespace on <source> and <target> so downstream textContent
         # readers don't pull in unintended indentation between siblings.
+        ns_uri = "urn:oasis:names:tc:xliff:document:1.1"
+        xml_space_attr = "{http://www.w3.org/XML/1998/namespace}space"
         for _elem_name in ("source", "target"):
-            _elem = xliff_unit.xmlelement.find(_elem_name)
+            _elem = xliff_unit.xmlelement.find(f"{{{ns_uri}}}{_elem_name}")
+            if _elem is None:
+                _elem = xliff_unit.xmlelement.find(_elem_name)
             if _elem is not None:
-                _elem.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+                _elem.set(xml_space_attr, "preserve")
 
         if target:
             xliff_unit.target = target
+            _target_elem = xliff_unit.xmlelement.find(f"{{{ns_uri}}}target")
+            if _target_elem is None:
+                _target_elem = xliff_unit.xmlelement.find("target")
+            if _target_elem is not None:
+                _target_elem.set(xml_space_attr, "preserve")
 
         if unit.location:
             xliff_unit.addlocation(unit.location)
@@ -244,7 +255,7 @@ class XLIFFFileGenerator:
 
         return xliff_unit
 
-    def _build_source_with_inline(self, source_elem, source_text: str):
+    def _build_source_with_inline(self, source_elem: Any, source_text: str):
         """Build source element with inline elements as actual XML children."""
         from lxml import etree
 
