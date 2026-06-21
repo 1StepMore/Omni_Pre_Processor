@@ -518,6 +518,8 @@ async def ping(auth_token: str | None = None) -> dict:
 async def generate_markdown(
     file_path: str,
     output_path: str | None = None,
+    style_mapping: dict[str, int] | None = None,
+    embed_images: bool = True,
     auth_token: str | None = None,
 ) -> dict:
     # H5: token bucket rate limiter
@@ -562,7 +564,12 @@ async def generate_markdown(
                 "error": "No extraction result available",
             }
 
-        md_output_path = _pipeline.generate_markdown(result.extraction_result, Path(output_path))
+        md_output_path = _pipeline.generate_markdown(
+            result.extraction_result,
+            Path(output_path),
+            style_mapping=style_mapping,
+            embed_images=embed_images,
+        )
 
         with open(md_output_path, "r", encoding="utf-8") as f:
             markdown_content = f.read()

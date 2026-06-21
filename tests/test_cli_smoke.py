@@ -33,8 +33,12 @@ from pathlib import Path
 import pytest
 
 
-VENV_PY = "/mnt/d/贯维/Omni_Suite/.venv_ol/bin/python"
-OPP_DIR = Path("/mnt/d/贯维/Omni_Suite/Omni_Pre_Processor")
+VENV_PY = (
+    "/mnt/d/贯维/Omni_Suite/.venv_ol/bin/python"
+    if Path("/mnt/d/贯维/Omni_Suite/.venv_ol/bin/python").exists()
+    else sys.executable
+)
+OPP_DIR = Path("/mnt/d/贯维/Omni_Suite")
 REPO_ROOT = Path("/mnt/d/贯维/Omni_Suite")
 
 HAIER_DOCX = REPO_ROOT / "爱上海尔_第二章_全球创牌 - E2E测试专用.docx"
