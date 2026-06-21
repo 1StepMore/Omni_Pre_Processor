@@ -681,4 +681,4 @@ def main() -> None:
     _mcp.add_tool(generate_markdown)
     _mcp.add_tool(save_skeleton)
 
-    _mcp.run()
+    _mcp.run(transport="stdio")
