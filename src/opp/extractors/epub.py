@@ -77,7 +77,10 @@ class EPUBExtractor(ExtractorBase):
     def _extract_cover(self, book: epub.EpubBook) -> ImageData | None:
         """Extract cover image from book manifest if present."""
 
-        for item in book.get_items():
+        # Sort items by name for deterministic iteration order.
+        # Without this, book.get_items() returns items in a non-deterministic
+        # order, causing the extracted MD to differ between runs.
+        for item in sorted(book.get_items(), key=lambda i: i.get_name() or ""):
             item_props = getattr(item, 'properties', set()) or set()
             if 'cover-image' in item_props:
                 return ImageData(
@@ -85,7 +88,7 @@ class EPUBExtractor(ExtractorBase):
                     mime_type=self._get_mime_type(item.get_name()),
                 )
 
-        for item in book.get_items():
+        for item in sorted(book.get_items(), key=lambda i: i.get_name() or ""):
             item_id = item.get_id().lower() if item.get_id() else ""
             item_name = item.get_name().lower() if item.get_name() else ""
 
