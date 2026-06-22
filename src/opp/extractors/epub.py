@@ -157,7 +157,10 @@ class EPUBExtractor(ExtractorBase):
         paragraphs: list[ParagraphData] = []
         heading_tags = {'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}
 
-        for tag in heading_tags | {'p'}:
+        # Use a list (not a set) for deterministic tag iteration order.
+        # Without this, heading_tags | {'p'} is a set with non-deterministic
+        # order, causing the extracted MD to differ between runs.
+        for tag in ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
             for element in soup.find_all(tag):
                 if not _should_process_element(element, heading_tags):
                     continue
