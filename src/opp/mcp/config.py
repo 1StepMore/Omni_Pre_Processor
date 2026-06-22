@@ -27,6 +27,7 @@ class MCPConfig:
     # different port from ORF's 8765 so both can run simultaneously).
     host: str = "127.0.0.1"
     port: int = 8766
+    metrics_dir: str = "/tmp/omni-metrics"
 
 
 def _parse_allowed_dirs(value: str) -> list[Path]:
@@ -103,6 +104,10 @@ def _load_from_env() -> dict:
                 "Invalid OPP_MCP_PORT=%r; falling back to default", port
             )
 
+    metrics_dir = os.environ.get("OMNI_METRICS_DIR")
+    if metrics_dir:
+        config["metrics_dir"] = metrics_dir
+
     return config
 
 
@@ -147,6 +152,8 @@ def load_config(config_path: Path | None = None) -> MCPConfig:
         config_data["host"] = "127.0.0.1"
     if "port" not in config_data:
         config_data["port"] = 8766
+    if "metrics_dir" not in config_data:
+        config_data["metrics_dir"] = "/tmp/omni-metrics"
 
     # Validate required field
     allowed_dirs = config_data.get("allowed_directories")
@@ -163,4 +170,5 @@ def load_config(config_path: Path | None = None) -> MCPConfig:
         output_dir=config_data["output_dir"],
         host=config_data["host"],
         port=config_data["port"],
+        metrics_dir=config_data["metrics_dir"],
     )

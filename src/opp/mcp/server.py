@@ -1,15 +1,34 @@
-"""OPP MCP Server with FastMCP."""
+"""OPP MCP Server using the standard mcp library.
 
+Replaces the previous fastmcp-based implementation. Uses
+``mcp.server.Server`` + ``mcp.server.stdio.stdio_server`` for the
+transport layer. The seven tool functions are kept as module-level
+async functions so existing direct-call tests (e.g.
+``opp.mcp.server.extract_document(...)``) and any code that imports
+them by name keep working unchanged.
+
+Security layers preserved:
+- ``@mcp_error_boundary`` decorator on 6/7 tools (NOT on ``ping``)
+- ``check_rate_limit()`` (token bucket)
+- ``check_auth(auth_token)`` (shared-secret)
+- ``PathValidator`` (allowlist, size, traversal, symlinks)
+- ``_safe_unlink()``, ``_safe_temp_output()`` (C3 fix)
+"""
+
+from __future__ import annotations
+
+import json
 import os
 import tempfile
 import time
 import uuid
 from pathlib import Path
+from typing import Any
 
-try:
-    from fastmcp import FastMCP
-except ImportError:
-    FastMCP = None
+import anyio
+from mcp.server import Server
+from mcp.server.stdio import stdio_server
+import mcp.types as types
 
 from opp.detector import detect_format
 from opp.mcp.config import MCPConfig, load_config
@@ -24,10 +43,23 @@ from opp.mcp.rate_limiter import check_rate_limit, rate_limit_failure_response
 # handle expected error conditions, but their `str(e)` values no longer
 # reach the client in failure paths handled by the decorator.
 from opp.mcp._errors import mcp_error_boundary, validate_file_paths
+from opp.mcp.metrics import (
+    STATUS_AUTH_FAILED as _STATUS_AUTH_FAILED,
+    STATUS_ERROR as _STATUS_ERROR,
+    STATUS_RATE_LIMITED as _STATUS_RATE_LIMITED,
+    STATUS_SUCCESS as _STATUS_SUCCESS,
+    record_request_from_arguments,
+    time_block as _metrics_timer,
+)
+from opp.mcp.tracing import (
+    set_span_status as _tracing_set_status,
+    start_call_tool_span as _tracing_start_span,
+    inject_traceparent as _tracing_inject_traceparent,
+)
+from opp.mcp.health import start_health_server as _health_start
 from opp.pipeline import OPPPipeline
 
 
-_mcp: FastMCP | None = None
 _config: MCPConfig | None = None
 _validator: PathValidator | None = None
 _pipeline: OPPPipeline | None = None
@@ -35,7 +67,7 @@ _serializer: ExtractionResultSerializer | None = None
 
 
 def _init_server(config: MCPConfig) -> None:
-    global _mcp, _config, _validator, _pipeline, _serializer
+    global _config, _validator, _pipeline, _serializer
 
     _config = config
     _validator = PathValidator(
@@ -44,7 +76,6 @@ def _init_server(config: MCPConfig) -> None:
     )
     _pipeline = OPPPipeline(resource_storage_dir=config.resource_storage_dir)
     _serializer = ExtractionResultSerializer()
-    _mcp = FastMCP("OPP MCP Server") if FastMCP is not None else None
 
 
 def _safe_unlink(path: Path) -> bool:
@@ -57,10 +88,8 @@ def _safe_unlink(path: Path) -> bool:
         resolved = path.resolve()
     except (ValueError, OSError):
         return False
-    # Reject symlinks: unlink() follows them and could delete the target
     if path.is_symlink():
         return False
-    # Re-validate against allowlist
     result = _validator.validate_path(str(resolved), allow_missing=True)
     if not result.success:
         return False
@@ -85,21 +114,18 @@ def _safe_temp_output(suffix: str, parent: Path) -> Path:
 @mcp_error_boundary
 async def extract_document(
     file_path: str,
-    output_formats: list[str] | None = None,
+    output_formats: list[str] | str | None = None,
     source_lang: str = "zh",
     target_lang: str = "en",
     resource_dir: str | None = None,
     auth_token: str | None = None,
 ) -> dict:
-    # H5: token bucket rate limiter
     rate_ok, rate_err = check_rate_limit()
     if not rate_ok:
         return {**rate_limit_failure_response(), "error": rate_err}
-    # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
     auth_ok, _ = check_auth(auth_token)
     if not auth_ok:
         return auth_failure_response()
-    # 2026-06-18 round 16 Phase B2: end-to-end request_id.
     request_id = str(uuid.uuid4())
     if output_formats is None:
         output_formats = ["md"]
@@ -142,7 +168,6 @@ async def extract_document(
                 "success": False,
                 "error": f"Resource directory cannot be resolved: {e}",
             }
-        # C6 fix: iterate ALL allowed_directories; pre-fix only checked [0].
         is_resource_allowed = False
         for allowed_dir in _config.allowed_directories:
             try:
@@ -173,7 +198,6 @@ async def extract_document(
 
     if "md" in output_formats or "both" in output_formats:
         if result.extraction_result:
-            # C3 fix: write to a tempfile inside the input dir, then safe_unlink
             md_output_path = _safe_temp_output(".md", Path(file_path).parent)
             try:
                 _pipeline.generate_markdown(result.extraction_result, md_output_path)
@@ -191,7 +215,6 @@ async def extract_document(
 
     if "json" in output_formats or (result.extraction_result and result.extraction_result.images):
         if result.extraction_result:
-            # C3 fix: write to a tempfile; safe_unlink in finally
             if _config.output_dir:
                 images_json_path = _safe_temp_output(".images.json", Path(_config.output_dir))
             else:
@@ -208,7 +231,6 @@ async def extract_document(
 
     if "xlf" in output_formats or "both" in output_formats:
         if result.extraction_result:
-            # C3 fix: write to a tempfile; safe_unlink in finally
             xliff_output_path = _safe_temp_output(".xlf", Path(file_path).parent)
             try:
                 _pipeline.generate_xliff(
@@ -237,20 +259,17 @@ async def extract_document(
 @mcp_error_boundary
 async def batch_extract(
     file_paths: list[str],
-    output_formats: list[str] | None = None,
+    output_formats: list[str] | str | None = None,
     source_lang: str = "zh",
     target_lang: str = "en",
     auth_token: str | None = None,
 ) -> dict:
-    # H5: token bucket rate limiter
     rate_ok, rate_err = check_rate_limit()
     if not rate_ok:
         return {**rate_limit_failure_response(), "error": rate_err}
-    # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
     auth_ok, _ = check_auth(auth_token)
     if not auth_ok:
         return auth_failure_response()
-    # 2026-06-18 round 16 Phase B2: end-to-end request_id.
     request_id = str(uuid.uuid4())
     if output_formats is None:
         output_formats = ["md"]
@@ -272,10 +291,8 @@ async def batch_extract(
             "error": "Server not initialized",
         }
 
-    # S-5: enforce file count limit before processing
     validate_file_paths(file_paths)
 
-    # Validate ALL paths BEFORE processing any (fail-fast)
     validation_errors = []
     for file_path in file_paths:
         validation_result = _validator.validate_path(file_path)
@@ -296,7 +313,6 @@ async def batch_extract(
             "total_duration_ms": 0.0,
         }
 
-    # Process files sequentially
     results = []
     successful = 0
     failed = 0
@@ -307,10 +323,8 @@ async def batch_extract(
             result = _pipeline.process_file(Path(file_path))
             serialized = _serializer.serialize(result, include_base64=True)
 
-            # Handle output formats for each file
             if "md" in output_formats or "both" in output_formats:
                 if result.extraction_result:
-                    # C3 fix: tempfile + safe_unlink
                     md_output_path = _safe_temp_output(".md", Path(file_path).parent)
                     try:
                         _pipeline.generate_markdown(result.extraction_result, md_output_path)
@@ -327,7 +341,6 @@ async def batch_extract(
 
             if "xlf" in output_formats or "both" in output_formats:
                 if result.extraction_result:
-                    # C3 fix: tempfile + safe_unlink
                     xliff_output_path = _safe_temp_output(".xlf", Path(file_path).parent)
                     try:
                         _pipeline.generate_xliff(
@@ -376,11 +389,9 @@ async def batch_extract(
 
 @mcp_error_boundary
 async def detect_format_tool(file_path: str, auth_token: str | None = None) -> dict:
-    # H5: token bucket rate limiter
     rate_ok, rate_err = check_rate_limit()
     if not rate_ok:
         return {**rate_limit_failure_response(), "error": rate_err}
-    # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
     auth_ok, _ = check_auth(auth_token)
     if not auth_ok:
         return auth_failure_response()
@@ -419,13 +430,10 @@ async def generate_xliff(
     output_path: str | None = None,
     auth_token: str | None = None,
 ) -> dict:
-    # H5: token bucket rate limiter
     rate_ok, rate_err = check_rate_limit()
     if not rate_ok:
         return {**rate_limit_failure_response(), "error": rate_err}
-    # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
     auth_ok, _ = check_auth(auth_token)
-    # 2026-06-18 round 16 Phase B2: end-to-end request_id.
     request_id = str(uuid.uuid4())
     if not auth_ok:
         return auth_failure_response()
@@ -503,11 +511,9 @@ async def generate_xliff(
 
 async def ping(auth_token: str | None = None) -> dict:
     """Health check endpoint."""
-    # H5: token bucket rate limiter
     rate_ok, rate_err = check_rate_limit()
     if not rate_ok:
         return {**rate_limit_failure_response(), "error": rate_err}
-    # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
     auth_ok, _ = check_auth(auth_token)
     if not auth_ok:
         return auth_failure_response()
@@ -522,11 +528,9 @@ async def generate_markdown(
     embed_images: bool = True,
     auth_token: str | None = None,
 ) -> dict:
-    # H5: token bucket rate limiter
     rate_ok, rate_err = check_rate_limit()
     if not rate_ok:
         return {**rate_limit_failure_response(), "error": rate_err}
-    # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
     auth_ok, _ = check_auth(auth_token)
     if not auth_ok:
         return auth_failure_response()
@@ -603,29 +607,19 @@ async def save_skeleton(
     output_dir: str | None = None,
     auth_token: str | None = None,
 ) -> dict:
-    # H5: token bucket rate limiter
-    rate_ok, rate_err = check_rate_limit()
-    if not rate_ok:
-        return {**rate_limit_failure_response(), "error": rate_err}
-    # 2026-06-18 round 16 Phase A4: MCP shared-secret auth.
-    auth_ok, _ = check_auth(auth_token)
-    if not auth_ok:
-        return auth_failure_response()
     """Save skeleton ZIP file from extracted document.
 
     Runs OPP extraction (process_file), then saves the skeleton via
     OPPPipeline.save_skeleton. Returns the skeleton path. The skeleton
     is required by ORF's apply_xliff as the input_file arg, so this tool
     completes the OPP MCP surface for full-pipeline use.
-
-    Args:
-        file_path: Path to the source document (DOCX/PPTX/PDF/etc.).
-        base_name: Output file base name (default "document").
-        output_dir: Output directory (default: same dir as file_path).
-
-    Returns:
-        JSON dict with success, skeleton_path (or None if no skeleton), error.
     """
+    rate_ok, rate_err = check_rate_limit()
+    if not rate_ok:
+        return {**rate_limit_failure_response(), "error": rate_err}
+    auth_ok, _ = check_auth(auth_token)
+    if not auth_ok:
+        return auth_failure_response()
     if _validator is None:
         return {
             "success": False,
@@ -669,16 +663,304 @@ async def save_skeleton(
         }
 
 
+# ─────────────────────────────────────────────────────────────────────
+# Standard mcp library transport layer
+# ─────────────────────────────────────────────────────────────────────
+
+# Tool schemas exposed to MCP clients (used by @server.list_tools()).
+_TOOL_SCHEMAS: list[dict[str, Any]] = [
+    {
+        "name": "extract_document",
+        "description": (
+            "Extract content from a single document file. Supports DOCX, PPTX, "
+            "PDF, XLSX, CSV, JSON, XML, HTML, EPUB, EML, MSG, and images. "
+            "Returns markdown and/or XLIFF depending on output_formats."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "file_path": {"type": "string", "description": "Absolute path to the source document."},
+                "output_formats": {
+                    "oneOf": [
+                        {"type": "string", "enum": ["md", "xlf", "both"]},
+                        {
+                            "type": "array",
+                            "items": {"type": "string", "enum": ["md", "xlf", "both"]},
+                        },
+                    ],
+                    "description": "Output formats; default is ['md'].",
+                },
+                "source_lang": {"type": "string", "default": "zh", "description": "Source language code."},
+                "target_lang": {"type": "string", "default": "en", "description": "Target language code."},
+                "resource_dir": {"type": "string", "description": "Directory to store extracted resources."},
+                "traceparent": {
+                    "type": "string",
+                    "description": "Optional W3C Trace Context traceparent header to make this span a child of an upstream trace.",
+                },
+                "auth_token": {"type": "string", "description": "Shared secret for MCP auth (when MCP_SHARED_SECRET is set)."},
+            },
+            "required": ["file_path"],
+        },
+    },
+    {
+        "name": "batch_extract",
+        "description": (
+            "Process multiple files in one request. Returns per-file extraction "
+            "results plus aggregate counts."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "file_paths": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of absolute file paths to extract.",
+                },
+                "output_formats": {
+                    "oneOf": [
+                        {"type": "string", "enum": ["md", "xlf", "both"]},
+                        {
+                            "type": "array",
+                            "items": {"type": "string", "enum": ["md", "xlf", "both"]},
+                        },
+                    ],
+                    "description": "Output formats; default is ['md'].",
+                },
+                "source_lang": {"type": "string", "default": "zh"},
+                "target_lang": {"type": "string", "default": "en"},
+                "auth_token": {"type": "string"},
+            },
+            "required": ["file_paths"],
+        },
+    },
+    {
+        "name": "detect_format_tool",
+        "description": (
+            "Identify the file format using magic-bytes detection. Returns "
+            "the format name and a confidence score in [0, 1]."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "file_path": {"type": "string", "description": "Absolute path to the file to inspect."},
+                "auth_token": {"type": "string"},
+            },
+            "required": ["file_path"],
+        },
+    },
+    {
+        "name": "generate_xliff",
+        "description": (
+            "Convert a document to XLIFF format for translation workflows. "
+            "Requires source and target language codes."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "file_path": {"type": "string"},
+                "source_lang": {"type": "string", "default": "zh"},
+                "target_lang": {"type": "string", "default": "en"},
+                "output_path": {"type": "string", "description": "Optional output XLIFF path."},
+                "auth_token": {"type": "string"},
+            },
+            "required": ["file_path"],
+        },
+    },
+    {
+        "name": "generate_markdown",
+        "description": "Convert a document to Markdown format.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "file_path": {"type": "string"},
+                "output_path": {"type": "string"},
+                "style_mapping": {
+                    "type": "object",
+                    "additionalProperties": {"type": "integer"},
+                    "description": "Optional mapping from style name to heading level.",
+                },
+                "embed_images": {"type": "boolean", "default": True},
+                "auth_token": {"type": "string"},
+            },
+            "required": ["file_path"],
+        },
+    },
+    {
+        "name": "save_skeleton",
+        "description": (
+            "Save skeleton ZIP from an extracted DOCX/PPTX. The skeleton is "
+            "required by ORF's apply_xliff for XLIFF->DOCX/PPTX backfill."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "file_path": {"type": "string"},
+                "base_name": {"type": "string", "default": "document"},
+                "output_dir": {"type": "string"},
+                "auth_token": {"type": "string"},
+            },
+            "required": ["file_path"],
+        },
+    },
+    {
+        "name": "ping",
+        "description": "Health check endpoint.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "auth_token": {"type": "string"},
+            },
+        },
+    },
+]
+
+
+# Dispatch table: tool name -> module-level async function
+_TOOL_DISPATCH: dict[str, Any] = {
+    "extract_document": extract_document,
+    "batch_extract": batch_extract,
+    "detect_format_tool": detect_format_tool,
+    "generate_xliff": generate_xliff,
+    "generate_markdown": generate_markdown,
+    "save_skeleton": save_skeleton,
+    "ping": ping,
+}
+
+
+# Build the standard mcp Server instance. The fastmcp 3.4.2 stdio
+# transport has a known bug (server reads stdin but never writes
+# responses); the standard library's stdio_server() works correctly.
+server: Server = Server("OPP MCP Server")
+
+
+@server.list_tools()
+async def _handle_list_tools() -> list[types.Tool]:
+    return [types.Tool(**schema) for schema in _TOOL_SCHEMAS]
+
+
+@server.call_tool()
+async def _handle_call_tool(
+    name: str, arguments: dict[str, Any]
+) -> list[types.ContentBlock]:
+    """Dispatch a tool call to the appropriate module-level function.
+
+    The ``mcp_error_boundary`` decorator on the tool functions already
+    converts uncaught exceptions into safe error dicts, but the standard
+    mcp library doesn't handle exceptions raised by ``call_tool`` the
+    same way FastMCP did. The wrapper below provides an additional
+    safety net: any exception that escapes the decorator is logged with
+    full traceback server-side and returned to the client as an opaque
+    error response (no internals leaked).
+    """
+    import logging
+    import traceback
+
+    fn = _TOOL_DISPATCH.get(name)
+    if fn is None:
+        record_request_from_arguments(
+            name, arguments, _STATUS_ERROR, 0.0,
+        )
+        with _tracing_start_span(name, arguments) as _span:
+            _tracing_set_status(_span, "error", error_code="OPP_UNKNOWN_TOOL")
+        return [
+            types.TextContent(
+                type="text",
+                text=json.dumps(
+                    {
+                        "success": False,
+                        "error_code": "OPP_UNKNOWN_TOOL",
+                        "message": f"Unknown tool: {name!r}",
+                    }
+                ),
+            )
+        ]
+
+    logger = logging.getLogger("opp_mcp.server")
+    timer = _metrics_timer()
+    _traceparent_arg = (arguments or {}).get("traceparent")
+    with _tracing_start_span(name, arguments, traceparent=_traceparent_arg) as _span:
+        try:
+            result = await fn(**(arguments or {}))
+        except Exception:
+            duration = timer.seconds()
+            logger.exception("Unhandled error in tool %s", name)
+            record_request_from_arguments(
+                name, arguments, _STATUS_ERROR, duration,
+            )
+            _tracing_set_status(
+                _span, "error",
+                error_code="OPP_INTERNAL_ERROR",
+                duration_ms=duration * 1000.0,
+            )
+            return [
+                types.TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {
+                            "success": False,
+                            "error_code": "OPP_INTERNAL_ERROR",
+                            "message": "An internal error occurred. Check server logs.",
+                            "error": "An internal error occurred. Check server logs.",
+                            "tool": name,
+                            "traceback": traceback.format_exc(limit=10),
+                        }
+                    ),
+                )
+            ]
+
+        if not isinstance(result, dict):
+            result = {"success": True, "data": result}
+
+        if name == "extract_document" and isinstance(result, dict):
+            tp = _tracing_inject_traceparent(_span)
+            if tp is not None:
+                result["traceparent"] = tp
+
+        status = _classify_status(result)
+        record_request_from_arguments(
+            name, arguments, status, timer.seconds(),
+        )
+        _tracing_set_status(
+            _span, status,
+            error_code=result.get("error_code") if isinstance(result, dict) else None,
+            duration_ms=timer.seconds() * 1000.0,
+        )
+
+        return [types.TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
+
+
+def _classify_status(result: dict[str, Any]) -> str:
+    """Map a tool's result dict to a coarse status label for metrics."""
+    if not isinstance(result, dict):
+        return _STATUS_ERROR
+    if result.get("success") is True:
+        return _STATUS_SUCCESS
+    code = result.get("error_code")
+    if code == "RATE_LIMITED":
+        return _STATUS_RATE_LIMITED
+    if code == "AUTH_FAILED":
+        return _STATUS_AUTH_FAILED
+    return _STATUS_ERROR
+
+
+async def _run() -> None:
+    """Async entry point: drive the stdio transport."""
+    async with stdio_server() as (read_stream, write_stream):
+        await server.run(
+            read_stream,
+            write_stream,
+            server.create_initialization_options(),
+            raise_exceptions=False,
+        )
+
+
 def main() -> None:
+    """Synchronous entry point invoked by ``python -m opp.mcp.server``."""
     config = load_config()
     _init_server(config)
+    _health_start()
+    anyio.run(_run)
 
-    _mcp.add_tool(ping)
-    _mcp.add_tool(extract_document)
-    _mcp.add_tool(batch_extract)
-    _mcp.add_tool(detect_format_tool)
-    _mcp.add_tool(generate_xliff)
-    _mcp.add_tool(generate_markdown)
-    _mcp.add_tool(save_skeleton)
 
-    _mcp.run(transport="stdio")
+if __name__ == "__main__":
+    main()

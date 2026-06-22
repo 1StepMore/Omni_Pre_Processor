@@ -62,6 +62,7 @@ class PathValidator:
     ALLOWED_EXTENSIONS: set[str] = {
         ".md", ".docx", ".pptx", ".pdf", ".xliff", ".xlf", ".xml",
         ".html", ".odt", ".epub", ".zip", ".txt",
+        ".xlsx", ".csv", ".json", ".eml",
     }
 
     def __init__(

@@ -1,12 +1,11 @@
 [project]
-# ULTRAREADY-VERIFY (2026-06-07): renamed from "Omni_Pre_Processor"
-# to "opp" to match (a) the README PyPI badge and import paths
-# (from opp import DOCXExtractor, ...), (b) the TestPyPI verify URL
-# in .github/workflows/publish.yml:26, and (c) PEP 503 (lowercase).
-# The previous name "Omni_Pre_Processor" was rejected by PyPI
-# (underscores + mixed case are not allowed in distribution names)
-# and would have caused the publish.yml job to fail at upload time.
-name = "opp"
+# ULTRAREADY-VERIFY (2026-06-22): renamed distribution from "opp"
+# to "omni-pre-processor" because "opp" is owned on PyPI by
+# OpenPaymentPlatform/python (PAY.ON payment processing library).
+# Re-publish under the original (previously-blocked) name; the
+# import package stays "opp" so existing `from opp import ...` and
+# the `opp` / `opp-mcp-server` console scripts are unaffected.
+name = "omni-pre-processor"
 version = "0.6.1"
 description = "Omni Pre-Processor: Document content extraction package"
 readme = "README.md"
@@ -34,6 +33,11 @@ dependencies = [
     "lxml>=5.0.0",
     "python-json-logger>=2.0.0",
     "prometheus_client>=0.20.0",
+    "beautifulsoup4>=4.12.0",
+    "ebooklib>=0.5.0",
+    "openpyxl>=3.1.5,<3.2",
+    "pandas>=2.0.0",
+    "chardet>=5.0.0",
 ]
 
 [project.optional-dependencies]
@@ -42,16 +46,11 @@ dev = [
     "pytest-cov>=7.0.0",
 ]
 office = [
-    "openpyxl>=3.1.5,<3.2",
-    "pandas>=2.0.0",
     "numpy>=2.0.0",
-    "chardet>=5.0.0",
 ]
 web = [
     "markdownify>=0.14.0",
     "readability-lxml>=0.8.0",
-    "ebooklib>=0.5.0",
-    "beautifulsoup4>=4.12.0",
     "docling>=1.0.0",
 ]
 email = [
@@ -73,7 +72,7 @@ mcp = [
     "pyyaml>=5.0.0",
 ]
 all = [
-    "opp[audio,notebook,office,web,email,ocr,mcp,youtube]",
+    "omni-pre-processor[audio,notebook,office,web,email,ocr,mcp,youtube]",
 ]
 
 [project.scripts]

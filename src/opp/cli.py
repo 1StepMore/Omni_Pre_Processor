@@ -256,6 +256,13 @@ def create_parser() -> argparse.ArgumentParser:
         help="拒绝超过此大小 (MB) 的文件 (默认: 不限制)"
     )
 
+    parser.add_argument(
+        "--log-format",
+        choices=["console", "json"],
+        default=None,
+        help="日志输出格式 (默认: console)。也可通过 OMNI_LOG_FORMAT 环境变量设置。",
+    )
+
     return parser
 
 
@@ -317,13 +324,14 @@ def process_single_file(
     _error_handler: ErrorHandler
 ) -> bool:
     try:
-        # Set OCR env vars for image processing
+        if getattr(args, "log_format", None):
+            os.environ["OMNI_LOG_FORMAT"] = args.log_format
+
         if args.ocr_engine:
             os.environ["OPP_OCR_ENGINE"] = args.ocr_engine
         if args.ocr_lang:
             os.environ["OPP_OCR_LANG"] = args.ocr_lang
 
-        # Set ASR env vars for audio processing
         if args.asr_engine:
             os.environ["OPP_ASR_ENGINE"] = args.asr_engine
         if args.model_size:
