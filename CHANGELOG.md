@@ -275,3 +275,9 @@ opp --batch folder/
 ### Scripts
 - `install_opp_agents.sh` - Install for both OpenCode and Hermes (Unix)
 - `install_opp_agents.bat` - Install for both OpenCode and Hermes (Windows)
+## [0.6.2] - 2026-06-23
+
+### Fixed
+
+- **Orphaned image double-embedding (E2E-15)**: `MarkdownGenerator.generate()` now filters orphaned images whose `_seq` was already output inline, preventing Pandoc from embedding the same image twice.
+  - `src/opp/markdown/generator.py`
