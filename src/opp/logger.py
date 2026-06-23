@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -156,10 +157,36 @@ def setup_logger(verbose: bool = False) -> logging.Logger:
        to ``log_file`` (for ``logging.getLogger("opp.*").info(msg, extra=...)``
        calls). The ``Log file: ...`` bootstrap line is also emitted via
        this sink.
+
+    When ``verbose=True``, an additional ``StreamHandler`` is attached
+    to stderr with a human-readable formatter. This restores the
+    ``opp --detect-format -v`` UX where users see the detected format
+    in their terminal, in addition to the file-based observability.
+    Set up BEFORE the early-return so it works even when the
+    module-level ``setup_logger()`` (no args) ran first.
     """
     global _logger_configured
+    stdlib_logger = logging.getLogger("opp")
+
+    # Stderr handler for verbose mode — human-readable output to terminal.
+    # Set up before the early-return so subsequent calls (e.g. the CLI's
+    # ``setup_logger(args.verbose)`` after the module-level import) take effect.
+    if verbose and not any(
+        getattr(h, "_opp_stderr", False) for h in stdlib_logger.handlers
+    ):
+        stderr_handler = logging.StreamHandler(sys.stderr)
+        stderr_handler.setLevel(logging.INFO)
+        stderr_handler.setFormatter(
+            logging.Formatter('[%(levelname)s] %(message)s')
+        )
+        stderr_handler._opp_stderr = True  # marker so we don't double-add
+        stdlib_logger.addHandler(stderr_handler)
+        # Bump logger level so INFO messages propagate to stderr
+        if stdlib_logger.level > logging.INFO:
+            stdlib_logger.setLevel(logging.INFO)
+
     if _logger_configured:
-        return logging.getLogger("opp")
+        return stdlib_logger
 
     env_level = os.environ.get("OPP_LOG_LEVEL", "").upper()
     if env_level == "DEBUG":
