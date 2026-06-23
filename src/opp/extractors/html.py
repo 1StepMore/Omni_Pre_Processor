@@ -386,6 +386,11 @@ class HTMLExtractor(ExtractorBase):
                 image_data = self._parse_data_uri(src)
                 if image_data:
                     image_data.element_index = element_idx
+                    # E2E-75: ``_html_to_markdown`` (markdownify) already
+                    # writes ``![alt](src)`` for every ``<img>``. The
+                    # generator must NOT re-inject the ref nor append the
+                    # image to the ``## Images`` trailing block.
+                    image_data.is_inline_in_md = True
                     result.append(image_data)
                 continue
 
@@ -395,9 +400,10 @@ class HTMLExtractor(ExtractorBase):
                     data = img_path.read_bytes()
                     mime_type = self._guess_mime_type(src)
                     result.append(ImageData(
-                        data=data, 
+                        data=data,
                         mime_type=mime_type,
                         element_index=element_idx,
+                        is_inline_in_md=True,
                     ))
             except Exception as e:
                 logger.debug(f"Image extraction failed for {src}: {e}")

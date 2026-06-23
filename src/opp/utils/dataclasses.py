@@ -63,6 +63,12 @@ class ImageData:
     spine_index: int | None = None      # EPUB spine order (0-based)
     is_floating: bool = False              # DOCX: True if <wp:anchor>, False if <wp:inline>
 
+    # E2E-75: True when the extractor's markdown already contains the
+    # ``![...](...)`` reference inline (e.g. HTML via markdownify).
+    # ``MarkdownGenerator`` skips the generator's own inline injection
+    # and the trailing ``## Images`` block to avoid double-embedding.
+    is_inline_in_md: bool = False
+
     # Anchor coordinates (EMU = English Metric Units, 914400 EMU = 1 inch).
     # Only meaningful for floating DOCX images (is_floating=True). Phase 3
     # (ORF wp:anchor injection) reads these to rebuild <wp:positionH>/<wp:positionV>
