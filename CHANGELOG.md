@@ -281,3 +281,13 @@ opp --batch folder/
 
 - **Orphaned image double-embedding (E2E-15)**: `MarkdownGenerator.generate()` now filters orphaned images whose `_seq` was already output inline, preventing Pandoc from embedding the same image twice.
   - `src/opp/markdown/generator.py`
+
+## [0.6.3] - 2026-06-23
+
+### Fixed
+
+- **Verbose mode stderr output (CLI bug fix)**: `opp -v` was file-only logging — the "Detected: docx" message went to `logs/opp_TIMESTAMP.log` but not to stderr. `setup_logger(verbose=True)` now also attaches a `StreamHandler(sys.stderr)` with a human-readable formatter. File-based observability preserved unchanged.
+  - Fixes `tests/test_cli_smoke.py::TestFlags::test_detect_format_flag` (was failing since the `print -> logger` migration in 24f8fd0).
+  - Usage: `opp --detect-format -v file.docx` now shows `[INFO]   Detected: docx (confidence: 1.0)` in the terminal.
+  - `opp` without `-v` stays quiet on stderr (0 bytes); log file unchanged.
+  - `OMNI_LOG_FORMAT=json` still produces JSON in the log file; stderr stays human-readable.
