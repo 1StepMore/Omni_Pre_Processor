@@ -103,6 +103,10 @@ class MarkdownGenerator:
                 img_key = para.para_index_in_body
                 for img in para_images.get(img_key, []):
                     written_images.add(id(img))
+                    # E2E-75: skip if the extractor already wrote the
+                    # ``![...](...)`` ref inline (e.g. HTML via markdownify).
+                    if getattr(img, "is_inline_in_md", False):
+                        continue
                     ext = self._mime_to_ext(img.mime_type)
                     if images_dir is not None:
                         img_filename = f"{stem}_image_{img._seq}.{ext}" if stem else f"image_{img._seq}.{ext}"
@@ -138,6 +142,10 @@ class MarkdownGenerator:
             img for img in orphaned
             if not (hasattr(img, '_seq') and img._seq is not None and img._seq <= max_inline_seq)
         ]
+        # E2E-75 fix: images whose ``![...](...)`` ref is already in the
+        # markdown text (e.g. HTML via markdownify) must not be re-emitted
+        # in the ``## Images`` block — pandoc would embed them twice.
+        orphaned = [img for img in orphaned if not getattr(img, "is_inline_in_md", False)]
         if orphaned:
             output_lines.append(self._generate_images_section(
                 orphaned, images_dir=images_dir, stem=stem, offset=max_inline_seq
