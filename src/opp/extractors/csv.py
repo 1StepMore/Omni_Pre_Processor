@@ -138,6 +138,9 @@ class CSVExtractor(ExtractorBase):
         else:
             sep_order = [",", None]
 
+        # E2E-81: change on_bad_lines from "skip" to "warn" so a
+        # multi-line field that pandas mis-parses is no longer silently
+        # dropped.
         for sep in sep_order:
             try:
                 actual_header = header if sep is not None else 0
@@ -148,7 +151,7 @@ class CSVExtractor(ExtractorBase):
                     header=actual_header,
                     encoding=encoding,
                     encoding_errors="replace",
-                    on_bad_lines="skip",
+                    on_bad_lines="warn",
                 )
                 if sep == "," and header is None and df.shape[1] == 1 and len(df) > 1:
                     df2 = pd.read_csv(
@@ -158,7 +161,7 @@ class CSVExtractor(ExtractorBase):
                         header=0,
                         encoding=encoding,
                         encoding_errors="replace",
-                        on_bad_lines="skip",
+                        on_bad_lines="warn",
                     )
                     if len(df2) < len(df):
                         return df2
@@ -175,7 +178,7 @@ class CSVExtractor(ExtractorBase):
                 header=0,
                 encoding=fallback_enc,
                 encoding_errors="replace",
-                on_bad_lines="skip",
+                on_bad_lines="warn",
             )
         except Exception as e:
             logger.debug(f"CSV read with fallback encoding failed: {e}")

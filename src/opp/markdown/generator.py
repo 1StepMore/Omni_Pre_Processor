@@ -1,3 +1,4 @@
+import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -302,7 +303,13 @@ class MarkdownGenerator:
         return '\n'.join(result_parts).rstrip()
 
     def _escape_table_cell(self, cell: str) -> str:
-        return cell.replace('|', '\\|').replace('\n', ' ')
+        # E2E-81: keep multi-line content in CSV cells intact. The
+        # previous implementation replaced \n with a space which
+        # silently collapsed embedded newlines into one unreadable
+        # blob. Use <br> which pandoc tables render as a soft line
+        # break.
+        escaped = cell.replace('|', '\\|').replace('\r', '').strip()
+        return re.sub(r'[ \t]*\n[ \t]*', '<br>', escaped)
 
     def _generate_images_section(
         self,
