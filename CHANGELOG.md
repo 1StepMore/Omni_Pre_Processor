@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.4] - 2026-06-24
+
+### Fixed
+- **E2E-81** (`src/opp/extractors/csv.py`, `src/opp/markdown/generator.py`): CSV cells with quoted multi-line values (common in spreadsheet exports) were silently collapsed to single spaces in the rendered markdown table. `pd.read_csv(on_bad_lines="skip")` dropped any mis-parsed row, and `MarkdownGenerator._escape_table_cell` did `cell.replace('|', '\\|').replace('\n', ' ')` which collapsed every embedded newline to one space. Two fixes: switched `on_bad_lines="skip"` → `"warn"` so mis-parses surface as warnings (no longer silent), and `_escape_table_cell` now escapes newlines as `<br>` (which pandoc tables render as a soft line break) and collapses surrounding whitespace.
+- **E2E-82** (`src/opp/extractors/html.py:122-137, 215-227`): `HTMLExtractor.extract()` called docling via `_extract_with_docling` which returned `""` on any failure (exception or empty result) and logged at DEBUG level only. The two docling call sites were asymmetric: complex mode + docling NOT installed fell back to readability correctly, but complex mode + docling installed-but-fails silently used empty content, and simple mode → readability → if low quality → try docling had the same silent-empty-failure. User-visible symptom: a 10MB HTML page where docling times out or OOMs produced a 0-character `.md` with a misleading "使用docling(AI)提取HTML" success warning. Fix: both docling call sites now wrap the call in try/except, check the returned text is non-empty, and fall back to readability with a clear "docling失败 ... 降级到readability" warning.
+
 ## [0.6.1] - 2026-06-12
 
 ### Changed
