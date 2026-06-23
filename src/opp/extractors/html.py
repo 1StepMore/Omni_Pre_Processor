@@ -122,8 +122,31 @@ class HTMLExtractor(ExtractorBase):
         if tool_choice == "complex":
             if DOCLING_AVAILABLE:
                 logger.info("使用docling(AI)提取HTML")
-                extracted_text = self._extract_with_docling(content)
-                warnings.append("使用docling(AI)提取HTML")
+                # E2E-82: fall back to readability if docling fails
+                # (raises or returns empty) instead of silently using
+                # empty content.
+                try:
+                    extracted_text = self._extract_with_docling(content)
+                except Exception as e:
+                    logger.warning(
+                        f"docling failed ({type(e).__name__}: {e}), "
+                        f"降级到readability"
+                    )
+                    warnings.append(
+                        f"docling失败 ({type(e).__name__})，降级到readability"
+                    )
+                    extracted_text = self._extract_with_readability(content)
+                else:
+                    if not extracted_text or not extracted_text.strip():
+                        logger.warning(
+                            "docling returned empty result, 降级到readability"
+                        )
+                        warnings.append(
+                            "docling返回空结果，降级到readability"
+                        )
+                        extracted_text = self._extract_with_readability(content)
+                    else:
+                        warnings.append("使用docling(AI)提取HTML")
             else:
                 logger.warning("docling不可用，降级到readability")
                 warnings.append("docling不可用，降级到readability")
@@ -134,7 +157,27 @@ class HTMLExtractor(ExtractorBase):
             if not quality_ok and DOCLING_AVAILABLE:
                 logger.info(f"readability质量较低 ({quality_reason})，切换到docling")
                 warnings.append(f"readability质量较低 ({quality_reason})，切换到docling")
-                extracted_text = self._extract_with_docling(content)
+                # E2E-82: same fallback contract for the simple→docling path.
+                try:
+                    extracted_text = self._extract_with_docling(content)
+                except Exception as e:
+                    logger.warning(
+                        f"docling failed ({type(e).__name__}: {e}), "
+                        f"降级到readability"
+                    )
+                    warnings.append(
+                        f"docling失败 ({type(e).__name__})，降级到readability"
+                    )
+                    # Keep the readability result we already have.
+                else:
+                    if not extracted_text or not extracted_text.strip():
+                        logger.warning(
+                            "docling returned empty result, using readability fallback"
+                        )
+                        warnings.append(
+                            "docling返回空结果，使用readability结果"
+                        )
+                        # Keep the readability result.
 
         md_content = self._html_to_markdown(extracted_text, input_path.parent)
         paragraphs = self._md_to_paragraphs(md_content)
