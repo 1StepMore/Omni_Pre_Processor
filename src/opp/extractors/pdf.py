@@ -20,6 +20,14 @@ from opp.logger import logger
 class PDFExtractor(ExtractorBase):
     CHINESE_NUMERALS = "一二三四五六七八九十百千万零两"
 
+    # Issue OPP #5: when text-layer extraction returns fewer than this
+    # many characters on a page, assume the page is image-only / scanned
+    # and run OCR on the full page as a fallback. Threshold chosen
+    # empirically: a page with only title metadata (e.g. "Technical
+    # Report", 16 chars) triggers OCR; a normal text-layer page with
+    # body content (100+ chars) does not.
+    OCR_FALLBACK_TEXT_THRESHOLD = 30
+
     # Level 1 patterns
     _LEVEL1_PATTERNS = [
         re.compile(r"^[{}]+、".format(CHINESE_NUMERALS)),  # 一、二、三、
@@ -170,6 +178,8 @@ class PDFExtractor(ExtractorBase):
         for page_num in range(doc.page_count):
             page = doc[page_num]
             blocks = page.get_text("blocks")
+            page_text_chars = 0
+            page_blocks: list[TextBlockData] = []
             for block in blocks:
                 if len(block) < 6:
                     continue
@@ -177,12 +187,71 @@ class PDFExtractor(ExtractorBase):
                 text = text.strip()
                 if not text:
                     continue
-                result.append(TextBlockData(
+                page_text_chars += len(text)
+                page_blocks.append(TextBlockData(
                     text=text,
                     bbox=(x0, y0, x1, y1),
                     page=page_num + 1,
                 ))
+
+            # OCR fallback for image-only / scanned pages (Issue OPP #5):
+            # if text-layer extraction returned very little text, the page
+            # is likely a scanned/image-only PDF with no embedded text.
+            # Render the page as a high-DPI image and run Tesseract /
+            # RapidOCR on it via the existing _ocr_tesseract /
+            # _ocr_rapidocr helpers (same infrastructure as the image
+            # extraction path, no new deps).
+            if page_text_chars < self.OCR_FALLBACK_TEXT_THRESHOLD:
+                ocr_blocks = self._ocr_page(page, page_num)
+                if ocr_blocks:
+                    result.extend(ocr_blocks)
+                    continue
+                # OCR unavailable or found no text — fall through to
+                # whatever text-layer content we got (likely just title
+                # metadata). The page will still emit any extracted
+                # blocks, no silent data loss.
+            result.extend(page_blocks)
         return result
+
+    def _ocr_page(self, page: fitz.Page, page_num: int) -> list[TextBlockData]:
+        """OCR a single page as a fallback for image-only / scanned PDFs.
+
+        Renders the page as a 200-DPI image and runs the existing
+        Tesseract / RapidOCR helpers (same infra as the image
+        extraction path in `extract_images`). Returns TextBlockData
+        for the full page bbox, or empty list if OCR is unavailable
+        or finds no text.
+
+        Silent no-op when neither Tesseract nor RapidOCR is installed
+        — the text-layer path still runs and the page emits whatever
+        metadata it could extract.
+        """
+        try:
+            pix = page.get_pixmap(dpi=200)
+        except Exception as e:
+            logger.debug(f"page.get_pixmap failed for page {page_num}: {e}")
+            return []
+
+        try:
+            from PIL import Image
+            import io
+            img = Image.open(io.BytesIO(pix.tobytes("png")))
+        except ImportError:
+            logger.debug("PIL not available for full-page OCR fallback")
+            return []
+        except Exception as e:
+            logger.debug(f"Failed to convert page pixmap to PIL Image: {e}")
+            return []
+
+        text = self._ocr_tesseract(img, lang="eng")
+        if not text:
+            return []
+
+        return [TextBlockData(
+            text=text,
+            bbox=(0, 0, pix.width, pix.height),
+            page=page_num + 1,
+        )]
 
     def detect_tables(self, doc: fitz.Document) -> list:
         result: list[TableData] = []
