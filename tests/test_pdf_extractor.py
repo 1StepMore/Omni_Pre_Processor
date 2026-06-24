@@ -241,3 +241,75 @@ class TestPDFOCRFallback:
             ocr_result = ext._ocr_page(fitz.open(str(pdf))[0], 0)
         # No crash, empty result
         assert ocr_result == []
+
+    # ════════════════════════════════════════════════════════════════
+    # Issue OPP #7: word-level spacing recovery for justified text
+    # ════════════════════════════════════════════════════════════════
+
+    def test_word_level_spacing_recovered(self, tmp_path):
+        """Two text runs at same y, different x → 'Hello PDF' with space."""
+        doc = fitz.open()
+        page = doc.new_page()
+        page.insert_text((50, 50), "Hello")
+        page.insert_text((120, 50), "PDF")  # same y, different x
+        p = tmp_path / "runs.pdf"
+        doc.save(str(p))
+        doc.close()
+        ext = PDFExtractor()
+        res = ext.extract(p)
+        texts = [para.text for para in res.paragraphs]
+        found = any("Hello PDF" in t for t in texts)
+        assert found, (
+            f"Expected 'Hello PDF' with space, got: {texts}"
+        )
+
+    def test_multi_line_text_has_lines(self, tmp_path):
+        """Multi-line text → each line is a separate paragraph."""
+        doc = fitz.open()
+        page = doc.new_page()
+        page.insert_text((50, 50), "Line one content")
+        page.insert_text((50, 70), "Line two content")
+        p = tmp_path / "multiline.pdf"
+        doc.save(str(p))
+        doc.close()
+        ext = PDFExtractor()
+        res = ext.extract(p)
+        texts = [para.text for para in res.paragraphs]
+        assert len(texts) >= 2, (
+            f"Expected >=2 paragraphs, got {len(texts)}: {texts}"
+        )
+        assert any("Line one" in t for t in texts)
+        assert any("Line two" in t for t in texts)
+
+    def test_word_ordering_within_block_preserved(self, tmp_path):
+        """Three text runs at same y → words joined left-to-right within block.
+
+        The word-level reconstruction sorts by x within each y-line,
+        so even when MuPDF merges separate insert_text calls into one
+        block, the words appear in correct reading order."""
+        doc = fitz.open()
+        page = doc.new_page()
+        page.insert_text((50, 50), "First")
+        page.insert_text((150, 50), "Middle")
+        page.insert_text((250, 50), "Last")
+        p = tmp_path / "ordering.pdf"
+        doc.save(str(p))
+        doc.close()
+        ext = PDFExtractor()
+        res = ext.extract(p)
+        texts = [para.text for para in res.paragraphs]
+        found = any("First Middle Last" in t for t in texts)
+        assert found, (
+            f"Expected 'First Middle Last' (left-to-right), got: {texts}"
+        )
+
+    def test_image_only_pdf_still_triggers_ocr_fallback(self, tmp_path):
+        """Regression: #5 OCR fallback still triggers on image-only PDFs."""
+        pdf = _make_image_only_pdf(["OCR fallback test"], tmp_path)
+        ext = PDFExtractor()
+        with patch.object(ext, "_ocr_page") as mock_ocr:
+            res = ext.extract(pdf)
+        assert mock_ocr.call_count >= 1, (
+            "OCR should still be attempted on image-only PDFs; "
+            f"got {mock_ocr.call_count} calls"
+        )

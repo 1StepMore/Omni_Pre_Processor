@@ -1,8 +1,15 @@
 from pathlib import Path
 from typing import Generator
+import os
 import pytest
 import fitz
 import io
+
+
+# Disable MCP rate limiter for tests. The default (60 rpm / burst 10) drains
+# faster than the 1/sec refill during a 30+ test file run, causing later
+# tests to fail with RATE_LIMITED. rpm=0 short-circuits the limiter.
+os.environ.setdefault("OMNI_RATE_LIMIT_RPM", "0")
 
 
 def pytest_configure(config):

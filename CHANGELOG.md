@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.7] - 2026-06-24
+
+### Fixed
+- **Issue #7 — PDF text run extraction loses spaces** (`src/opp/extractors/pdf.py:extract_text_blocks`):
+  `page.get_text("blocks")` joins text from multiple text runs (justified text, separate
+  `insert_text` calls at the same y coordinate) with `\n` instead of space. This produced
+  garbled output like `"Hello\nPDF"` which LLMs cannot translate correctly. Fix: when a
+  text block (`block_type == 0`) contains `\n`, fetch word-level data via
+  `page.get_text("words", clip=bbox)` and reconstruct per-line text with spaces between
+  words. Block-level structure (which handles multi-column layouts) is preserved — word
+  extraction is only used WITHIN a block's clip region, not page-wide. New
+  `_reconstruct_text_from_words()` helper handles the word-to-text recombination.
+  Regression: the Issue #5 OCR fallback still triggers correctly on image-only PDFs
+  (text-layer still sparse after reconstruction).
+
 ## [0.6.6] - 2026-06-24
 
 ### Fixed

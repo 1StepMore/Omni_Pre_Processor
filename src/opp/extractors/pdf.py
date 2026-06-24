@@ -173,6 +173,31 @@ class PDFExtractor(ExtractorBase):
             logger.debug(f"_ocr_rapidocr: RapidOCR extraction failed: {e}")
             return None
 
+    def _reconstruct_text_from_words(self, words: list) -> str:
+        """Group words by y-coordinate, concat with space within line,
+        newline between lines.  Uses y0 (index 1) rather than line_no
+        (index 6) because MuPDF assigns distinct line numbers to
+        separate text calls at the same y (justified-text pattern).
+        Word tuples: (x0, y0, x1, y1, "text", block_no, line_no, word_no).
+        """
+        if not words:
+            return ""
+        # Group by y position (round to 0.5 pt to tolerate sub-pixel drift).
+        # Sort by x within each y-line so words are in reading order.
+        lines: dict[float, list[tuple[float, str]]] = {}
+        for w in words:
+            y_key = round(w[1] * 2) / 2  # round to nearest 0.5
+            x = w[0]
+            text = w[4]
+            lines.setdefault(y_key, []).append((x, text))
+        # Sort lines top-to-bottom; within each line, sort left-to-right
+        sorted_lines = sorted(lines.keys())
+        out_lines = []
+        for yk in sorted_lines:
+            sorted_words = [t for _, t in sorted(lines[yk], key=lambda p: p[0])]
+            out_lines.append(" ".join(sorted_words))
+        return "\n".join(out_lines)
+
     def extract_text_blocks(self, doc: fitz.Document) -> list[TextBlockData]:
         result: list[TextBlockData] = []
         for page_num in range(doc.page_count):
@@ -183,10 +208,26 @@ class PDFExtractor(ExtractorBase):
             for block in blocks:
                 if len(block) < 6:
                     continue
-                x0, y0, x1, y1, text, *_ = block
+                x0, y0, x1, y1, text, _block_no, block_type = block[:7]
                 text = text.strip()
                 if not text:
                     continue
+
+                # Issue OPP #7: justified text blocks have multiple
+                # text runs joined by \n instead of space.  Fetch
+                # word-level data within the block's clip region to
+                # recover inter-word spacing, but ONLY within this
+                # block's bbox — multi-column layout is preserved by
+                # the block-level split done by get_text("blocks").
+                if block_type == 0 and "\n" in text:
+                    words_in_block = page.get_text(
+                        "words", clip=fitz.Rect(x0, y0, x1, y1),
+                    )
+                    if isinstance(words_in_block, list) and words_in_block:
+                        text = self._reconstruct_text_from_words(
+                            words_in_block,
+                        )
+
                 page_text_chars += len(text)
                 page_blocks.append(TextBlockData(
                     text=text,
