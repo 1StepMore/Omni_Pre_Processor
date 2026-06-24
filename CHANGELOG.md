@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.5] - 2026-06-24
+
+### Fixed
+- **`all` extra self-referential typo** (`pyproject.toml:75`): the `all` extra listed `"omni-pre-processor[audio,notebook,office,web,email,ocr,mcp,youtube]"` — OPP (renamed from `opp` to `omni-pre-processor` in 0.6.1) declaring itself with its own extras. This was always broken (circular self-dep) but became externally visible after the rename: when uv ran from any sibling project that walked up to the suite workspace, it saw OPP required from TWO sources — (1) the suite's `tool.uv.sources.omni-pre-processor = { path = "Omni_Pre_Processor" }` and (2) OPP's own `[all]` extra — both pointing at the same `file:///.../Omni_Pre_Processor` URL. Result: `uv sync` failed with `Requirements contain conflicting URLs for package omni-pre-processor in split python_full_version >= '3.15' and sys_platform == 'win32'`. Fix: changed the literal `omni-pre-processor` to `markitdown` (the package whose `youtube` extra on line 60 actually pulls in `markitdown[youtube-transcription]`). The `all` extra now pulls `markitdown[audio,notebook,office,web,email,ocr,mcp,youtube]` — note that markitdown 0.1.6 doesn't have all those named extras (it warns and silently skips the unknown ones) so the `all` extra in practice adds the markitdown install without a specific markitdown extras; cleaning up the markitdown extras list to use the real ones (`docx,xlsx,pdf,pptx,youtube-transcription,image,all`) is a separate polish item for 0.6.6. Patch bump per docs/API_STABILITY.md § 2.1: backward-compatible packaging fix, no public-surface change. Affected: every sibling submodule (`Omni_Localizer`, `Omni_Re_Formatter`, and the suite root) whose `uv sync`/`make install` was previously failing with the OPP URL conflict; verified that the dep graph now resolves cleanly (296 packages in 19ms) and the suite's `verify_usability.py` continues to report all 5 groups ✅.
+
 ## [0.6.4] - 2026-06-24
 
 ### Fixed
