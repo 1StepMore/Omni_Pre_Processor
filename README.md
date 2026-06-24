@@ -397,9 +397,19 @@ extraction:
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `OPP_ALLOWED_DIRECTORIES` | Comma-separated list of allowed directories | Required |
-| `OPP_RESOURCE_STORAGE_DIR` | Directory for extracted images | `./resources` |
-| `OPP_OCR_ENGINE` | OCR engine to use | `tesseract` |
-| `OPP_LOG_LEVEL` | Logging level | `INFO` |
+| Variable | Scope | Description | Default |
+|----------|-------|-------------|---------|
+| `OPP_MCP_ALLOWED_DIRS` | **MCP** | Colon/semicolon-separated allowlist of directories the MCP server can read (e.g. `/docs:/tmp/out`). **Required** for any `opp mcp` tool call to succeed. | (none) |
+| `OPP_ALLOWED_DIRECTORIES` | CLI only | Comma-separated allowlist for the CLI's `--resource-dir` guard (`src/opp/cli.py:496`). NOT read by the MCP server. | (none) |
+| `OPP_MCP_MAX_FILE_SIZE` | MCP | Max input file size in bytes | `104857600` (100 MB) |
+| `OPP_MCP_TIMEOUT` | MCP | Per-tool request timeout in seconds | `300` |
+| `OPP_MCP_HOST` | MCP | Bind host | `127.0.0.1` |
+| `OPP_MCP_PORT` | MCP | Bind port | `8766` |
+| `OMNI_METRICS_DIR` | MCP | Prometheus metrics directory | `/tmp/omni-metrics` |
+| `MCP_SHARED_SECRET` | MCP | Shared-secret auth (Phase A4) | (none — auth disabled) |
+| `OPP_RESOURCE_STORAGE_DIR` | CLI | Directory for extracted images | `./resources` |
+| `OPP_OCR_ENGINE` | CLI | OCR engine | `tesseract` |
+| `OPP_OCR_LANG` | CLI | OCR language | `eng` |
+| `OPP_LOG_LEVEL` | CLI | Log level | `INFO` |
+| `OMNI_LOG_FORMAT` | CLI/MCP | `console` (default) or `json` | `console` |
+| `OMNI_TEST_FAKE_LLM=1` | CLI | Mock LLM responses (hermetic testing) | unset |
