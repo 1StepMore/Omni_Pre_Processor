@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-06-24
+
+### Changed
+- **JSONExtractor**: `extract()` now emits BOTH a ` ```json ` fenced block (full original JSON, preserves structure) AND `json_field:path = value` lines (one per string value, for OL translation). This allows string values to be translated while preserving numbers, booleans, nulls, key order, and array indices. See `test_json_extractor.py::TestJSONExtractorTranslations` and `TestJSONExtractorRoundTrip` for new test coverage.
+
+### Migration
+- ORF 0.4.7+ is required to fully consume the new format. The ORF `md2json` channel now has a combined mode that uses the fenced block as base structure and applies `json_field:` translations on top of string values.
+- The `extract_key_values()` method (used by XLIFF channel) is unchanged.
+
 ## [0.6.7] - 2026-06-24
 
 ### Fixed

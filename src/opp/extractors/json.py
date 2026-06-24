@@ -108,9 +108,12 @@ class JSONExtractor(ExtractorBase):
         with open(input_path, encoding="utf-8-sig") as f:
             data = json.load(f)
 
-        # Present JSON as a fenced code block (preserves structure, handles arbitrary nesting)
+        # 1) Fenced code block: full original JSON (preserves structure, types, key order)
         pretty = json.dumps(data, indent=2, ensure_ascii=False)
         paragraphs = [ParagraphData(text=f"```json\n{pretty}\n```")]
+
+        # 2) json_field: KV lines — one per string leaf only (exposes translatable values to OL)
+        self._walk_strings(data, "", paragraphs)
 
         return ExtractionResult(
             paragraphs=paragraphs,
@@ -119,3 +122,28 @@ class JSONExtractor(ExtractorBase):
             metadata=metadata,
             warnings=warnings,
         )
+
+    def _walk_strings(
+        self,
+        obj: Any,
+        prefix: str,
+        paras: list[ParagraphData],
+    ) -> None:
+        """Walk JSON tree, emit one paragraph per string leaf with json_field: prefix.
+
+        Non-string values (numbers, bools, None, empty strings) are NEVER emitted —
+        they are preserved only in the fenced code block, keeping them immune to LLM
+        corruption. Path format uses dot notation for dict keys and ``.N`` for list
+        indices (matches ORF's OPP_KV_PATTERN).
+        """
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                new_key = f"{prefix}.{k}" if prefix else k
+                self._walk_strings(v, new_key, paras)
+        elif isinstance(obj, list):
+            for i, v in enumerate(obj):
+                child_key = f"{prefix}.{i}" if prefix else str(i)
+                self._walk_strings(v, child_key, paras)
+        elif isinstance(obj, str) and obj != "":
+            paras.append(ParagraphData(text=f"json_field:{prefix} = {obj}"))
+        # else: numbers, bools, None, empty strings — intentionally skip
