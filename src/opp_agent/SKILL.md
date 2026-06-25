@@ -45,6 +45,20 @@ extract_document(file_path="/path/to/doc.docx", output_formats=["xlf"], source_l
 batch_extract(file_paths=["/path/to/doc1.docx", "/path/to/doc2.pdf"], output_formats=["md"])
 ```
 
+## Choosing Output Formats
+
+The `extract_document` tool accepts `output_formats=["md"]`, `["xlf"]`, or `["both"]`:
+
+- **`["md"]`** — produces Markdown only. Use when you need text output
+  (web content, e-books, documentation). Faster, no skeleton.zip needed.
+- **`["xlf"]`** — produces XLIFF + skeleton.zip. Use when you need to
+  preserve the original document layout (contracts, branded docs).
+  Requires skeleton.zip for ORF's `apply-xliff`.
+- **`["both"]`** — produces all three. Use when you're not sure yet.
+
+See the suite-level [Pipeline Selection Strategy](https://github.com/1StepMore/Omni_Suite/blob/main/README.md#pipeline-selection-strategy)
+for the full decision tree.
+
 ## Security
 
 - Only processes files within allowed directories

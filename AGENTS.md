@@ -1,7 +1,7 @@
 # AGENTS.md — Omni_Pre_Processor (OPP)
 
 Developer + agent context for the **OPP** sub-repo. The suite-level
-[`Omni_Suite/AGENTS.md`](../../Omni_Suite/AGENTS.md) covers cross-module
+[Omni_Suite AGENTS.md](https://github.com/1StepMore/Omni_Suite/blob/main/AGENTS.md) covers cross-module
 orchestration (OPP → OL → ORF); this file is for working **inside**
 OPP.
 
@@ -252,12 +252,37 @@ Key test files:
 - `tests/test_resource_manager.py` — image MD5+UUID naming
 - `tests/test_pipeline.py` — end-to-end pipeline integration
 
+### --target-format Selection Guide
+
+Choose `--target-format` based on your downstream pipeline:
+
+| Flag | Produces | Downstream | Best for |
+|------|----------|------------|----------|
+| `md` | `.md` file | OL `translate-md` → ORF `apply-md` | Fast text output, 16 output formats |
+| `xlf` | `.xlf` + `skeleton.zip` | OL `translate-xliff` → ORF `apply-xliff` | Original layout preservation |
+| `both` | `.md` + `.xlf` + `skeleton.zip` | Either path | Maximum flexibility |
+
+**Decision flow:**
+
+1. Need clean text fast, or converting to a different format? → **`md`**
+2. Need the output to look exactly like the source? → **`xlf`** (requires skeleton.zip)
+3. Not sure yet? → **`both`** (costs extra extraction time, but keeps options open)
+
+**Caveats:**
+- PDF → XLIFF is intentionally blocked (see [PDF / XLIFF limitation](#pdf--xliff-limitation) above)
+- skeleton.zip is only produced for DOCX/PPTX/EPUB inputs
+- `both` runs MD generation + XLIFF generation, roughly doubling extraction time
+
+**Full pipeline comparison**: See the suite-level
+[Pipeline Selection Strategy](https://github.com/1StepMore/Omni_Suite/blob/main/README.md#pipeline-selection-strategy)
+for the complete decision tree and format support matrix.
+
 ## Pointers to the suite-level docs
 
-- Cross-module orchestration: `Omni_Suite/AGENTS.md`
-- MCP tool full parameter reference: `Omni_Suite/docs/API.md`
-- Pre-commit hooks: `Omni_Suite/.pre-commit-config.yaml`
-- Compatibility matrix: `Omni_Suite/COMPATIBILITY.md`
+- Cross-module orchestration: https://github.com/1StepMore/Omni_Suite/blob/main/AGENTS.md
+- MCP tool full parameter reference: https://github.com/1StepMore/Omni_Suite/blob/main/docs/API.md
+- Pre-commit hooks: https://github.com/1StepMore/Omni_Suite/blob/main/.pre-commit-config.yaml
+- Compatibility matrix: https://github.com/1StepMore/Omni_Suite/blob/main/COMPATIBILITY.md
 - OPP's own per-Agent skill files: `src/opp_agent/SKILL.md`
   (OpenCode) and `src/opp_hermes/SKILL.md` (Hermes) — supplementary
   tool-level references.

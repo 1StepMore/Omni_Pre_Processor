@@ -90,6 +90,20 @@ mcp_servers:
       OPP_MCP_TIMEOUT: "60"
 ```
 
+## Output Format
+
+The `opp_extract` tool returns content in your chosen format:
+
+- **markdown** (default) — text-only output. Use for documents where
+  layout is not critical (web content, docs, e-books).
+- **xliff** — XLIFF + skeleton.zip. Use when the original layout must
+  be preserved end-to-end (contracts, branded docs). Pair with ORF
+  `apply-xliff`.
+- **both** — emit all three. Use when downstream choice is uncertain.
+
+See [Pipeline Selection Strategy](https://github.com/1StepMore/Omni_Suite/blob/main/README.md#pipeline-selection-strategy)
+for the full decision tree.
+
 ## Supported Formats
 
 DOCX, PPTX, XLSX, CSV, JSON, XML, HTML, EPUB, EML, MSG, Images (OCR), Audio/Video transcription, YouTube URL
