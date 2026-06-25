@@ -171,6 +171,7 @@ side, not OPP) validates the XLIFF is fully translated.
 | `OMNI_RATE_LIMIT_RPM` | `60` | Per-MCP-tool token-bucket rate limit. |
 | `OMNI_RATE_LIMIT_BURST` | `10` | Token-bucket burst size. |
 | `OMNI_TEST_FAKE_LLM=1` | unset | Mock LLM responses (only affects tests). |
+| `OPP_OCR_LANG` | `eng` | Tesseract OCR language code for PDF/image text extraction (e.g. `chi_sim`, `jpn`, `fra`). |
 
 **Critical**: `OPP_MCP_ALLOWED_DIRS` (NOT `OPP_ALLOWED_DIRECTORIES`)
 is the MCP allowlist var. The latter is CLI-only.

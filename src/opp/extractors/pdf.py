@@ -1,5 +1,6 @@
 from dataclasses import replace
 from pathlib import Path
+import os
 import re
 from typing import Any
 
@@ -15,6 +16,21 @@ from opp.utils.dataclasses import (
 )
 from opp.utils.exceptions import CorruptedFileError, PasswordProtectedError
 from opp.logger import logger
+
+
+def _get_ocr_lang() -> str:
+    """Return the OCR language to use, respecting OPP_OCR_LANG env var.
+
+    Defaults to English ("eng"). Supports any tesseract language code:
+      OPP_OCR_LANG=chi_sim  # Chinese (Simplified)
+      OPP_OCR_LANG=chi_tra  # Chinese (Traditional)
+      OPP_OCR_LANG=jpn      # Japanese
+      OPP_OCR_LANG=kor      # Korean
+      OPP_OCR_LANG=fra      # French
+      OPP_OCR_LANG=deu      # German
+      ... (see tesseract --list-langs)
+    """
+    return os.environ.get("OPP_OCR_LANG", "eng")
 
 
 class PDFExtractor(ExtractorBase):
@@ -284,7 +300,7 @@ class PDFExtractor(ExtractorBase):
             logger.debug(f"Failed to convert page pixmap to PIL Image: {e}")
             return []
 
-        text = self._ocr_tesseract(img, lang="eng")
+        text = self._ocr_tesseract(img, lang=_get_ocr_lang())
         if not text:
             return []
 

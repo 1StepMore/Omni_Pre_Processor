@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2] - 2026-06-25
+
+### Fixed
+
+- **Issue #9 — PDF OCR language hardcoded to English** (`src/opp/extractors/pdf.py:287`). Tesseract OCR was always called with `lang="eng"`, preventing OCR of non-English PDFs/images. Fixed by reading the new `OPP_OCR_LANG` env var (defaults to `eng` for backward compat). Supports any tesseract language code (`chi_sim`, `jpn`, `fra`, etc.).
+
 ## [0.7.0] - 2026-06-24
 
 ### Changed
