@@ -114,6 +114,7 @@ class ExtractionResult:
     is_transcription: bool = False
     skeleton: bytes | None = None
     skeleton_files: list[str] | None = None
+    skeleton_html: str | None = None
 
     def __post_init__(self):
         if self.metadata is None:

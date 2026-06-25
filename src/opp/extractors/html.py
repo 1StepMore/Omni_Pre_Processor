@@ -184,12 +184,15 @@ class HTMLExtractor(ExtractorBase):
 
         images = self._extract_images(content, input_path.parent)
 
+        skeleton_html = self._generate_skeleton_html(content, paragraphs)
+
         return ExtractionResult(
             paragraphs=paragraphs,
             tables=[],
             images=images,
             metadata=metadata,
             warnings=warnings,
+            skeleton_html=skeleton_html,
         )
 
     def _get_tool_choice(self) -> str:
@@ -307,6 +310,50 @@ class HTMLExtractor(ExtractorBase):
             ))
 
         return paragraphs
+
+    def _generate_skeleton_html(
+        self,
+        original_html: str,
+        paragraphs: list[ParagraphData],
+    ) -> str | None:
+        """Inject data-trans-unit-id attributes on block elements matching paragraphs.
+
+        Walks the original HTML DOM and annotates each block element whose
+        text matches a paragraph with ``data-trans-unit-id="<id>"``.  This
+        allows ORF's primary DOM injection path to fire for HTML inputs.
+        """
+        if not paragraphs:
+            return None
+
+        soup = BeautifulSoup(original_html, "html.parser")
+
+        block_tags = {
+            "p", "div", "h1", "h2", "h3", "h4", "h5", "h6",
+            "li", "td", "th", "article", "section",
+            "header", "footer", "aside", "main", "nav",
+        }
+
+        matched = 0
+        for idx, para in enumerate(paragraphs):
+            para_text = para.text.strip()
+            if not para_text:
+                continue
+
+            unit_id = f"para-{idx}"
+            for tag in block_tags:
+                for elem in soup.find_all(tag):
+                    elem_text = elem.get_text(strip=True)
+                    if elem_text == para_text:
+                        elem["data-trans-unit-id"] = unit_id
+                        matched += 1
+                        break
+                else:
+                    continue
+                break
+
+        if matched == 0:
+            return None
+        return str(soup)
 
     @staticmethod
     def _parse_style_attrs(element: Any) -> dict:

@@ -6,7 +6,7 @@
 # import package stays "opp" so existing `from opp import ...` and
 # the `opp` / `opp-mcp-server` console scripts are unaffected.
 name = "omni-pre-processor"
-version = "0.7.0"
+version = "0.7.1"
 description = "Omni Pre-Processor: Document content extraction package"
 readme = "README.md"
 requires-python = ">=3.13"
