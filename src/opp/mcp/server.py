@@ -17,8 +17,12 @@ Security layers preserved:
 
 from __future__ import annotations
 
+import atexit
 import json
+import logging
 import os
+import shutil
+import signal as _signal
 import tempfile
 import time
 import uuid
@@ -64,6 +68,7 @@ _config: MCPConfig | None = None
 _validator: PathValidator | None = None
 _pipeline: OPPPipeline | None = None
 _serializer: ExtractionResultSerializer | None = None
+_tempfiles: set[Path] = set()
 
 
 def _init_server(config: MCPConfig) -> None:
@@ -104,11 +109,14 @@ def _safe_temp_output(suffix: str, parent: Path) -> Path:
     """Create a tempfile inside the resolved parent dir (which must be in an
     allowed dir). Returns the Path. C3 fix: intermediate outputs go in
     tempfiles, never at the input file's with_suffix location.
+    OPP#10: registers the created file in _tempfiles for shutdown cleanup.
     """
     parent_resolved = parent.resolve()
     fd, name = tempfile.mkstemp(suffix=suffix, prefix="opp_mcp_", dir=str(parent_resolved))
     os.close(fd)
-    return Path(name)
+    p = Path(name)
+    _tempfiles.add(p)
+    return p
 
 
 @mcp_error_boundary
@@ -943,6 +951,85 @@ def _classify_status(result: dict[str, Any]) -> str:
     return _STATUS_ERROR
 
 
+logger = logging.getLogger("opp_mcp.server")
+
+
+def _cleanup_tempfiles() -> int:
+    """Unlink all tracked temp files. Returns count of files removed."""
+    removed = 0
+    for p in list(_tempfiles):
+        try:
+            if p.exists() and not p.is_symlink():
+                p.unlink()
+                removed += 1
+        except OSError as e:
+            logger.debug(f"Failed to unlink temp file {p}: {e}")
+        finally:
+            _tempfiles.discard(p)
+    if removed:
+        logger.debug(f"OPP#10 cleanup: unlinked {removed} temp file(s)")
+    return removed
+
+
+def _cleanup_resource_dir() -> int:
+    """Recursively remove the resource_storage_dir. Returns count of files removed.
+    OPP#10: only called when cleanup_on_shutdown=True.
+    """
+    if _config is None or _config.cleanup_on_shutdown is False:
+        return 0
+    resource_dir = _config.resource_storage_dir
+    if not resource_dir.exists():
+        return 0
+    resolved = str(resource_dir.resolve())
+    if resolved in ("/", str(Path.cwd().resolve())):
+        logger.error(
+            f"OPP#10 cleanup refused: resource_storage_dir={resource_dir} "
+            f"resolves to a system path, refusing to rmtree"
+        )
+        return 0
+    count = sum(1 for _ in resource_dir.rglob("*") if _.is_file())
+    try:
+        shutil.rmtree(resource_dir)
+        logger.info(
+            f"OPP#10 cleanup: removed resource dir {resource_dir} "
+            f"({count} file(s))"
+        )
+        return count
+    except OSError as e:
+        logger.error(f"OPP#10 cleanup failed to rmtree {resource_dir}: {e}")
+        return 0
+
+
+def _shutdown_cleanup() -> None:
+    """Run on atexit / signal. Always cleans temp files; cleans resource
+    dir only if cleanup_on_shutdown=True.
+    """
+    n_temp = 0
+    n_res = 0
+    try:
+        n_temp = _cleanup_tempfiles()
+    except Exception as e:
+        logger.error(f"OPP#10 temp cleanup failed: {e}")
+    try:
+        n_res = _cleanup_resource_dir()
+    except Exception as e:
+        logger.error(f"OPP#10 resource cleanup failed: {e}")
+    if n_temp or n_res:
+        logger.info(
+            f"OPP#10 shutdown cleanup: {n_temp} temp file(s), "
+            f"{n_res} resource file(s)"
+        )
+
+
+atexit.register(_shutdown_cleanup)
+
+
+def _signal_handler(signum: int, frame: Any) -> None:
+    logger.info(f"OPP#10: received signal {signum}, running cleanup")
+    _shutdown_cleanup()
+    _signal.default_int_handler(signum, frame)
+
+
 async def _run() -> None:
     """Async entry point: drive the stdio transport."""
     async with stdio_server() as (read_stream, write_stream):
@@ -959,6 +1046,13 @@ def main() -> None:
     config = load_config()
     _init_server(config)
     _health_start()
+    if not os.environ.get("OPP_MCP_DISABLE_SIGNAL_HANDLERS"):
+        try:
+            _signal.signal(_signal.SIGTERM, _signal_handler)
+            _signal.signal(_signal.SIGINT, _signal_handler)
+            logger.debug("OPP#10: installed SIGTERM/SIGINT handlers")
+        except (ValueError, OSError):
+            pass
     anyio.run(_run)
 
 

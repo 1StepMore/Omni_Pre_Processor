@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.3] - 2026-06-25
+
+### Added
+
+- **OPP#10 — MCP server cleans up on shutdown** (`src/opp/mcp/server.py`). The server now registers an `atexit` handler and SIGTERM/SIGINT handlers that:
+  1. Always unlinks all internal temp files (prefix `opp_mcp_`, created by `_safe_temp_output`)
+  2. Conditionally removes the entire `resource_storage_dir` if the new `OPP_MCP_CLEANUP_ON_SHUTDOWN=true` is set (default `false` for backward compat — the resource dir is user-facing by default).
+
+Fixes disk leak in long-running MCP server deployments.
+
+### Security
+
+- The `cleanup_on_shutdown` rmtree path includes a safety guard: if `resource_storage_dir` resolves to `/` or the current working directory, the cleanup is refused (logged as error). Prevents accidental data loss from a misconfigured path.
+
 ## [0.7.2] - 2026-06-25
 
 ### Fixed
