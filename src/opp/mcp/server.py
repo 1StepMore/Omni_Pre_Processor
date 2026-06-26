@@ -120,6 +120,11 @@ def _safe_unlink(path: Path) -> bool:
         return False
 
 
+def _safe_rmtree(path: Path) -> None:
+    """Recursively remove a directory tree. Ignores errors."""
+    shutil.rmtree(path, ignore_errors=True)
+
+
 def _safe_temp_output(suffix: str, parent: Path) -> Path:
     """Create a tempfile inside the resolved parent dir (which must be in an
     allowed dir). Returns the Path. C3 fix: intermediate outputs go in
@@ -142,6 +147,7 @@ async def extract_document(
     target_lang: str = "en",
     resource_dir: str | None = None,
     verbose: bool = False,
+    ocr_lang: str | None = None,
     auth_token: str | None = None,
 ) -> dict:
     rate_ok, rate_err = check_rate_limit()
@@ -229,6 +235,7 @@ async def extract_document(
                     _safe_unlink(md_output_path)
                 images_dir = md_output_path.parent / f"{Path(file_path).stem}_images"
                 if images_dir.exists():
+                    _tempfiles.add(images_dir)
                     response["images_dir"] = str(images_dir)
             except Exception as e:
                 response["warnings"] = response.get("warnings", []) + [f"Markdown generation failed: {str(e)}"]
@@ -361,6 +368,7 @@ async def batch_extract(
                                 serialized["md_content"] = f.read()
                         images_dir = md_output_path.parent / f"{Path(file_path).stem}_images"
                         if images_dir.exists():
+                            _tempfiles.add(images_dir)
                             serialized["images_dir"] = str(images_dir)
                     except Exception as e:
                         serialized["warnings"] = serialized.get("warnings", []) + [f"Markdown generation failed: {str(e)}"]
@@ -683,6 +691,7 @@ _TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "target_lang": {"type": "string", "default": "en", "description": "Target language code."},
                 "resource_dir": {"type": "string", "description": "Directory to store extracted resources."},
                 "verbose": {"type": "boolean", "default": False, "description": "Include extra metadata (detected_format, confidence, processing_steps) in the response."},
+                "ocr_lang": {"type": "string", "description": "OCR language code (e.g. 'chi_sim', 'jpn', 'fra'). Sets OPP_OCR_LANG env var before extraction. Default: 'eng'."},
                 "traceparent": {
                     "type": "string",
                     "description": "Optional W3C Trace Context traceparent header to make this span a child of an upstream trace.",
@@ -941,12 +950,15 @@ logger = logging.getLogger("opp_mcp.server")
 
 
 def _cleanup_tempfiles() -> int:
-    """Unlink all tracked temp files. Returns count of files removed."""
+    """Unlink all tracked temp files and directories. Returns count removed."""
     removed = 0
     for p in list(_tempfiles):
         try:
             if p.exists() and not p.is_symlink():
-                p.unlink()
+                if p.is_dir():
+                    _safe_rmtree(p)
+                else:
+                    p.unlink()
                 removed += 1
         except OSError as e:
             logger.debug(f"Failed to unlink temp file {p}: {e}")
