@@ -172,6 +172,7 @@ side, not OPP) validates the XLIFF is fully translated.
 | `OMNI_RATE_LIMIT_BURST` | `10` | Token-bucket burst size. |
 | `OMNI_TEST_FAKE_LLM=1` | unset | Mock LLM responses (only affects tests). |
 | `OPP_OCR_LANG` | `eng` | Tesseract OCR language code for PDF/image text extraction (e.g. `chi_sim`, `jpn`, `fra`). |
+| `OPP_MCP_CLEANUP_ON_SHUTDOWN` | `false` | If `true`, the MCP server recursively removes `mcp_resources/` on shutdown (SIGTERM/SIGINT/exit). Internal `opp_mcp_*` temp files are ALWAYS cleaned regardless. |
 
 **Critical**: `OPP_MCP_ALLOWED_DIRS` (NOT `OPP_ALLOWED_DIRECTORIES`)
 is the MCP allowlist var. The latter is CLI-only.

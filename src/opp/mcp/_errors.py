@@ -43,6 +43,22 @@ from opp.utils.mcp_errors import (  # noqa: F401  (re-exported)
 
 _logger = logging.getLogger("opp_mcp.errors")
 
+
+class McpError(Exception):
+    """Raise to produce a standardized {success: false, error: {code, message}} response.
+
+    Tool functions raise this instead of returning inline error dicts.
+    The ``@mcp_error_boundary`` decorator catches it and formats the
+    response with both the new nested ``error: {code, message}`` and
+    the backward-compat flat ``error_code`` field.
+    """
+
+    def __init__(self, code: str, message: str):
+        self.code = code
+        self.message = message
+        super().__init__(message)
+
+
 _ERROR_CODE_MAP: dict[type, str] = {
     FileNotFoundError: "OPP_FILE_NOT_FOUND",
     PermissionError: "OPP_PERMISSION_DENIED",
@@ -77,13 +93,36 @@ def _safe_user_message(exc: BaseException) -> str:
     }.get(code, "An internal error occurred. Check server logs.")
 
 
+def _format_error_response(exc: Exception) -> dict:
+    """Build the standardized error response dict from an exception.
+
+    If *exc* is a ``McpError``, use its explicit ``code`` and ``message``.
+    Otherwise, classify via ``_ERROR_CODE_MAP`` and use a safe user message.
+    Always includes the new nested ``error: {code, message}`` AND the
+    backward-compat flat ``error_code`` field for one release cycle.
+    """
+    if isinstance(exc, McpError):
+        code = exc.code
+        msg = exc.message
+    else:
+        code = _classify(exc)
+        msg = _safe_user_message(exc)
+    return {
+        "success": False,
+        "error": {"code": code, "message": msg},
+        # Backward-compat flat fields (kept for 1 release)
+        "error_code": code,
+        "message": msg,
+    }
+
+
 def mcp_error_boundary(fn: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator: log full traceback server-side; return opaque error dict.
 
     OPP tools return dicts (not JSON strings). The wrapper preserves that
     shape and adds a stable ``error_code`` + safe ``message``. The ``error``
-    field is kept (with the safe message) for backward compat with
-    existing test assertions.
+    field is now a dict ``{code, message}`` per the MCP I/O contract; the
+    flat ``error_code`` and ``message`` are kept as backward-compat aliases.
     """
 
     tool_name = getattr(fn, "__name__", "<unknown>")
@@ -102,13 +141,7 @@ def mcp_error_boundary(fn: Callable[..., Any]) -> Callable[..., Any]:
                 tool_name,
                 exc,
             )
-            code = _classify(exc)
-            return {
-                "success": False,
-                "error_code": code,
-                "message": _safe_user_message(exc),
-                "error": _safe_user_message(exc),
-            }
+            return _format_error_response(exc)
 
     @functools.wraps(fn)
     def sync_wrapper(*args: Any, **kwargs: Any):
@@ -124,13 +157,7 @@ def mcp_error_boundary(fn: Callable[..., Any]) -> Callable[..., Any]:
                 tool_name,
                 exc,
             )
-            code = _classify(exc)
-            return {
-                "success": False,
-                "error_code": code,
-                "message": _safe_user_message(exc),
-                "error": _safe_user_message(exc),
-            }
+            return _format_error_response(exc)
 
     if inspect.iscoroutinefunction(fn):
         return async_wrapper

@@ -69,6 +69,9 @@ class TestExtractDocumentTool:
 
         assert result["success"] is False
         assert "error" in result
+        assert isinstance(result["error"], dict)
+        assert isinstance(result["error"]["code"], str) and result["error"]["code"]
+        assert isinstance(result["error"]["message"], str) and result["error"]["message"]
 
     @pytest.mark.asyncio
     async def test_extract_document_non_allowed_dir(self, setup_server):
@@ -77,6 +80,8 @@ class TestExtractDocumentTool:
 
         assert result["success"] is False
         assert "error" in result
+        assert isinstance(result["error"], dict)
+        assert result["error"]["code"]
 
     @pytest.mark.asyncio
     async def test_extract_document_invalid_format(self, setup_server):
@@ -84,7 +89,8 @@ class TestExtractDocumentTool:
         result = await server.extract_document(docx_path, output_formats=["invalid_format"])
 
         assert result["success"] is False
-        assert "Invalid output format" in result.get("error", "")
+        assert result["error"]["code"] == "OPP_INVALID_INPUT"
+        assert "Invalid output format" in result["error"]["message"]
 
     @pytest.mark.asyncio
     async def test_extract_document_pdf_with_xliff(self, setup_server):
@@ -150,7 +156,9 @@ class TestBatchExtractTool:
         result = await server.batch_extract(file_paths)
 
         assert result["success"] is False
-        assert "validation_errors" in result or "error" in result
+        assert "error" in result
+        assert isinstance(result["error"], dict)
+        assert result["error"]["code"]
 
     @pytest.mark.asyncio
     async def test_batch_extract_all_invalid(self, setup_server):
@@ -196,8 +204,9 @@ class TestDetectFormatTool:
         result = await server.detect_format_tool(file_path)
 
         assert result["success"] is True
-        assert result["format"] == expected_format
-        assert "confidence" in result
+        assert "content" in result
+        assert result["content"]["format"] == expected_format
+        assert "confidence" in result["content"]
 
     @pytest.mark.asyncio
     async def test_detect_format_unknown_format(self, setup_server, tmp_path: Path):
@@ -214,6 +223,8 @@ class TestDetectFormatTool:
 
         assert result["success"] is False
         assert "error" in result
+        assert isinstance(result["error"], dict)
+        assert result["error"]["code"]
 
     @pytest.mark.asyncio
     async def test_detect_format_path_traversal(self, setup_server):
@@ -245,8 +256,9 @@ class TestGenerateMarkdownTool:
         result = await server.generate_markdown(docx_path)
 
         assert result["success"] is True
-        assert "markdown_content" in result
-        assert len(result["markdown_content"]) > 0
+        assert "content" in result
+        assert "markdown_content" in result["content"]
+        assert len(result["content"]["markdown_content"]) > 0
 
     @pytest.mark.asyncio
     async def test_generate_markdown_output_path_validation(self, setup_server):
@@ -257,6 +269,8 @@ class TestGenerateMarkdownTool:
 
         assert result["success"] is False
         assert "error" in result
+        assert isinstance(result["error"], dict)
+        assert result["error"]["code"]
 
     @pytest.mark.asyncio
     async def test_generate_markdown_invalid_input_path(self, setup_server):
@@ -298,11 +312,13 @@ class TestGenerateXliffTool:
         )
 
         if result["success"]:
-            assert "xliff_content" in result
-            assert len(result["xliff_content"]) > 0
-            assert "units_count" in result
+            assert "content" in result
+            assert "xliff_content" in result["content"]
+            assert len(result["content"]["xliff_content"]) > 0
+            assert "units_count" in result["content"]
         else:
             assert "error" in result
+            assert isinstance(result["error"], dict)
 
     @pytest.mark.asyncio
     async def test_generate_xliff_pdf_error(self, setup_server):
@@ -315,6 +331,7 @@ class TestGenerateXliffTool:
 
         if not result["success"]:
             assert "error" in result
+            assert isinstance(result["error"], dict)
 
     @pytest.mark.asyncio
     async def test_generate_xliff_units_count(self, setup_server):
@@ -326,9 +343,9 @@ class TestGenerateXliffTool:
         )
 
         if result["success"]:
-            assert result["units_count"] >= 0
-            trans_unit_count = result["xliff_content"].count("<trans-unit")
-            assert result["units_count"] == trans_unit_count
+            assert result["content"]["units_count"] >= 0
+            trans_unit_count = result["content"]["xliff_content"].count("<trans-unit")
+            assert result["content"]["units_count"] == trans_unit_count
 
     @pytest.mark.asyncio
     async def test_generate_xliff_output_path_validation(self, setup_server):
