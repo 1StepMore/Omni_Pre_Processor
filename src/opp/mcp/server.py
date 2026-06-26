@@ -64,6 +64,21 @@ from opp.mcp.health import start_health_server as _health_start
 from opp.pipeline import OPPPipeline
 
 
+def _suggest_pipeline(format_type: str) -> str:
+    """Map format_type to recommended pipeline.
+
+    Returns one of: 'md_only', 'xliff_only', 'both', 'neither'
+    """
+    fmt = format_type.lower() if format_type else ""
+    if fmt == "pdf":
+        return "md_only"
+    if fmt in ("docx", "pptx", "epub"):
+        return "both"
+    if fmt == "unknown":
+        return "neither"
+    return "md_only"
+
+
 _config: MCPConfig | None = None
 _validator: PathValidator | None = None
 _pipeline: OPPPipeline | None = None
@@ -126,6 +141,7 @@ async def extract_document(
     source_lang: str = "zh",
     target_lang: str = "en",
     resource_dir: str | None = None,
+    verbose: bool = False,
     auth_token: str | None = None,
 ) -> dict:
     rate_ok, rate_err = check_rate_limit()
@@ -198,6 +214,10 @@ async def extract_document(
         resource_dir=Path(resource_dir) if resource_dir else None,
     )
 
+    response["suggested_pipeline"] = _suggest_pipeline(
+        result.format_type.value if hasattr(result.format_type, "value") else str(result.format_type)
+    )
+
     if "md" in output_formats or "both" in output_formats:
         if result.extraction_result:
             md_output_path = _safe_temp_output(".md", Path(file_path).parent)
@@ -254,6 +274,20 @@ async def extract_document(
             finally:
                 if not _config.output_dir:
                     _safe_unlink(xliff_output_path)
+
+    if verbose:
+        response["detected_format"] = (
+            result.format_type.value
+            if hasattr(result.format_type, "value")
+            else str(result.format_type)
+        )
+        response["confidence"] = 1.0 if response["detected_format"] != "unknown" else 0.0
+        steps: list[str] = ["detection", "extraction"]
+        if "md" in output_formats or "both" in output_formats:
+            steps.append("md_generation")
+        if "xlf" in output_formats or "both" in output_formats:
+            steps.append("xliff_generation")
+        response["processing_steps"] = steps
 
     return response
 
@@ -648,6 +682,7 @@ _TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "source_lang": {"type": "string", "default": "zh", "description": "Source language code."},
                 "target_lang": {"type": "string", "default": "en", "description": "Target language code."},
                 "resource_dir": {"type": "string", "description": "Directory to store extracted resources."},
+                "verbose": {"type": "boolean", "default": False, "description": "Include extra metadata (detected_format, confidence, processing_steps) in the response."},
                 "traceparent": {
                     "type": "string",
                     "description": "Optional W3C Trace Context traceparent header to make this span a child of an upstream trace.",
