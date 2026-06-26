@@ -11,7 +11,7 @@ from pathlib import Path
 
 from opp.detector import FormatType, detect_format
 from opp.error_handler import ErrorHandler, ErrorContext
-from opp.pipeline import OPPPipeline
+from opp.pipeline import OPPPipeline, ProcessingResult
 from opp.logger import setup_logger, get_logger
 from opp.utils.cache import cache_root
 
@@ -154,9 +154,9 @@ def create_parser() -> argparse.ArgumentParser:
 
     parser.add_argument(
         "--target-format",
-        choices=["md", "xlf", "both"],
+        choices=["md", "xlf", "both", "html"],
         default=None,
-        help="Output format for generated files: md (markdown), xlf (XLIFF), both"
+        help="Output format for generated files: md (markdown), xlf (XLIFF), both, html (PDF→HTML via pandoc)"
     )
 
     parser.add_argument(
@@ -338,6 +338,23 @@ def process_single_file(
             os.environ["OPP_MODEL_SIZE"] = args.model_size
 
         proc_result = pipeline.process_file(file_path)
+
+        # PDF + html: override pipeline's PDFExtractor with PDF2HTMLExtractor
+        if args.target_format == "html" and file_path.suffix.lower() == ".pdf":
+            from opp.extractors.pdf2html import PDF2HTMLExtractor
+            try:
+                pdf2html = PDF2HTMLExtractor()
+                extraction_result = pdf2html.extract(file_path)
+                proc_result = ProcessingResult(
+                    content=extraction_result.content,
+                    format_type=FormatType.HTML,
+                    images_stored=0,
+                    extraction_result=extraction_result,
+                )
+            except Exception as e:
+                stats["errors"] += 1
+                get_logger().error(f"PDF2HTML extraction failed for {file_path}: {e}")
+                return False
         # 2026-06-18 round 16 Phase B2: end-to-end request_id.
         request_id = str(uuid.uuid4())
 
@@ -376,6 +393,16 @@ def process_single_file(
                 request_id=request_id,
             )
             get_logger().info(f"Generated: {xliff_path}")
+
+        if args.target_format == "html":
+            html_out_path = output_dir / f"{base_name}.html"
+            if proc_result.extraction_result and proc_result.extraction_result.skeleton_html:
+                html_out_path.write_text(
+                    proc_result.extraction_result.skeleton_html, encoding="utf-8"
+                )
+                get_logger().info(f"Generated: {html_out_path}")
+            else:
+                get_logger().warning(f"No HTML skeleton available for {file_path}")
 
         # Always emit images.json when images are present (POST_MORTEM OPP-1).
         images_json_path: Path | None = None
@@ -569,7 +596,7 @@ def main(argv: list[str] | None = None) -> int:
             output_dir.mkdir(parents=True, exist_ok=True)
             # Cache stores only .xlf. If MD is requested (target_format in
             # ("md", "both")), skip cache so generate_markdown() runs.
-            if args.target_format not in ("md", "both"):
+            if args.target_format not in ("md", "both", "html"):
                 if _check_cache(file_path, args, output_dir):
                     stats["files_processed"] += 1
                     continue
@@ -581,7 +608,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             logger.warning(
                 "--target-format not specified for %s; no output files "
-                "generated. Use --target-format md, xlf, or both.",
+                "generated. Use --target-format md, xlf, both, or html.",
                 file_path,
             )
             result = {
