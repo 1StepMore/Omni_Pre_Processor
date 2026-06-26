@@ -8,7 +8,7 @@ async functions so existing direct-call tests (e.g.
 them by name keep working unchanged.
 
 Security layers preserved:
-- ``@mcp_error_boundary`` decorator on 6/7 tools (NOT on ``ping``)
+- ``@mcp_error_boundary`` decorator on all 7 tools (including ``ping``)
 - ``check_rate_limit()`` (token bucket)
 - ``check_auth(auth_token)`` (shared-secret)
 - ``PathValidator`` (allowlist, size, traversal, symlinks)
@@ -46,7 +46,7 @@ from opp.mcp.rate_limiter import check_rate_limit, rate_limit_failure_response
 # for any UNCAUGHT exception; the existing inner try/except blocks still
 # handle expected error conditions, but their `str(e)` values no longer
 # reach the client in failure paths handled by the decorator.
-from opp.mcp._errors import mcp_error_boundary, validate_file_paths
+from opp.mcp._errors import mcp_error_boundary, validate_file_paths, McpError
 from opp.mcp.metrics import (
     STATUS_AUTH_FAILED as _STATUS_AUTH_FAILED,
     STATUS_ERROR as _STATUS_ERROR,
@@ -130,10 +130,10 @@ async def extract_document(
 ) -> dict:
     rate_ok, rate_err = check_rate_limit()
     if not rate_ok:
-        return {**rate_limit_failure_response(), "error": rate_err}
+        raise McpError(code="OPP_RATE_LIMITED", message=rate_err)
     auth_ok, _ = check_auth(auth_token)
     if not auth_ok:
-        return auth_failure_response()
+        raise McpError(code="AUTH_FAILED", message="Authentication failed: auth_token is missing or incorrect.")
     request_id = str(uuid.uuid4())
     if output_formats is None:
         output_formats = ["md"]
@@ -144,38 +144,35 @@ async def extract_document(
     valid_formats = {"md", "xlf", "both"}
     for fmt in output_formats:
         if fmt not in valid_formats:
-            return {
-                "success": False,
-                "error": f"Invalid output format: '{fmt}'. Valid values are: {sorted(valid_formats)}",
-            }
+            raise McpError(
+                code="OPP_INVALID_INPUT",
+                message=f"Invalid output format: '{fmt}'. Valid values are: {sorted(valid_formats)}",
+            )
 
     if _validator is None:
-        return {
-            "success": False,
-            "error": "Server not initialized",
-        }
+        raise McpError(code="OPP_INTERNAL_ERROR", message="Server not initialized")
 
     validation_result = _validator.validate_path(file_path)
     if not validation_result.success:
-        return {
-            "success": False,
-            "error": validation_result.error or "Path validation failed",
-        }
+        raise McpError(
+            code="OPP_PATH_DENIED",
+            message=validation_result.error or "Path validation failed",
+        )
 
     if resource_dir is not None:
         resource_path = Path(resource_dir)
         if '..' in resource_path.parts:
-            return {
-                "success": False,
-                "error": "Resource directory path traversal not allowed",
-            }
+            raise McpError(
+                code="OPP_PATH_DENIED",
+                message="Resource directory path traversal not allowed",
+            )
         try:
             resolved_resource = resource_path.resolve()
         except (ValueError, OSError) as e:
-            return {
-                "success": False,
-                "error": f"Resource directory cannot be resolved: {e}",
-            }
+            raise McpError(
+                code="OPP_INVALID_INPUT",
+                message=f"Resource directory cannot be resolved: {e}",
+            )
         is_resource_allowed = False
         for allowed_dir in _config.allowed_directories:
             try:
@@ -185,18 +182,15 @@ async def extract_document(
             except ValueError:
                 continue
         if not is_resource_allowed:
-            return {
-                "success": False,
-                "error": "Resource directory must be within allowed directories",
-            }
+            raise McpError(
+                code="OPP_PATH_DENIED",
+                message="Resource directory must be within allowed directories",
+            )
 
     try:
         result = _pipeline.process_file(Path(file_path))
     except Exception as e:
-        return {
-            "success": False,
-            "error": f"Extraction failed: {str(e)}",
-        }
+        raise McpError(code="OPP_INTERNAL_ERROR", message=f"Extraction failed: {str(e)}")
 
     response = _serializer.serialize(
         result,
@@ -274,10 +268,10 @@ async def batch_extract(
 ) -> dict:
     rate_ok, rate_err = check_rate_limit()
     if not rate_ok:
-        return {**rate_limit_failure_response(), "error": rate_err}
+        raise McpError(code="OPP_RATE_LIMITED", message=rate_err)
     auth_ok, _ = check_auth(auth_token)
     if not auth_ok:
-        return auth_failure_response()
+        raise McpError(code="AUTH_FAILED", message="Authentication failed: auth_token is missing or incorrect.")
     request_id = str(uuid.uuid4())
     if output_formats is None:
         output_formats = ["md"]
@@ -288,16 +282,13 @@ async def batch_extract(
     valid_formats = {"md", "xlf", "both"}
     for fmt in output_formats:
         if fmt not in valid_formats:
-            return {
-                "success": False,
-                "error": f"Invalid output format: '{fmt}'. Valid values are: {sorted(valid_formats)}",
-            }
+            raise McpError(
+                code="OPP_INVALID_INPUT",
+                message=f"Invalid output format: '{fmt}'. Valid values are: {sorted(valid_formats)}",
+            )
 
     if _validator is None:
-        return {
-            "success": False,
-            "error": "Server not initialized",
-        }
+        raise McpError(code="OPP_INTERNAL_ERROR", message="Server not initialized")
 
     validate_file_paths(file_paths)
 
@@ -311,15 +302,10 @@ async def batch_extract(
             })
 
     if validation_errors:
-        return {
-            "success": False,
-            "error": "Path validation failed for one or more files",
-            "validation_errors": validation_errors,
-            "results": [],
-            "successful": 0,
-            "failed": len(validation_errors),
-            "total_duration_ms": 0.0,
-        }
+        raise McpError(
+            code="OPP_PATH_DENIED",
+            message="Path validation failed for one or more files",
+        )
 
     results = []
     successful = 0
@@ -399,35 +385,28 @@ async def batch_extract(
 async def detect_format_tool(file_path: str, auth_token: str | None = None) -> dict:
     rate_ok, rate_err = check_rate_limit()
     if not rate_ok:
-        return {**rate_limit_failure_response(), "error": rate_err}
+        raise McpError(code="OPP_RATE_LIMITED", message=rate_err)
     auth_ok, _ = check_auth(auth_token)
     if not auth_ok:
-        return auth_failure_response()
+        raise McpError(code="AUTH_FAILED", message="Authentication failed: auth_token is missing or incorrect.")
     if _validator is None:
-        return {
-            "success": False,
-            "error": "Server not initialized",
-        }
+        raise McpError(code="OPP_INTERNAL_ERROR", message="Server not initialized")
 
     validation_result = _validator.validate_path(file_path)
     if not validation_result.success:
-        return {
-            "success": False,
-            "error": validation_result.error or "Path validation failed",
-        }
+        raise McpError(
+            code="OPP_PATH_DENIED",
+            message=validation_result.error or "Path validation failed",
+        )
 
     try:
         fmt, confidence = detect_format(Path(file_path))
         return {
             "success": True,
-            "format": fmt.value,
-            "confidence": confidence,
+            "content": {"format": fmt.value, "confidence": confidence},
         }
     except Exception as e:
-        return {
-            "success": False,
-            "error": f"Format detection failed: {str(e)}",
-        }
+        raise McpError(code="OPP_INTERNAL_ERROR", message=f"Format detection failed: {str(e)}")
 
 
 @mcp_error_boundary
@@ -440,23 +419,20 @@ async def generate_xliff(
 ) -> dict:
     rate_ok, rate_err = check_rate_limit()
     if not rate_ok:
-        return {**rate_limit_failure_response(), "error": rate_err}
+        raise McpError(code="OPP_RATE_LIMITED", message=rate_err)
     auth_ok, _ = check_auth(auth_token)
     request_id = str(uuid.uuid4())
     if not auth_ok:
-        return auth_failure_response()
+        raise McpError(code="AUTH_FAILED", message="Authentication failed: auth_token is missing or incorrect.")
     if _validator is None:
-        return {
-            "success": False,
-            "error": "Server not initialized",
-        }
+        raise McpError(code="OPP_INTERNAL_ERROR", message="Server not initialized")
 
     validation_result = _validator.validate_path(file_path)
     if not validation_result.success:
-        return {
-            "success": False,
-            "error": validation_result.error or "Path validation failed",
-        }
+        raise McpError(
+            code="OPP_PATH_DENIED",
+            message=validation_result.error or "Path validation failed",
+        )
 
     if output_path is None:
         input_p = Path(file_path)
@@ -464,19 +440,16 @@ async def generate_xliff(
 
     output_validation = _validator.validate_path(output_path, allow_missing=True)
     if not output_validation.success:
-        return {
-            "success": False,
-            "error": f"Output path validation failed: {output_validation.error}",
-        }
+        raise McpError(
+            code="OPP_PATH_DENIED",
+            message=f"Output path validation failed: {output_validation.error}",
+        )
 
     try:
         result = _pipeline.process_file(Path(file_path))
 
         if result.extraction_result is None:
-            return {
-                "success": False,
-                "error": "No extraction result available",
-            }
+            raise McpError(code="OPP_INTERNAL_ERROR", message="No extraction result available")
 
         xliff_output_path = _pipeline.generate_xliff(
             result.extraction_result,
@@ -493,39 +466,32 @@ async def generate_xliff(
 
         return {
             "success": True,
-            "xliff_content": xliff_content,
-            "output_path": str(xliff_output_path),
-            "units_count": units_count,
-            "error": None,
+            "content": {
+                "xliff_content": xliff_content,
+                "output_path": str(xliff_output_path),
+                "units_count": units_count,
+            },
         }
 
+    except McpError:
+        raise
     except ValueError as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "xliff_content": None,
-            "output_path": None,
-            "units_count": 0,
-        }
+        raise McpError(code="OPP_INVALID_INPUT", message=str(e))
     except Exception as e:
-        return {
-            "success": False,
-            "error": f"XLIFF generation failed: {str(e)}",
-            "xliff_content": None,
-            "output_path": None,
-            "units_count": 0,
-        }
+        raise McpError(code="OPP_INTERNAL_ERROR", message=f"XLIFF generation failed: {str(e)}")
 
 
+@mcp_error_boundary
 async def ping(auth_token: str | None = None) -> dict:
     """Health check endpoint."""
     rate_ok, rate_err = check_rate_limit()
     if not rate_ok:
-        return {**rate_limit_failure_response(), "error": rate_err}
+        raise McpError(code="OPP_RATE_LIMITED", message=rate_err)
     auth_ok, _ = check_auth(auth_token)
     if not auth_ok:
-        return auth_failure_response()
-    return {"success": True}
+        raise McpError(code="AUTH_FAILED", message="Authentication failed: auth_token is missing or incorrect.")
+    from opp import __version__
+    return {"success": True, "content": {"version": __version__, "status": "ok"}}
 
 
 @mcp_error_boundary
@@ -538,22 +504,19 @@ async def generate_markdown(
 ) -> dict:
     rate_ok, rate_err = check_rate_limit()
     if not rate_ok:
-        return {**rate_limit_failure_response(), "error": rate_err}
+        raise McpError(code="OPP_RATE_LIMITED", message=rate_err)
     auth_ok, _ = check_auth(auth_token)
     if not auth_ok:
-        return auth_failure_response()
+        raise McpError(code="AUTH_FAILED", message="Authentication failed: auth_token is missing or incorrect.")
     if _validator is None:
-        return {
-            "success": False,
-            "error": "Server not initialized",
-        }
+        raise McpError(code="OPP_INTERNAL_ERROR", message="Server not initialized")
 
     validation_result = _validator.validate_path(file_path)
     if not validation_result.success:
-        return {
-            "success": False,
-            "error": validation_result.error or "Path validation failed",
-        }
+        raise McpError(
+            code="OPP_PATH_DENIED",
+            message=validation_result.error or "Path validation failed",
+        )
 
     input_p = Path(file_path)
 
@@ -562,19 +525,16 @@ async def generate_markdown(
     else:
         output_validation = _validator.validate_path(output_path, allow_missing=True)
         if not output_validation.success:
-            return {
-                "success": False,
-                "error": f"Output path validation failed: {output_validation.error}",
-            }
+            raise McpError(
+                code="OPP_PATH_DENIED",
+                message=f"Output path validation failed: {output_validation.error}",
+            )
 
     try:
         result = _pipeline.process_file(input_p)
 
         if result.extraction_result is None:
-            return {
-                "success": False,
-                "error": "No extraction result available",
-            }
+            raise McpError(code="OPP_INTERNAL_ERROR", message="No extraction result available")
 
         md_output_path = _pipeline.generate_markdown(
             result.extraction_result,
@@ -591,21 +551,18 @@ async def generate_markdown(
 
         return {
             "success": True,
-            "markdown_content": markdown_content,
-            "output_path": str(md_output_path),
-            "images_dir": images_dir,
-            "images_count": images_count,
+            "content": {
+                "markdown_content": markdown_content,
+                "output_path": str(md_output_path),
+                "images_dir": images_dir,
+                "images_count": images_count,
+            },
         }
 
+    except McpError:
+        raise
     except Exception as e:
-        return {
-            "success": False,
-            "error": f"Markdown generation failed: {str(e)}",
-            "markdown_content": None,
-            "output_path": None,
-            "images_dir": None,
-            "images_count": 0,
-        }
+        raise McpError(code="OPP_INTERNAL_ERROR", message=f"Markdown generation failed: {str(e)}")
 
 
 @mcp_error_boundary
@@ -624,24 +581,19 @@ async def save_skeleton(
     """
     rate_ok, rate_err = check_rate_limit()
     if not rate_ok:
-        return {**rate_limit_failure_response(), "error": rate_err}
+        raise McpError(code="OPP_RATE_LIMITED", message=rate_err)
     auth_ok, _ = check_auth(auth_token)
     if not auth_ok:
-        return auth_failure_response()
+        raise McpError(code="AUTH_FAILED", message="Authentication failed: auth_token is missing or incorrect.")
     if _validator is None:
-        return {
-            "success": False,
-            "skeleton_path": None,
-            "error": "Server not initialized",
-        }
+        raise McpError(code="OPP_INTERNAL_ERROR", message="Server not initialized")
 
     validation_result = _validator.validate_path(file_path)
     if not validation_result.success:
-        return {
-            "success": False,
-            "skeleton_path": None,
-            "error": validation_result.error or "Path validation failed",
-        }
+        raise McpError(
+            code="OPP_PATH_DENIED",
+            message=validation_result.error or "Path validation failed",
+        )
 
     output_path = Path(output_dir) if output_dir else Path(file_path).parent
     output_path.mkdir(parents=True, exist_ok=True)
@@ -649,26 +601,21 @@ async def save_skeleton(
     try:
         result = _pipeline.process_file(Path(file_path))
         if result.extraction_result is None:
-            return {
-                "success": False,
-                "skeleton_path": None,
-                "error": "No extraction result",
-            }
+            raise McpError(code="OPP_INTERNAL_ERROR", message="No extraction result")
 
         skeleton_path = _pipeline.save_skeleton(
             result.extraction_result, base_name, output_path,
         )
         return {
             "success": True,
-            "skeleton_path": str(skeleton_path) if skeleton_path else None,
-            "error": None,
+            "content": {
+                "skeleton_path": str(skeleton_path) if skeleton_path else None,
+            },
         }
+    except McpError:
+        raise
     except Exception as e:
-        return {
-            "success": False,
-            "skeleton_path": None,
-            "error": f"Skeleton save failed: {str(e)}",
-        }
+        raise McpError(code="OPP_INTERNAL_ERROR", message=f"Skeleton save failed: {str(e)}")
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -876,6 +823,7 @@ async def _handle_call_tool(
                 text=json.dumps(
                     {
                         "success": False,
+                        "error": {"code": "OPP_UNKNOWN_TOOL", "message": f"Unknown tool: {name!r}"},
                         "error_code": "OPP_UNKNOWN_TOOL",
                         "message": f"Unknown tool: {name!r}",
                     }
@@ -906,9 +854,12 @@ async def _handle_call_tool(
                     text=json.dumps(
                         {
                             "success": False,
+                            "error": {
+                                "code": "OPP_INTERNAL_ERROR",
+                                "message": "An internal error occurred. Check server logs.",
+                            },
                             "error_code": "OPP_INTERNAL_ERROR",
                             "message": "An internal error occurred. Check server logs.",
-                            "error": "An internal error occurred. Check server logs.",
                             "tool": name,
                             "traceback": traceback.format_exc(limit=10),
                         }
