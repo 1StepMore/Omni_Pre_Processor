@@ -1,7 +1,7 @@
 # AGENTS.md — Omni_Pre_Processor (OPP)
 
 Developer + agent context for the **OPP** sub-repo. The suite-level
-[Omni_Suite AGENTS.md](../AGENTS.md) covers cross-module
+[suite-level AGENTS.md](https://github.com/1StepMore/e2e-test-suite/blob/main/AGENTS.md) covers cross-module
 orchestration (OPP → OL → ORF); this file is for working **inside**
 OPP.
 
@@ -13,7 +13,7 @@ OPP.
 ## Quick start
 
 ```bash
-# Install (from Omni_Suite root)
+# Install
 bash scripts/setup_dev.sh
 
 # CLI: extract a DOCX
@@ -90,9 +90,9 @@ src/opp/
 | `save_skeleton` | Save the skeleton.zip for an extracted document (required by ORF `apply-xliff`). |
 | `ping` | Health check (returns version). |
 
-For full per-tool parameter reference, see
-`docs/API.md` in the suite root, or the suite-level
-`AGENTS.md → MCP Tool Reference` table.
+For full per-tool parameter reference, see the suite-level
+[AGENTS.md → MCP Tool Reference](https://github.com/1StepMore/e2e-test-suite/blob/main/AGENTS.md) table,
+or [agent-pipeline-guide.md](https://github.com/1StepMore/e2e-test-suite/blob/main/docs/agent-pipeline-guide.md).
 
 ## Extractor architecture
 
@@ -291,15 +291,15 @@ Choose `--target-format` based on your downstream pipeline:
 - `both` runs MD generation + XLIFF generation, roughly doubling extraction time
 
 **Full pipeline comparison**: See the suite-level
-[Pipeline Selection Strategy](../README.md#pipeline-selection-strategy)
+[Pipeline Selection Strategy](https://github.com/1StepMore/e2e-test-suite/blob/main/README.md#pipeline-selection-strategy)
 for the complete decision tree and format support matrix.
 
 ## Pointers to the suite-level docs
 
-- Cross-module orchestration: ../AGENTS.md
-- MCP tool full parameter reference: ../docs/API.md
-- Pre-commit hooks: ../.pre-commit-config.yaml
-- Compatibility matrix: ../COMPATIBILITY.md
+- Cross-module orchestration: [AGENTS.md](https://github.com/1StepMore/e2e-test-suite/blob/main/AGENTS.md)
+- MCP tool full parameter reference: [agent-pipeline-guide.md](https://github.com/1StepMore/e2e-test-suite/blob/main/docs/agent-pipeline-guide.md)
+- Pre-commit hooks: [.pre-commit-config.yaml](https://github.com/1StepMore/e2e-test-suite/blob/main/.pre-commit-config.yaml)
+- Compatibility matrix: [COMPATIBILITY.md](https://github.com/1StepMore/e2e-test-suite/blob/main/COMPATIBILITY.md)
 - OPP's own per-Agent skill files: `src/opp_agent/SKILL.md`
   (OpenCode) and `src/opp_hermes/SKILL.md` (Hermes) — supplementary
   tool-level references.
