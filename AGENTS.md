@@ -177,6 +177,21 @@ side, not OPP) validates the XLIFF is fully translated.
 **Critical**: `OPP_MCP_ALLOWED_DIRS` (NOT `OPP_ALLOWED_DIRECTORIES`)
 is the MCP allowlist var. The latter is CLI-only.
 
+## Path Configuration (MCP Server)
+
+The OPP MCP server requires explicit path configuration via 
+`OPP_MCP_ALLOWED_DIRS` (colon-separated paths). This controls which 
+directories the server can read/write during extraction.
+
+```bash
+export OPP_MCP_ALLOWED_DIRS="/path/to/docs:/path/to/output"
+```
+
+**Security note:** OPP does not default to any directory. If 
+`OPP_MCP_ALLOWED_DIRS` is unset, the server refuses to start with 
+`ValueError("allowed_directories cannot be empty")`. This is a 
+fail-closed design — always set this variable explicitly in production.
+
 ## PathValidator security model
 
 The `src/opp/mcp/security.py:PathValidator` is the gatekeeper. It
