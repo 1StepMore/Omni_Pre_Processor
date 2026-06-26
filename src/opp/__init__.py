@@ -1,6 +1,10 @@
 """OPP - Omni Pre-Processor: Document content extraction package."""
 
+<<<<<<< HEAD
 __version__ = "0.7.5"
+=======
+__version__ = "0.7.4"
+>>>>>>> 6804975 (feat(OPP#12): standardize MCP tool responses to {success, content?, error?: {code, message}})
 
 from opp.extractors.docx import DOCXExtractor
 from opp.extractors.pptx import PPTXExtractor
