@@ -33,7 +33,7 @@ class MCPConfig:
     # files (prefix `opp_mcp_`) are ALWAYS cleaned up. Resource files
     # (UUID-named) are kept by default for backwards compat — set this to
     # True to opt into recursive cleanup of the entire resource dir.
-    cleanup_on_shutdown: bool = False
+    cleanup_on_shutdown: bool = True
 
 
 def _parse_allowed_dirs(value: str) -> list[Path]:
@@ -114,8 +114,9 @@ def _load_from_env() -> dict:
     if metrics_dir:
         config["metrics_dir"] = metrics_dir
 
-    cleanup = os.environ.get("OPP_MCP_CLEANUP_ON_SHUTDOWN", "false")
-    config["cleanup_on_shutdown"] = cleanup.lower() in ("true", "1", "yes")
+    cleanup = os.environ.get("OPP_MCP_CLEANUP_ON_SHUTDOWN")
+    if cleanup is not None:
+        config["cleanup_on_shutdown"] = cleanup.lower() in ("true", "1", "yes")
 
     return config
 
@@ -164,7 +165,7 @@ def load_config(config_path: Path | None = None) -> MCPConfig:
     if "metrics_dir" not in config_data:
         config_data["metrics_dir"] = "/tmp/omni-metrics"
     if "cleanup_on_shutdown" not in config_data:
-        config_data["cleanup_on_shutdown"] = False
+        config_data["cleanup_on_shutdown"] = True
 
     # Validate required field
     allowed_dirs = config_data.get("allowed_directories")
