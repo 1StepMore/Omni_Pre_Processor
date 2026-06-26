@@ -1,7 +1,7 @@
 # AGENTS.md — Omni_Pre_Processor (OPP)
 
 Developer + agent context for the **OPP** sub-repo. The suite-level
-[Omni_Suite AGENTS.md](https://github.com/1StepMore/Omni_Suite/blob/main/AGENTS.md) covers cross-module
+[Omni_Suite AGENTS.md](../AGENTS.md) covers cross-module
 orchestration (OPP → OL → ORF); this file is for working **inside**
 OPP.
 
@@ -291,15 +291,15 @@ Choose `--target-format` based on your downstream pipeline:
 - `both` runs MD generation + XLIFF generation, roughly doubling extraction time
 
 **Full pipeline comparison**: See the suite-level
-[Pipeline Selection Strategy](https://github.com/1StepMore/Omni_Suite/blob/main/README.md#pipeline-selection-strategy)
+[Pipeline Selection Strategy](../README.md#pipeline-selection-strategy)
 for the complete decision tree and format support matrix.
 
 ## Pointers to the suite-level docs
 
-- Cross-module orchestration: https://github.com/1StepMore/Omni_Suite/blob/main/AGENTS.md
-- MCP tool full parameter reference: https://github.com/1StepMore/Omni_Suite/blob/main/docs/API.md
-- Pre-commit hooks: https://github.com/1StepMore/Omni_Suite/blob/main/.pre-commit-config.yaml
-- Compatibility matrix: https://github.com/1StepMore/Omni_Suite/blob/main/COMPATIBILITY.md
+- Cross-module orchestration: ../AGENTS.md
+- MCP tool full parameter reference: ../docs/API.md
+- Pre-commit hooks: ../.pre-commit-config.yaml
+- Compatibility matrix: ../COMPATIBILITY.md
 - OPP's own per-Agent skill files: `src/opp_agent/SKILL.md`
   (OpenCode) and `src/opp_hermes/SKILL.md` (Hermes) — supplementary
   tool-level references.
