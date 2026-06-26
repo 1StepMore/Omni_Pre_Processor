@@ -118,6 +118,102 @@ class TestExtractDocumentTool:
 
         assert result["success"] is True
 
+    # ── OPP#11: suggested_pipeline ──────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_suggested_pipeline_docx_returns_both(self, setup_server):
+        """DOCX supports skeleton preservation → 'both' pipeline."""
+        docx_path = str(PHASE0_OFFICE_DIR / "normal.docx")
+        result = await server.extract_document(docx_path, output_formats=["md"])
+
+        assert result["success"] is True
+        assert "suggested_pipeline" in result
+        assert result["suggested_pipeline"] == "both"
+
+    @pytest.mark.asyncio
+    async def test_suggested_pipeline_pdf_returns_md_only(self, setup_server):
+        """PDF → XLIFF blocked by design → 'md_only' pipeline."""
+        pdf_path = str(PHASE0_OFFICE_DIR / "normal.pdf")
+        result = await server.extract_document(pdf_path, output_formats=["md"])
+
+        assert result["success"] is True
+        assert "suggested_pipeline" in result
+        assert result["suggested_pipeline"] == "md_only"
+
+    @pytest.mark.asyncio
+    async def test_suggested_pipeline_is_always_present(self, setup_server):
+        """suggested_pipeline is present regardless of verbose setting."""
+        docx_path = str(PHASE0_OFFICE_DIR / "normal.docx")
+        result_default = await server.extract_document(docx_path, output_formats=["md"])
+        result_verbose = await server.extract_document(
+            docx_path, output_formats=["md"], verbose=True,
+        )
+
+        assert "suggested_pipeline" in result_default
+        assert "suggested_pipeline" in result_verbose
+
+    # ── OPP#11: verbose metadata ───────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_verbose_true_includes_metadata(self, setup_server):
+        """verbose=True adds detected_format, confidence, processing_steps."""
+        docx_path = str(PHASE0_OFFICE_DIR / "normal.docx")
+        result = await server.extract_document(
+            docx_path, output_formats=["md"], verbose=True,
+        )
+
+        assert result["success"] is True
+        assert "detected_format" in result
+        assert result["detected_format"] == "docx"
+        assert "confidence" in result
+        assert isinstance(result["confidence"], (int, float))
+        assert "processing_steps" in result
+        assert isinstance(result["processing_steps"], list)
+        assert "detection" in result["processing_steps"]
+        assert "extraction" in result["processing_steps"]
+
+    @pytest.mark.asyncio
+    async def test_verbose_false_omits_metadata(self, setup_server):
+        """verbose=False (default) does NOT include extra metadata."""
+        docx_path = str(PHASE0_OFFICE_DIR / "normal.docx")
+        result = await server.extract_document(docx_path, output_formats=["md"])
+
+        assert result["success"] is True
+        assert "detected_format" not in result
+        assert "confidence" not in result
+        assert "processing_steps" not in result
+
+    @pytest.mark.asyncio
+    async def test_verbose_processing_steps_md_only(self, setup_server):
+        """verbose processing_steps should list md_generation for md output."""
+        docx_path = str(PHASE0_OFFICE_DIR / "normal.docx")
+        result = await server.extract_document(
+            docx_path, output_formats=["md"], verbose=True,
+        )
+
+        assert "md_generation" in result["processing_steps"]
+        assert "xliff_generation" not in result["processing_steps"]
+
+    @pytest.mark.asyncio
+    async def test_verbose_processing_steps_both(self, setup_server):
+        """verbose processing_steps should list both for 'both' output."""
+        docx_path = str(PHASE0_OFFICE_DIR / "normal.docx")
+        result = await server.extract_document(
+            docx_path, output_formats=["both"], verbose=True,
+        )
+
+        assert "md_generation" in result["processing_steps"]
+        assert "xliff_generation" in result["processing_steps"]
+
+    @pytest.mark.asyncio
+    async def test_suggested_pipeline_pptx_returns_both(self, setup_server):
+        """PPTX supports skeleton preservation → 'both' pipeline."""
+        pptx_path = str(PHASE0_OFFICE_DIR / "normal.pptx")
+        result = await server.extract_document(pptx_path, output_formats=["md"])
+
+        assert result["success"] is True
+        assert result["suggested_pipeline"] == "both"
+
 
 class TestBatchExtractTool:
 
