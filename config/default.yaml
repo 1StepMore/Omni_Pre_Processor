@@ -26,8 +26,7 @@ target_lang: "en"
 # Optional glossary file (path to CSV/TSV) used by OL during translation
 glossary_path: null
 
-# PDF extraction mode: simple / complex (reserved for future use)
-# pdf: complex
+
 
 # HTML extraction mode: simple / complex
 html: complex

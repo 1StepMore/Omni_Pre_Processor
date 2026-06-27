@@ -3,7 +3,6 @@
 # Complex mode: Use AI tools (higher quality, may be slower)
 
 # PDF extraction mode: simple / complex (reserved for future use)
-# pdf: complex
 
 # HTML extraction mode: simple / complex
 html: complex
