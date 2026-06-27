@@ -1,3 +1,6 @@
+> **Note:** This file covers OPP internals only. For cross-module pipeline architecture
+> (OPP → OL → ORF), see the [suite-level ARCHITECTURE.md](../../docs/ARCHITECTURE.md).
+
 # OPP Architecture
 
 A walk-through of how the Omni Pre-Processor is built, the data flow inside a single extraction, the design decisions encoded in the source, and the formats supported on both ends.
