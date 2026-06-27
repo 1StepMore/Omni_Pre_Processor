@@ -17,6 +17,13 @@ from opp.utils.dataclasses import ExtractionResult
 
 _logger = logging.getLogger(__name__)
 
+DEFAULT_PDF2HTML_CSS = """\
+@page { size: A4; margin: 2cm; }
+div { page-break-after: always; }
+div:last-of-type { page-break-after: auto; }
+body { font-family: serif; line-height: 1.6; }
+"""
+
 
 class PDF2HTMLExtractor(ExtractorBase):
     """Extract PDF content by converting to HTML via PyMuPDF, then parsing as HTML.
@@ -30,7 +37,7 @@ class PDF2HTMLExtractor(ExtractorBase):
     def supported_extensions(self) -> list[str]:
         return [".pdf"]
 
-    def extract(self, input_path: Path) -> ExtractionResult:
+    def extract(self, input_path: Path, css: str | None = None) -> ExtractionResult:
         input_path = Path(input_path)
         if not input_path.exists():
             raise FileNotFoundError(f"PDF not found: {input_path}")
@@ -50,10 +57,21 @@ class PDF2HTMLExtractor(ExtractorBase):
             except Exception as e:
                 raise RuntimeError(f"Failed to open PDF: {e}")
 
-            html_parts = ["<html><body>"]
+            style_content = css or DEFAULT_PDF2HTML_CSS
+            html_parts = [
+                "<!DOCTYPE html>",
+                "<html>",
+                "<head>",
+                '<meta charset="UTF-8">',
+                f"<style>{style_content}</style>",
+                "</head>",
+                "<body>",
+            ]
             for page_num in range(len(doc)):
                 page = doc[page_num]
+                html_parts.append('<div class="page">')
                 html_parts.append(page.get_text("html"))
+                html_parts.append("</div>")
             html_parts.append("</body></html>")
             doc.close()
 

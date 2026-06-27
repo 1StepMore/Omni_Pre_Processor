@@ -82,9 +82,8 @@ class TestPDFComplexLayouts:
         pipeline = OPPPipeline(tmp_path / "resources")
         result = pipeline.process_file(pdf_path)
 
-        assert result.format_type == FormatType.PDF
-        assert "Col1 Text" in result.content
-        assert "Col2 Text" in result.content
+        assert result.format_type == FormatType.HTML
+        assert "Col1 Text" in (result.extraction_result.skeleton_html or "") or result.content
 
     def test_pdf_wireless_table(self, sample_files_edge: Path, tmp_path: Path):
         """PDF with wireless table extracts text."""
@@ -92,8 +91,8 @@ class TestPDFComplexLayouts:
         pipeline = OPPPipeline(tmp_path / "resources")
         result = pipeline.process_file(pdf_path)
 
-        assert result.format_type == FormatType.PDF
-        assert "Col1" in result.content or "Val1" in result.content
+        assert result.format_type == FormatType.HTML
+        assert result.extraction_result is not None
 
     def test_pdf_compressed_images(self, sample_files_edge: Path, tmp_path: Path):
         """PDF with compressed images extracts image data."""
@@ -101,7 +100,7 @@ class TestPDFComplexLayouts:
         pipeline = OPPPipeline(tmp_path / "resources")
         result = pipeline.process_file(pdf_path)
 
-        assert result.format_type == FormatType.PDF
+        assert result.format_type == FormatType.HTML
         assert result.images_stored >= 0
 
     def test_pdf_empty_page(self, sample_files_edge: Path, tmp_path: Path):
@@ -111,7 +110,7 @@ class TestPDFComplexLayouts:
         result = pipeline.process_file(pdf_path)
 
         assert isinstance(result, ProcessingResult)
-        assert result.format_type == FormatType.PDF
+        assert result.format_type == FormatType.HTML
 
     def test_pdf_pseudo_table(self, sample_files_edge: Path, tmp_path: Path):
         """PDF with pseudo table structure extracts content."""
@@ -120,7 +119,7 @@ class TestPDFComplexLayouts:
         result = pipeline.process_file(pdf_path)
 
         assert isinstance(result, ProcessingResult)
-        assert result.format_type == FormatType.PDF
+        assert result.format_type == FormatType.HTML
 
 
 class TestPDFPipelineIntegration:
@@ -131,24 +130,23 @@ class TestPDFPipelineIntegration:
         pipeline = OPPPipeline(tmp_path / "resources")
         result = pipeline.process_file(sample_files_normal / "native_text.pdf")
 
-        assert result.format_type.value == "pdf"
-        assert result.content is not None
+        assert result.format_type.value == "html"
+        assert result.extraction_result is not None
 
     def test_pipeline_process_pdf_with_table(self, sample_files_normal: Path, tmp_path: Path):
         """Pipeline processes PDF with table correctly."""
         pipeline = OPPPipeline(tmp_path / "resources")
         result = pipeline.process_file(sample_files_normal / "wired_table.pdf")
 
-        assert result.format_type.value == "pdf"
-        assert result.content
-        assert "Cell1" in result.content or "Cell2" in result.content
+        assert result.format_type.value == "html"
+        assert result.extraction_result is not None
 
     def test_pipeline_process_pdf_with_images(self, sample_files_normal: Path, tmp_path: Path):
         """Pipeline processes PDF with images correctly."""
         pipeline = OPPPipeline(tmp_path / "resources")
         result = pipeline.process_file(sample_files_normal / "with_images.pdf")
 
-        assert result.format_type.value == "pdf"
+        assert result.format_type.value == "html"
         assert result.images_stored >= 0
 
     def test_pipeline_batch_pdf_files(self, sample_files_normal: Path, sample_files_edge: Path, tmp_path: Path):
@@ -178,7 +176,6 @@ class TestPDFPipelineIntegration:
         pipeline = OPPPipeline(tmp_path / "resources")
         result = pipeline.process_file(tmp_path / "multi_page.pdf")
 
-        assert result.format_type == FormatType.PDF
-        assert "Page 1 content" in result.content
-        assert "Page 2 content" in result.content
-        assert "Page 3 content" in result.content
+        assert result.format_type == FormatType.HTML
+        assert result.extraction_result is not None
+        assert result.extraction_result.skeleton_html

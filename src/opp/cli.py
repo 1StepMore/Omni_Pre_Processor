@@ -337,10 +337,8 @@ def process_single_file(
         if args.model_size:
             os.environ["OPP_MODEL_SIZE"] = args.model_size
 
-        proc_result = pipeline.process_file(file_path)
-
-        # PDF + html: override pipeline's PDFExtractor with PDF2HTMLExtractor
-        if args.target_format == "html" and file_path.suffix.lower() == ".pdf":
+        # PDF + html/both: use PDF2HTMLExtractor directly (before process_file)
+        if args.target_format in ("html", "both") and file_path.suffix.lower() == ".pdf":
             from opp.extractors.pdf2html import PDF2HTMLExtractor
             try:
                 pdf2html = PDF2HTMLExtractor()
@@ -355,6 +353,8 @@ def process_single_file(
                 stats["errors"] += 1
                 get_logger().error(f"PDF2HTML extraction failed for {file_path}: {e}")
                 return False
+        else:
+            proc_result = pipeline.process_file(file_path)
         # 2026-06-18 round 16 Phase B2: end-to-end request_id.
         request_id = str(uuid.uuid4())
 

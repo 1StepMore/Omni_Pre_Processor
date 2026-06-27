@@ -7,6 +7,7 @@ import logging
 from opp.detector import detect_format, FormatType
 from opp.error_handler import ErrorHandler, ErrorContext
 from opp.extractors import DOCXExtractor, PDFExtractor, PPTXExtractor, XLSXExtractor, CSVExtractor, JSONExtractor, XMLExtractor, HTMLExtractor, EPUBExtractor, EmailExtractor, ImageOCRExtractor, AudioExtractor, VideoExtractor, IPYNBExtractor, YouTubeExtractor
+from opp.extractors.pdf2html import PDF2HTMLExtractor
 from opp.extractors.base import ExtractorBase
 from opp.extractors.email import AttachmentHandler
 from opp.markdown import MarkdownGenerator
@@ -57,7 +58,7 @@ class OPPPipeline:
         self.extractors: dict[FormatType, ExtractorBase] = {
             FormatType.DOCX: DOCXExtractor(),
             FormatType.PPTX: PPTXExtractor(),
-            FormatType.PDF: PDFExtractor(),
+            FormatType.PDF: PDF2HTMLExtractor(),
             FormatType.XLSX: XLSXExtractor(),
             FormatType.CSV: CSVExtractor(),
             FormatType.JSON: JSONExtractor(),
@@ -350,7 +351,7 @@ class OPPPipeline:
 
         return ProcessingResult(
             content=result.content,
-            format_type=fmt,
+            format_type=FormatType.HTML if result.metadata and result.metadata.format_type == "html" else fmt,
             images_stored=images_stored,
             errors=errors,
             warnings=warnings,

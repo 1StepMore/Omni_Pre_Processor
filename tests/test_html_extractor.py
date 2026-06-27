@@ -272,3 +272,35 @@ greet();</code></pre>
     (test_dir / "non_utf8.html").write_bytes(non_utf8_html.encode("latin-1"))
 
     return test_dir
+
+
+def test_no_base64_image_refs_in_paragraphs(tmp_path: Path):
+    """OPP#22: base64 markdown image refs are filtered out from paragraphs."""
+    import re
+
+    from opp.extractors.html import HTMLExtractor
+
+    # Create HTML with a base64 image embedded
+    html_content = """<!DOCTYPE html>
+<html>
+<head><title>Image Test</title></head>
+<body>
+<p>Normal paragraph text.</p>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" alt="tiny"></p>
+<p>Another normal paragraph.</p>
+</body>
+</html>"""
+    html_file = tmp_path / "with_base64.html"
+    html_file.write_text(html_content, encoding="utf-8")
+
+    extractor = HTMLExtractor()
+    result = extractor.extract(html_file)
+
+    # Check no paragraph text contains base64 data URI pattern
+    for p in result.paragraphs:
+        assert not re.match(r'^\s*!\[.*?\]\(data:', p.text), \
+            f"Found base64 image ref in paragraph: {p.text[:80]}"
+
+    # The normal paragraphs should still be present
+    full_text = " ".join(p.text for p in result.paragraphs)
+    assert "Normal paragraph text" in full_text or "normal paragraph" in full_text.lower()
