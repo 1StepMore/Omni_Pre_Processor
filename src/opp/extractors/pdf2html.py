@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import base64
 import logging
+import re
 import tempfile
 from pathlib import Path
 
@@ -40,6 +41,33 @@ class PDF2HTMLExtractor(ExtractorBase):
 
     def supported_extensions(self) -> list[str]:
         return [".pdf"]
+
+    @staticmethod
+    def _fix_text_positions(page_html: str) -> str:
+        """Add position:absolute to <p> tags that have top:/left: in style.
+
+        PyMuPDF's page.get_text("html") emits <p style="top:...;left:..."> but
+        without position:absolute. Without it, CSS renderers (WeasyPrint, etc.)
+        ignore the top/left values and stack all text at the top of the page.
+        """
+        try:
+            soup = BeautifulSoup(page_html, "html.parser")
+        except Exception:
+            return page_html
+
+        modified = False
+        for p_tag in soup.find_all("p"):
+            style = p_tag.get("style", "")
+            if not style:
+                continue
+            if "top:" not in style and "left:" not in style:
+                continue
+            if re.search(r'\bposition\s*:', style):
+                continue  # don't override existing position
+            p_tag["style"] = f"position:absolute;{style}"
+            modified = True
+
+        return str(soup) if modified else page_html
 
     @staticmethod
     def _fix_image_positions(page_html: str, page, doc) -> str:
@@ -83,9 +111,26 @@ class PDF2HTMLExtractor(ExtractorBase):
                 mime_type = f"image/{img_ext}"
                 b64 = base64.b64encode(img_bytes).decode("ascii")
 
+                # Detect coordinate system from page transformation matrix
+                # PyMuPDF's doc.new_page() always uses M.d = -1.0 (top-left page space).
+                # When transformation matrix is unavailable, default to top-left
+                # (safer for modern PDFs) and log a warning.
+                try:
+                    tm = page.transformation_matrix
+                    is_top_left = hasattr(tm, 'd') and tm.d < 0
+                except AttributeError:
+                    is_top_left = True
+                    _logger.warning(
+                        "Could not read page.transformation_matrix.d; "
+                        "defaulting to top-left page space"
+                    )
+
                 page_h = page.rect.height
                 css_left = bbox[0]
-                css_top = page_h - bbox[3]
+                if is_top_left:
+                    css_top = bbox[1]
+                else:
+                    css_top = page_h - bbox[3]
                 css_w = bbox[2] - bbox[0]
                 css_h = bbox[3] - bbox[1]
 
@@ -143,7 +188,8 @@ class PDF2HTMLExtractor(ExtractorBase):
             for page_num in range(len(doc)):
                 page = doc[page_num]
                 page_raw_html = page.get_text("html")
-                page_fixed = self._fix_image_positions(page_raw_html, page, doc)
+                page_fixed = self._fix_text_positions(page_raw_html)
+                page_fixed = self._fix_image_positions(page_fixed, page, doc)
                 html_parts.append(f'<div class="page" style="width:{pw:.0f}pt;height:{ph:.0f}pt;">')
                 html_parts.append(page_fixed)
                 html_parts.append("</div>")
