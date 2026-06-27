@@ -412,4 +412,4 @@ extraction:
 | `OPP_OCR_LANG` | CLI | OCR language | `eng` |
 | `OPP_LOG_LEVEL` | CLI | Log level | `INFO` |
 | `OMNI_LOG_FORMAT` | CLI/MCP | `console` (default) or `json` | `console` |
-| `OMNI_TEST_FAKE_LLM=1` | CLI | Mock LLM responses (hermetic testing) | unset |
+| `OMNI_TEST_FAKE_LLM=1` | CLI | Mock LLM responses (hermetic testing) | unset |# test pr flow
