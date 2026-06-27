@@ -24,7 +24,8 @@ DEFAULT_PDF2HTML_CSS = """\
 @page { size: A4; margin: 0; }
 div.page { position: relative; width: 595pt; height: 842pt; page-break-after: always; }
 div.page:last-of-type { page-break-after: auto; }
-body { font-family: serif; }
+p { margin: 0; }
+body { margin: 0; padding: 0; font-family: serif; }
 """
 
 

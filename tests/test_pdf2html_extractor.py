@@ -247,3 +247,42 @@ def test_pdf2html_custom_css_doesnt_break_images(tmp_path: Path):
     assert custom_css in html, "Custom CSS not injected"
     assert "left:100.0pt" in html, "Image position wrong with custom CSS"
     assert "top:642.0pt" in html
+
+
+def test_default_css_zeroes_body_and_p_margins(tmp_path: Path):
+    """OPP#26: DEFAULT_PDF2HTML_CSS zeroes body margin/padding and <p> margin.
+
+    Without these, WeasyPrint applies default 8px body margin and 1em
+    (≈12pt) <p> margin-block-start, shifting image positions by +6pt X / +12pt Y.
+    """
+    from opp.extractors.pdf2html import DEFAULT_PDF2HTML_CSS
+
+    assert "body { margin: 0;" in DEFAULT_PDF2HTML_CSS, (
+        "body margin must be zeroed to prevent WeasyPrint default 8px margin"
+    )
+    assert "padding: 0;" in DEFAULT_PDF2HTML_CSS, (
+        "body padding must be zeroed for consistent positioning"
+    )
+    assert "p { margin: 0; }" in DEFAULT_PDF2HTML_CSS, (
+        "<p> margin must be zeroed — PyMuPDF <p> elements lack position:absolute"
+    )
+
+
+def test_pdf2html_default_css_p_in_emit(tmp_path: Path):
+    """OPP#26: emitted skeleton_html <p> tags get no extra margin from browser defaults."""
+    import fitz
+    from opp.extractors.pdf2html import PDF2HTMLExtractor
+
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+    page.insert_text((72, 72), "Sample paragraph text")
+    pdf_path = tmp_path / "p_margin.pdf"
+    doc.save(str(pdf_path))
+    doc.close()
+
+    result = PDF2HTMLExtractor().extract(pdf_path)
+    html = result.skeleton_html or ""
+
+    # CSS rule must be present in emitted <style>
+    assert "p { margin: 0; }" in html, "<p> margin-zeroing CSS rule missing in output"
+    assert "body { margin: 0;" in html, "body margin-zeroing CSS rule missing in output"
