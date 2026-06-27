@@ -48,8 +48,9 @@ class TestOPPPipelineIntegration:
         result = pipeline.process_file(sample_files_normal / "native_text.pdf")
 
         assert isinstance(result, ProcessingResult)
-        assert result.format_type == FormatType.PDF
-        assert result.content
+        assert result.format_type == FormatType.HTML
+        assert result.extraction_result is not None
+        assert result.extraction_result.skeleton_html
         assert result.images_stored >= 0
         assert len(result.errors) == 0
 
@@ -186,7 +187,7 @@ class TestOPPPipelineIntegration:
         pipeline = OPPPipeline(tmp_path / "resources")
         result = pipeline.process_file(sample_files_normal / "with_images.pdf")
 
-        assert result.format_type == FormatType.PDF
+        assert result.format_type == FormatType.HTML
         assert isinstance(result.content, str)
 
     def test_pipeline_with_pdf_wired_table(self, sample_files_normal: Path, tmp_path: Path):
@@ -194,8 +195,9 @@ class TestOPPPipelineIntegration:
         pipeline = OPPPipeline(tmp_path / "resources")
         result = pipeline.process_file(sample_files_normal / "wired_table.pdf")
 
-        assert result.format_type == FormatType.PDF
-        assert result.content
+        assert result.format_type == FormatType.HTML
+        assert result.extraction_result is not None
+        assert result.extraction_result.skeleton_html
 
     def test_batch_result_total_duration_measured(self, sample_files_normal: Path, tmp_path: Path):
         """Batch processing measures total duration correctly."""

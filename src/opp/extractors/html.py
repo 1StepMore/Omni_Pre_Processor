@@ -302,6 +302,10 @@ class HTMLExtractor(ExtractorBase):
             runs = self.extract_runs(element)
             plain_text = ''.join(r.text for r in runs) if runs else line
 
+            # Filter out base64 markdown image references (non-translatable noise)
+            if re.match(r'^\s*!\[.*?\]\(data:', plain_text):
+                continue
+
             paragraphs.append(ParagraphData(
                 text=plain_text,
                 style=style,
