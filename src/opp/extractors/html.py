@@ -19,6 +19,18 @@ _RE_ORDERED_LIST = re.compile(r'^\d+\.\s+')
 _RE_DATA_URI = re.compile(r"data:([^;]+);base64,(.+)$")
 _RE_SCRIPT_TAG_SIMPLE = re.compile(r"<script[^>]*>")
 _RE_MARKDOWN_IMAGE = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)({[^}]*})?")
+_STRUCTURE_HTML_TAGS = re.compile(
+    r"^<\s*(?:/?html|/?head|/?body|!doctype\s+html)\s*>$",
+    re.IGNORECASE
+)
+
+def _strip_structural_html_tags(md_text: str) -> str:
+    """Remove lines that are bare structural HTML tags like <html>, </body>, etc."""
+    return "\n".join(
+        line for line in md_text.splitlines()
+        if not _STRUCTURE_HTML_TAGS.match(line.strip())
+    )
+
 _RE_JS_PATTERNS = [
     re.compile(r"react"),
     re.compile(r"vue"),
@@ -561,6 +573,7 @@ class HTMLExtractor(ExtractorBase):
                 md_content = self._resolve_relative_paths(md_content, base_path)
 
             md_content = self._fix_tables(md_content)
+            md_content = _strip_structural_html_tags(md_content)
             return md_content
         except Exception as e:
             logger.debug(f"Markdown conversion failed: {e}")
