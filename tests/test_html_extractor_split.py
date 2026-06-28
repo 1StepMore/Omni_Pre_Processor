@@ -112,6 +112,48 @@ def test_strip_structural_html_tags():
     assert "<p>Hello</p>" in result
 
 
+def test_strip_structural_html_tags_with_attributes():
+    """OPP#36: structural HTML tags WITH attributes must also be stripped.
+
+    Regression guard for the regex bug where ``<html lang="en">`` and
+    ``<body bgcolor="">`` leaked into markdown output. The original
+    regex required ``>`` immediately after the tag name, so any
+    attribute caused the line to slip through.
+    """
+    from opp.extractors.html.markdown_converter import _strip_structural_html_tags
+
+    md = '<html lang="en">\n<body bgcolor="">\n<p>Hello</p>\n</body>\n</html>'
+    result = _strip_structural_html_tags(md)
+    assert "<html lang=" not in result, f"<html lang=...> leaked: {result!r}"
+    assert "<body bgcolor=" not in result, f"<body bgcolor=...> leaked: {result!r}"
+    assert "<p>Hello</p>" in result
+
+    md3 = '<body class="main" id="x">\n<p>X</p>\n</body>'
+    result3 = _strip_structural_html_tags(md3)
+    assert "class=" not in result3, f"multi-attr leaked: {result3!r}"
+    assert "<p>X</p>" in result3
+
+    md4 = "<!doctype html>\n<!DOCTYPE html>\n<p>Doc</p>"
+    result4 = _strip_structural_html_tags(md4)
+    assert "doctype" not in result4.lower(), f"doctype leaked: {result4!r}"
+    assert "<p>Doc</p>" in result4
+
+    md5 = '<HTML LANG="EN">\n<BODY BGCOLOR="red">\n<p>Up</p>\n</body>\n</html>'
+    result5 = _strip_structural_html_tags(md5)
+    assert "LANG=" not in result5, f"uppercase attr leaked: {result5!r}"
+    assert "BGCOLOR=" not in result5, f"uppercase attr leaked: {result5!r}"
+    assert "<p>Up</p>" in result5
+
+    md6 = '<body bgcolor=white>\n<p>U</p>\n</body>'
+    result6 = _strip_structural_html_tags(md6)
+    assert "bgcolor=white" not in result6, f"unquoted attr leaked: {result6!r}"
+    assert "<p>U</p>" in result6
+
+    md7 = '<html lang="en">\n<p>Hello <b>world</b></p>\n</body>'
+    result7 = _strip_structural_html_tags(md7)
+    assert "<p>Hello <b>world</b></p>" in result7
+
+
 def test_html_to_markdown_fallback():
     """When markdownify is unavailable, ``html_to_markdown`` falls back to stripping."""
     from opp.extractors.html.markdown_converter import html_to_markdown

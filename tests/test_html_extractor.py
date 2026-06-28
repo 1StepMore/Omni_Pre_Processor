@@ -304,3 +304,42 @@ def test_no_base64_image_refs_in_paragraphs(tmp_path: Path):
     # The normal paragraphs should still be present
     full_text = " ".join(p.text for p in result.paragraphs)
     assert "Normal paragraph text" in full_text or "normal paragraph" in full_text.lower()
+
+
+def test_opp36_no_leaking_html_tags_with_attributes(tmp_path: Path):
+    """OPP#36: end-to-end guard that structural HTML tags with attributes
+    do NOT leak into the extracted paragraphs.
+
+    Drives ``HTMLExtractor.extract()`` directly with an HTML file whose
+    ``<html>`` and ``<body>`` tags carry attributes (e.g. ``lang="en"``,
+    ``bgcolor="#fff"``). Asserts that no paragraph text contains a raw
+    opening or closing structural tag.
+    """
+    from opp.extractors.html import HTMLExtractor
+
+    html_content = """<!DOCTYPE html>
+<html lang="en">
+<head><title>Test Page</title></head>
+<body bgcolor="#fff">
+<h1>Product Page</h1>
+<p>Welcome to the test.</p>
+</body>
+</html>"""
+    html_file = tmp_path / "leak_test.html"
+    html_file.write_text(html_content, encoding="utf-8")
+
+    extractor = HTMLExtractor()
+    result = extractor.extract(html_file)
+
+    forbidden_markers = ("<html", "</html", "<body", "</body", "<head", "</head", "<!doctype")
+    for p in result.paragraphs:
+        text = p.text
+        for marker in forbidden_markers:
+            assert marker not in text.lower(), (
+                f"OPP#36 leak: paragraph contains {marker!r}: {text!r}"
+            )
+
+    # Sanity check: real content was extracted
+    # Sanity check: real content was extracted
+    full_text = " ".join(p.text for p in result.paragraphs)
+    assert "Product Page" in full_text or "Welcome" in full_text

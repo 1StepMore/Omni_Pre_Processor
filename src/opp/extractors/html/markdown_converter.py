@@ -43,7 +43,7 @@ _RE_MARKDOWN_IMAGE = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)({[^}]*})?")
 _RE_SCRIPT_TAG = re.compile(r"<script[^>]*>.*?</script>", re.DOTALL | re.IGNORECASE)
 _RE_STYLE_TAG = re.compile(r"<style[^>]*>.*?</style>", re.DOTALL | re.IGNORECASE)
 _STRUCTURE_HTML_TAGS = re.compile(
-    r"^<\s*(?:/?html|/?head|/?body|!doctype\s+html)\s*>$",
+    r"^<\s*(?:/?html|/?head|/?body|!doctype\s+html)(?:\s[^>]*)?\s*>$",
     re.IGNORECASE,
 )
 
