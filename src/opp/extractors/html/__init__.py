@@ -77,6 +77,7 @@ class HTMLExtractor(ExtractorBase):
             try:
                 content = input_path.read_text(encoding="latin-1")
             except Exception:
+                logger.debug("Failed to read HTML file with latin-1 fallback: %s", input_path)
                 raise CorruptedFileError(f"无法读取HTML文件: {input_path}")
 
         metadata = DocumentMetadata(

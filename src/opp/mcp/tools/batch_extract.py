@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import time
 import uuid
 from pathlib import Path
 
 from opp.mcp._errors import mcp_error_boundary, validate_file_paths, McpError
+
+logger = logging.getLogger(__name__)
 from opp.mcp.auth import check_auth
 from opp.mcp import common as _c
 from opp.mcp.rate_limiter import check_rate_limit
@@ -113,6 +116,7 @@ async def batch_extract(
                             _c._tempfiles.add(images_dir)
                             serialized["images_dir"] = str(images_dir)
                     except Exception as e:
+                        logger.debug("Markdown generation failed in batch_extract: %s", e)
                         serialized.setdefault("warnings", []).append(
                             f"Markdown generation failed: {str(e)}"
                         )
@@ -149,6 +153,7 @@ async def batch_extract(
                         serialized["error"] = str(e)
                         serialized["xliff_error"] = str(e)
                     except Exception as e:
+                        logger.debug("XLIFF generation failed in batch_extract: %s", e)
                         serialized.setdefault("warnings", []).append(
                             f"XLIFF generation failed: {str(e)}"
                         )
@@ -162,6 +167,7 @@ async def batch_extract(
             })
             successful += 1
         except Exception as e:
+            logger.debug("Extraction failed in batch_extract for %s: %s", file_path, e)
             results.append({
                 "file_path": file_path,
                 "success": False,

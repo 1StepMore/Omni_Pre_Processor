@@ -87,8 +87,7 @@ def log_mcp_audit(tool_name: str, duration_ms: float, success: bool) -> None:
             "success": success,
         }
         get_audit_logger().info(json.dumps(entry, ensure_ascii=False))
-    except Exception:
-        # Audit logging must never break the tool call.
+    except Exception:  # expected — audit logging must never break the tool call
         pass
     # 2026-06-18 round 16 Phase B5: Prometheus metrics.
     # Import lazily — omni_metrics is in the main repo, not a submodule dep.
@@ -101,7 +100,7 @@ def log_mcp_audit(tool_name: str, duration_ms: float, success: bool) -> None:
             _os.sys.path.insert(0, _suite_root)
         from omni_metrics import record_tool_call
         record_tool_call("opp", tool_name, duration_ms, success)
-    except Exception:
+    except Exception:  # expected — metrics recording must never break the tool call
         pass
 
 F = TypeVar("F", bound=Callable[..., Any])

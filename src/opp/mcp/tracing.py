@@ -24,12 +24,15 @@ Wired from ``server._handle_call_tool`` via
 from __future__ import annotations
 
 import json
+import logging
 import os
 import threading
 import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
+
+_logger = logging.getLogger(__name__)
 
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
@@ -125,8 +128,10 @@ class _JsonlFileSpanExporter(SpanExporter):
                             }
                             fh.write(json.dumps(payload, ensure_ascii=False) + "\n")
                         except Exception:
+                            _logger.debug("Skipping span serialization due to error")  # expected — single-span failure must not break export
                             continue
         except Exception:
+            _logger.debug("Span export failed")  # expected — export failure returns FAILURE per OTel contract
             return SpanExportResult.FAILURE
         return SpanExportResult.SUCCESS
 
@@ -169,7 +174,7 @@ def _version() -> str:
     try:
         from opp import __version__
         return str(__version__)
-    except Exception:
+    except Exception:  # expected — package metadata unavailable
         return "unknown"
 
 
@@ -185,7 +190,7 @@ def _extract_traceparent_context(traceparent: str) -> Context | None:
         return None
     try:
         return TraceContextTextMapPropagator().extract({"traceparent": traceparent})
-    except Exception:
+    except Exception:  # expected — invalid traceparent is benign
         return None
 
 
@@ -201,7 +206,7 @@ def inject_traceparent(span: Span | None) -> str | None:
         return None
     try:
         ctx = span.get_span_context()
-    except Exception:
+    except Exception:  # expected — invalid span context is benign
         return None
     if ctx is None or not ctx.is_valid:
         return None

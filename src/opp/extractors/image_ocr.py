@@ -105,6 +105,7 @@ class ImageOCRExtractor(ExtractorBase):
         try:
             text = pytesseract.image_to_string(img, lang=lang)
         except Exception as e:
+            logger.warning(f"Tesseract OCR failed: {e}")
             error_str = str(e).lower()
             if any(x in error_str for x in ["tesseract", "not found", "could not find", "not installed"]):
                 return {
@@ -142,6 +143,7 @@ class ImageOCRExtractor(ExtractorBase):
             engine = RapidOCRSentenceExtractor()
             ocr_result = engine(str(image_path))
         except Exception as e:
+            logger.warning(f"RapidOCR failed: {e}")
             error_str = str(e).lower()
             if any(x in error_str for x in ["rapidocr", "onnx", "runtime"]):
                 return {

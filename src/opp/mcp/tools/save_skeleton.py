@@ -6,9 +6,12 @@ by ORF's ``apply_xliff`` for XLIFF->DOCX/PPTX backfill.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from opp.mcp._errors import mcp_error_boundary, McpError
+
+logger = logging.getLogger(__name__)
 from opp.mcp.auth import check_auth
 from opp.mcp import common as _c
 from opp.mcp.rate_limiter import check_rate_limit
@@ -66,6 +69,7 @@ async def save_skeleton(
     except McpError:
         raise
     except Exception as e:
+        logger.debug("Skeleton save failed: %s", e)
         raise McpError(
             code="OPP_INTERNAL_ERROR",
             message=f"Skeleton save failed: {str(e)}",

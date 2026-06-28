@@ -80,6 +80,7 @@ class DOCXExtractor(ExtractorBase):
         try:
             doc: DocxDocument = docx.Document(str(input_path))
         except Exception as e:
+            logger.debug(f"Failed to open DOCX: {e}")
             if "password" in str(e).lower():
                 raise PasswordProtectedError(f"文件受密码保护: {input_path}")
             raise CorruptedFileError(f"文件损坏或无法解析: {input_path}")
@@ -435,6 +436,7 @@ class DOCXExtractor(ExtractorBase):
             try:
                 p_path = et_element_tree.getpath(p_elem)
             except Exception:
+                logger.debug("getpath failed for paragraph element")
                 p_path = None
 
             # Body-level check: does this w:p live directly under w:body?

@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from opp.extractors.base import ExtractorBase
+from opp.logger import logger
 from opp.utils.dataclasses import (
     DocumentMetadata,
     ExtractionResult,
@@ -29,6 +30,7 @@ class IPYNBExtractor(ExtractorBase):
             with open(input_path, "r", encoding="utf-8") as f:
                 notebook = nbformat.read(f, as_version=4)
         except Exception:
+            logger.debug("Cannot parse notebook file: %s", input_path)
             raise CorruptedFileError(f"Cannot parse notebook file: {input_path}")
 
         paragraphs: list[ParagraphData] = []

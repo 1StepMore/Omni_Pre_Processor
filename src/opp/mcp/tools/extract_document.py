@@ -8,10 +8,13 @@ requested output formats.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from pathlib import Path
 
 from opp.mcp._errors import mcp_error_boundary, McpError
+
+logger = logging.getLogger(__name__)
 from opp.mcp.auth import check_auth
 from opp.mcp import common as _c
 from opp.mcp.rate_limiter import check_rate_limit
@@ -116,6 +119,7 @@ async def extract_document(
     try:
         result = _c._pipeline.process_file(Path(file_path))
     except Exception as e:
+        logger.debug("Extraction failed: %s", e)
         raise McpError(
             code="OPP_INTERNAL_ERROR",
             message=f"Extraction failed: {str(e)}",
@@ -150,6 +154,7 @@ async def extract_document(
                     _c._tempfiles.add(images_dir)
                     response["images_dir"] = str(images_dir)
             except Exception as e:
+                logger.debug("Markdown generation failed: %s", e)
                 response.setdefault("warnings", []).append(
                     f"Markdown generation failed: {str(e)}"
                 )
@@ -176,6 +181,7 @@ async def extract_document(
                 if images_json_path.exists():
                     response["images_json_path"] = str(images_json_path)
             except Exception as e:
+                logger.debug("Images JSON generation failed: %s", e)
                 response.setdefault("warnings", []).append(
                     f"Images JSON generation failed: {str(e)}"
                 )
@@ -207,6 +213,7 @@ async def extract_document(
                 response["error"] = str(e)
                 response["xliff_error"] = str(e)
             except Exception as e:
+                logger.debug("XLIFF generation failed: %s", e)
                 response.setdefault("warnings", []).append(
                     f"XLIFF generation failed: {str(e)}"
                 )

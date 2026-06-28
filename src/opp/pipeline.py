@@ -295,6 +295,7 @@ class OPPPipeline:
                         # Clean up temp file
                         temp_path.unlink()
                 except Exception as e:
+                    self.logger.debug("Failed to store image: %s", e)
                     err_msg = f"Failed to store image: {str(e)}"
                     errors.append(err_msg)
                     self.error_handler.add_error(
@@ -318,6 +319,7 @@ class OPPPipeline:
                 )
 
         except Exception as e:
+            self.logger.debug("Extraction failed: %s", e)
             error_msg = f"Extraction failed: {str(e)}"
             errors.append(error_msg)
             self.error_handler.add_error(
@@ -406,6 +408,7 @@ class OPPPipeline:
                                 )
                             )
                 except Exception as e:
+                    self.logger.debug("Batch processing error (sequential): %s", e)
                     failed += 1
                     error_result = ProcessingResult(
                         content="",
@@ -446,6 +449,7 @@ class OPPPipeline:
                                     )
                                 )
                     except Exception as e:
+                        self.logger.debug("Batch processing error (parallel): %s", e)
                         failed += 1
                         error_result = ProcessingResult(
                             content="",

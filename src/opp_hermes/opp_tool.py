@@ -95,7 +95,7 @@ def opp_handler(
             "error": f"OPP MCP server not available: {str(e)}. "
                      "Ensure opp[mcp] is installed.",
         }
-    except Exception as e:
+    except Exception as e:  # expected — error is returned to caller
         return {
             "success": False,
             "error": f"Extraction failed: {str(e)}",

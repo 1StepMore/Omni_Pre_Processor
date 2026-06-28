@@ -10,6 +10,7 @@ from opp.utils.dataclasses import (
     TableData,
 )
 from opp.utils.exceptions import ValidationError
+from opp.logger import logger
 
 
 class XLSXExtractor(ExtractorBase):
@@ -24,6 +25,7 @@ class XLSXExtractor(ExtractorBase):
         try:
             wb = openpyxl.load_workbook(input_path, data_only=True)
         except Exception as e:
+            logger.debug("Failed to open XLSX in extract_tables: %s", e)
             if "password" in str(e).lower():
                 raise ValidationError(f"文件受密码保护: {input_path}")
             raise ValueError(f"无法打开XLSX文件: {input_path}")
@@ -84,6 +86,7 @@ class XLSXExtractor(ExtractorBase):
         try:
             wb = openpyxl.load_workbook(input_path, data_only=True)
         except Exception as e:
+            logger.debug("Failed to open XLSX in extract: %s", e)
             if "password" in str(e).lower():
                 raise ValidationError(f"文件受密码保护: {input_path}")
             raise ValueError(f"无法打开XLSX文件: {input_path}")

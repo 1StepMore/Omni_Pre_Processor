@@ -53,6 +53,7 @@ class PDF2HTMLExtractor(ExtractorBase):
         try:
             soup = BeautifulSoup(page_html, "html.parser")
         except Exception:
+            _logger.debug("_fix_text_positions: BeautifulSoup parsing failed, returning original HTML")
             return page_html
 
         modified = False
@@ -80,6 +81,7 @@ class PDF2HTMLExtractor(ExtractorBase):
         try:
             soup = BeautifulSoup(page_html, "html.parser")
         except Exception:
+            _logger.debug("_fix_image_positions: BeautifulSoup parsing failed, returning original HTML")
             return page_html
 
         for img_tag in soup.find_all("img"):
@@ -167,6 +169,7 @@ class PDF2HTMLExtractor(ExtractorBase):
             try:
                 doc = fitz.open(str(input_path))
             except Exception as e:
+                _logger.debug("fitz.open failed for %s: %s", input_path, e)
                 raise RuntimeError(f"Failed to open PDF: {e}")
 
             style_content = css or DEFAULT_PDF2HTML_CSS
@@ -183,6 +186,7 @@ class PDF2HTMLExtractor(ExtractorBase):
                 pw = doc[0].rect.width
                 ph = doc[0].rect.height
             except Exception:
+                _logger.debug("Failed to get PDF page dimensions, defaulting to A4")
                 pw, ph = 595.0, 842.0
 
             for page_num in range(len(doc)):

@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from opp.detector import detect_format
 from opp.mcp._errors import mcp_error_boundary, McpError
+
+logger = logging.getLogger(__name__)
 from opp.mcp.auth import check_auth
 from opp.mcp import common as _c
 from opp.mcp.rate_limiter import check_rate_limit
@@ -46,6 +49,7 @@ async def detect_format_tool(
             "content": {"format": fmt.value, "confidence": confidence},
         }
     except Exception as e:
+        logger.debug("Format detection failed: %s", e)
         raise McpError(
             code="OPP_INTERNAL_ERROR",
             message=f"Format detection failed: {str(e)}",

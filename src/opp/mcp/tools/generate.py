@@ -6,10 +6,13 @@ XLIFF 1.2/2.0 format for downstream translation workflows.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from pathlib import Path
 
 from opp.mcp._errors import mcp_error_boundary, McpError
+
+logger = logging.getLogger(__name__)
 from opp.mcp.auth import check_auth
 from opp.mcp import common as _c
 from opp.mcp.rate_limiter import check_rate_limit
@@ -98,6 +101,7 @@ async def generate_xliff(
     except ValueError as e:
         raise McpError(code="OPP_INVALID_INPUT", message=str(e))
     except Exception as e:
+        logger.debug("XLIFF generation via generate_xliff failed: %s", e)
         raise McpError(
             code="OPP_INTERNAL_ERROR",
             message=f"XLIFF generation failed: {str(e)}",
@@ -189,6 +193,7 @@ async def generate_markdown(
     except McpError:
         raise
     except Exception as e:
+        logger.debug("Markdown generation via generate_markdown failed: %s", e)
         raise McpError(
             code="OPP_INTERNAL_ERROR",
             message=f"Markdown generation failed: {str(e)}",

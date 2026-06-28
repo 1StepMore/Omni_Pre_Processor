@@ -15,6 +15,7 @@ from opp.utils.dataclasses import (
     SlideData,
 )
 from opp.utils.exceptions import CorruptedFileError, UnsupportedFormatError
+from opp.logger import logger
 
 
 class PPTXExtractor(ExtractorBase):
@@ -29,6 +30,7 @@ class PPTXExtractor(ExtractorBase):
         try:
             prs = Presentation(str(input_path))
         except Exception:
+            logger.debug("Failed to open PPTX: %s", input_path)
             if ".pptm" in str(input_path).lower():
                 raise UnsupportedFormatError(f"不支持的PPTX格式（宏已启用）: {input_path}")
             raise CorruptedFileError(f"文件损坏或无法解析: {input_path}")

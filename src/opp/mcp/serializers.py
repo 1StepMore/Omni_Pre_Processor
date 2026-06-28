@@ -160,7 +160,7 @@ class ExtractionResultSerializer:
                 **data,
             }
 
-        except Exception as e:
+        except Exception as e:  # expected — serialization failure returns error dict
             return {
                 "success": False,
                 "error": str(e),

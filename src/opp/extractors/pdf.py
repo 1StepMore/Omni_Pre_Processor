@@ -82,6 +82,7 @@ class PDFExtractor(ExtractorBase):
         try:
             doc: fitz.Document = fitz.open(input_path)
         except Exception as e:
+            logger.debug(f"Failed to open PDF: {e}")
             if "encrypted" in str(e).lower() or "password" in str(e).lower():
                 raise PasswordProtectedError(f"文件受密码保护: {input_path}")
             raise CorruptedFileError(f"文件损坏或无法解析: {input_path}")

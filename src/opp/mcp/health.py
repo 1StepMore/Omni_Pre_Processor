@@ -39,7 +39,7 @@ def _version() -> str:
     try:
         from opp import __version__
         return str(__version__)
-    except Exception:
+    except Exception:  # expected — package metadata unavailable
         return "unknown"
 
 

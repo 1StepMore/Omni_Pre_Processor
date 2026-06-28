@@ -40,6 +40,7 @@ class EmailExtractor(ExtractorBase):
             with open(path, "rb") as f:
                 msg = BytesParser(policy=policy.default).parse(f)
         except Exception:
+            logger.debug("Failed to parse EML file: %s", path)
             raise CorruptedFileError(f"Cannot parse EML file: {path}")
 
         warnings: list[str] = []
@@ -51,6 +52,7 @@ class EmailExtractor(ExtractorBase):
                     try:
                         body = str(part.get_content())
                     except Exception as e:
+                        logger.debug(f"Body decode warning: {e}")
                         warnings.append(f"Body decode warning: {str(e)}")
                         payload = part.get_payload(decode=True)
                         if isinstance(payload, bytes):
@@ -59,6 +61,7 @@ class EmailExtractor(ExtractorBase):
                     try:
                         body = str(part.get_content())
                     except Exception as e:
+                        logger.debug(f"HTML body decode warning: {e}")
                         warnings.append(f"HTML body decode warning: {str(e)}")
                         payload = part.get_payload(decode=True)
                         if isinstance(payload, bytes):
@@ -67,6 +70,7 @@ class EmailExtractor(ExtractorBase):
             try:
                 body = str(msg.get_content())
             except Exception as e:
+                logger.debug(f"Non-multipart body decode warning: {e}")
                 body = ""
                 warnings.append(f"Non-multipart body decode warning: {str(e)}")
             if "\ufffd" in body:
@@ -130,6 +134,7 @@ class EmailExtractor(ExtractorBase):
         except ImportError:
             raise CorruptedFileError(f"extract_msg library not available for MSG parsing: {path}")
         except Exception as e:
+            logger.debug(f"Failed to parse MSG file: {e}")
             error_str = str(e).lower()
             if "encrypted" in error_str or "password" in error_str:
                 raise PasswordProtectedError(f"MSG file is encrypted: {path}")
