@@ -114,6 +114,47 @@ class TestPDFExtractor:
         extractor = PDFExtractor()
         assert extractor.supported_extensions() == [".pdf"]
 
+    def test_max_pages_limits_extraction(self, tmp_path):
+        """RED→GREEN (O-C8): only MAX_PAGES pages are extracted from a huge PDF.
+
+        RED: old code iterates ALL pages (``for page_num in range(doc.page_count)``),
+             no limit — 50K-page PDF loads all TextBlockData into memory.
+        GREEN: new code caps at MAX_PAGES (default 1000) with a warning log.
+        """
+        from unittest.mock import patch
+        doc = fitz.open()
+        for i in range(5):
+            page = doc.new_page()
+            page.insert_text((50, 50), f"Content on page {i + 1}")
+        pdf_path = tmp_path / "five_pages.pdf"
+        doc.save(str(pdf_path))
+        doc.close()
+
+        ext = PDFExtractor()
+        ext.MAX_PAGES = 2  # override to test small limit
+
+        with patch("opp.extractors.pdf.logger.warning") as mock_warn:
+            result = ext.extract(pdf_path)
+
+        # Warning logged about the page limit (among any other warnings)
+        found = any(
+            "extracting only first 2" in (call.args[0] % call.args[1:])
+            for call in mock_warn.call_args_list
+        )
+        assert found, (
+            f"Expected page-limit warning in {mock_warn.call_args_list}"
+        )
+
+        # Only pages 1-2 have content; pages 3-5 are NOT extracted
+        texts = [p.text for p in result.paragraphs]
+        assert any("page 1" in t.lower() or "Content on page 1" in t for t in texts)
+        assert any("page 2" in t.lower() or "Content on page 2" in t for t in texts)
+        # Pages 3-5 must NOT appear
+        for i in range(3, 6):
+            assert not any(f"page {i}" in t.lower() or f"Content on page {i}" in t for t in texts), (
+                f"Page {i} content should not be present (MAX_PAGES=2)"
+            )
+
 
 # ════════════════════════════════════════════════════════════════════════
 # Issue OPP #5: OCR fallback for image-only / scanned PDF pages

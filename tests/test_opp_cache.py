@@ -147,6 +147,36 @@ def test_opp_cache_invalidation_on_config_change(fake_cache_dir, sample_input, t
     assert counter["n"] == 2, "cache miss expected on config change"
 
 
+def test_cache_key_chunked_reading_does_not_oom(fake_cache_dir, tmp_path):
+    """RED→GREEN (O-C7): _cache_key MUST NOT call Path.read_bytes() (whole-file load).
+
+    RED: old code calls ``input_path.read_bytes()`` — patching it to raise
+         MemoryError proves the OOM failure mode.
+    GREEN: new code reads in 8KB chunks and never calls ``read_bytes()``,
+           so the MemoryError patch doesn't fire and the hash is correct.
+    """
+    from opp.cliutils import _cache_key
+    f = tmp_path / "test.dat"
+    f.write_bytes(b"x" * 1000)
+
+    with patch.object(Path, "read_bytes", side_effect=MemoryError("OOM on large file")) as mock_read_bytes:
+        result = _cache_key(f, {"foo": "bar"})
+
+    # If we got here, chunked reading works — MemoryError was NOT raised
+    assert isinstance(result, str)
+    assert len(result) == 64  # SHA-256 hexdigest is 64 chars
+    # Verify read_bytes was NEVER called (chunked code used instead)
+    mock_read_bytes.assert_not_called()
+
+    # Deterministic: same input + config yields same hash
+    result2 = _cache_key(f, {"foo": "bar"})
+    assert result == result2
+
+    # Different config yields different hash
+    result3 = _cache_key(f, {"foo": "baz"})
+    assert result != result3
+
+
 def test_opp_cache_directory_created_with_correct_permissions(fake_cache_dir, sample_input, tmp_path):
     """Cache dir exists and is mode 0o700 (protects any sensitive cached content)."""
     counter = {"n": 0}

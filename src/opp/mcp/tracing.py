@@ -167,7 +167,7 @@ def get_tracer() -> Tracer:
 
 def _version() -> str:
     try:
-        from opp import __version__  # type: ignore
+        from opp import __version__
         return str(__version__)
     except Exception:
         return "unknown"

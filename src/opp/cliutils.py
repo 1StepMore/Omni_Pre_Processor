@@ -33,9 +33,15 @@ def _cache_root() -> Path:
 
 
 def _cache_key(input_path: Path, config: dict) -> str:
-    """Return sha256(input_bytes + repr(sorted(config.items())))."""
+    """Return sha256(input_bytes + repr(sorted(config.items()))).
+
+    Uses chunked reading (8 KB blocks) instead of loading the entire file
+    into memory, preventing OOM on large files.
+    """
     h = hashlib.sha256()
-    h.update(input_path.read_bytes())
+    with open(input_path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            h.update(chunk)
     h.update(repr(sorted(config.items())).encode())
     return h.hexdigest()
 
@@ -89,6 +95,9 @@ def _write_cache(file_path: Path, args: argparse.Namespace, output_dir: Path) ->
 def _clear_opp_cache() -> int:
     """Remove all cached OPP files. Returns the number of files removed."""
     root = _cache_root()
+    if not root or root == Path("/") or root == Path.home() or root == Path.cwd():
+        get_logger().error("Refusing to clear cache: %s is a system directory", root)
+        return 0
     if not root.exists():
         return 0
     count = sum(1 for _ in root.iterdir())

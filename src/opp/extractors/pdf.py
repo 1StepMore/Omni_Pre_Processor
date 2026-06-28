@@ -36,6 +36,9 @@ def _get_ocr_lang() -> str:
 class PDFExtractor(ExtractorBase):
     CHINESE_NUMERALS = "一二三四五六七八九十百千万零两"
 
+    # Issue OPP O-C8: limit pages to prevent OOM on huge PDFs
+    MAX_PAGES = 1000
+
     # Issue OPP #5: when text-layer extraction returns fewer than this
     # many characters on a page, assume the page is image-only / scanned
     # and run OCR on the full page as a fallback. Threshold chosen
@@ -216,7 +219,14 @@ class PDFExtractor(ExtractorBase):
 
     def extract_text_blocks(self, doc: fitz.Document) -> list[TextBlockData]:
         result: list[TextBlockData] = []
-        for page_num in range(doc.page_count):
+        max_pages = self.MAX_PAGES
+        page_limit = min(doc.page_count, max_pages)
+        if doc.page_count > max_pages:
+            logger.warning(
+                "PDF has %d pages, extracting only first %d",
+                doc.page_count, max_pages,
+            )
+        for page_num in range(page_limit):
             page = doc[page_num]
             blocks = page.get_text("blocks")
             page_text_chars = 0

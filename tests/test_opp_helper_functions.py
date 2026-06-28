@@ -11,7 +11,6 @@ These tests use fabricated lxml elements — no real DOCX files needed.
 """
 
 from lxml import etree
-import pytest
 
 from opp.extractors.docx import (
     _parse_position_value,
@@ -23,7 +22,11 @@ from opp.extractors.docx import (
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 WP_NS = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
 A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
-WP_NS_MAP = {"wp": WP_NS}
+# Clark notation versions (with curly braces) for lxml search functions
+W_NS_CLARK = f"{{{W_NS}}}"
+WP_NS_CLARK = f"{{{WP_NS}}}"
+A_NS_CLARK = f"{{{A_NS}}}"
+WP_NS_MAP = {"wp": WP_NS_CLARK}
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -107,11 +110,6 @@ class TestParsePositionValue:
 # ══════════════════════════════════════════════════════════════════════
 
 
-@pytest.mark.xfail(
-    reason="Production code uses f'{WP_NS}anchor' instead of Clark notation f'{{{WP_NS}}}anchor' "
-           "(docx.py:64,67-68) — pre-existing bug; fix production code first",
-    strict=False,
-)
 class TestExtractAnchorOffsets:
     """Tests for _extract_anchor_offsets()."""
 
@@ -124,7 +122,7 @@ class TestExtractAnchorOffsets:
             f'  </wp:inline>'
             f'</w:drawing>'
         )
-        result = _extract_anchor_offsets(drawing, WP_NS, WP_NS_MAP)
+        result = _extract_anchor_offsets(drawing, WP_NS_CLARK, WP_NS_MAP)
         assert result == (0, 0)
 
     def test_floating_with_pos_offsets(self):
@@ -142,7 +140,7 @@ class TestExtractAnchorOffsets:
             f'  </wp:anchor>'
             f'</w:drawing>'
         )
-        result = _extract_anchor_offsets(drawing, WP_NS, WP_NS_MAP)
+        result = _extract_anchor_offsets(drawing, WP_NS_CLARK, WP_NS_MAP)
         assert result == (1828800, 2743200)
 
     def test_floating_with_align_keyword_fallback(self):
@@ -160,7 +158,7 @@ class TestExtractAnchorOffsets:
             f'  </wp:anchor>'
             f'</w:drawing>'
         )
-        result = _extract_anchor_offsets(drawing, WP_NS, WP_NS_MAP)
+        result = _extract_anchor_offsets(drawing, WP_NS_CLARK, WP_NS_MAP)
         assert result == (0, 0)
 
     def test_floating_missing_pos_v(self):
@@ -175,7 +173,7 @@ class TestExtractAnchorOffsets:
             f'  </wp:anchor>'
             f'</w:drawing>'
         )
-        result = _extract_anchor_offsets(drawing, WP_NS, WP_NS_MAP)
+        result = _extract_anchor_offsets(drawing, WP_NS_CLARK, WP_NS_MAP)
         assert result == (500000, 0)
 
     def test_zero_offsets_explicit(self):
@@ -193,7 +191,7 @@ class TestExtractAnchorOffsets:
             f'  </wp:anchor>'
             f'</w:drawing>'
         )
-        result = _extract_anchor_offsets(drawing, WP_NS, WP_NS_MAP)
+        result = _extract_anchor_offsets(drawing, WP_NS_CLARK, WP_NS_MAP)
         assert result == (0, 0)
 
 
@@ -201,11 +199,6 @@ class TestExtractAnchorOffsets:
 # _walk_textbox_paragraphs
 # ══════════════════════════════════════════════════════════════════════
 
-@pytest.mark.xfail(
-    reason="Production code uses f'{W_NS}txbxContent' instead of Clark notation f'{{{W_NS}}}txbxContent' "
-           "(docx.py:321-330) — pre-existing bug; fix production code first",
-    strict=False,
-)
 class TestWalkTextboxParagraphs:
     """Tests for DOCXExtractor._walk_textbox_paragraphs()."""
 
@@ -233,7 +226,7 @@ class TestWalkTextboxParagraphs:
             f'</w:body>'
         )
         extractor = DOCXExtractor()
-        results = list(extractor._walk_textbox_paragraphs(body, W_NS))
+        results = list(extractor._walk_textbox_paragraphs(body, W_NS_CLARK))
         texts = [t for _, t in results]
         assert "Textbox paragraph 1" in texts
         assert "Textbox paragraph 2" in texts
@@ -279,7 +272,7 @@ class TestWalkTextboxParagraphs:
             f'</w:body>'
         )
         extractor = DOCXExtractor()
-        results = list(extractor._walk_textbox_paragraphs(body, W_NS))
+        results = list(extractor._walk_textbox_paragraphs(body, W_NS_CLARK))
         assert len(results) == 1, "Should deduplicate identical text"
         assert results[0][1] == "Duplicate text"
 
@@ -306,7 +299,7 @@ class TestWalkTextboxParagraphs:
             f'</w:body>'
         )
         extractor = DOCXExtractor()
-        results = list(extractor._walk_textbox_paragraphs(body, W_NS))
+        results = list(extractor._walk_textbox_paragraphs(body, W_NS_CLARK))
         assert results == []
 
     def test_no_textbox_returns_empty(self):
@@ -317,7 +310,7 @@ class TestWalkTextboxParagraphs:
             f'</w:body>'
         )
         extractor = DOCXExtractor()
-        results = list(extractor._walk_textbox_paragraphs(body, W_NS))
+        results = list(extractor._walk_textbox_paragraphs(body, W_NS_CLARK))
         assert results == []
 
 

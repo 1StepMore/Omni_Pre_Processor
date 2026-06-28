@@ -97,10 +97,10 @@ class XLSXExtractor(ExtractorBase):
             ))
 
             if ws.max_row > self.MAX_ROWS_WARNING:
-                warnings.append(f"工作表 '{sheet_name}' 超过 {self.MAX_ROWS_WARNING} 行，已截断")
+                warnings.append(f"工作表 '{sheet_name}' 超过 {self.MAX_ROWS_WARNING} 行")
 
             max_col = ws.max_column or 1
-            for row_idx, row in enumerate(ws.iter_rows(min_row=1, max_row=min(ws.max_row, self.MAX_ROWS_WARNING), max_col=max_col), start=1):
+            for row_idx, row in enumerate(ws.iter_rows(min_row=1, max_row=ws.max_row, max_col=max_col), start=1):
                 row_values = []
                 for cell in row:
                     val = cell.value

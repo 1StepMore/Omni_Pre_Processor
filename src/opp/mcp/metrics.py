@@ -13,6 +13,7 @@ path (would break the JSON-RPC stream).
 """
 from __future__ import annotations
 
+import logging
 import os
 import threading
 import time
@@ -25,6 +26,8 @@ from prometheus_client import (
     Histogram,
     write_to_textfile,
 )
+
+_logger = logging.getLogger(__name__)
 
 # Per-module registry — kept isolated from the global ``REGISTRY`` that
 # ``omni_metrics`` uses, so the two metric families don't collide when
@@ -125,7 +128,7 @@ def _emit() -> None:
         with _write_lock:
             write_to_textfile(str(outdir / "opp.prom"), REGISTRY)
     except Exception:
-        pass
+        _logger.debug("Failed to write Prometheus metrics", exc_info=True)
 
 
 def record_request(
@@ -141,7 +144,7 @@ def record_request(
         )
         _emit()
     except Exception:
-        pass
+        _logger.debug("Failed to write Prometheus metrics", exc_info=True)
 
 
 def record_extraction(format: str, status: str) -> None:
@@ -153,7 +156,7 @@ def record_extraction(format: str, status: str) -> None:
         OPP_EXTRACTIONS_TOTAL.labels(format=format or "unknown", status=status).inc()
         _emit()
     except Exception:
-        pass
+        _logger.debug("Failed to write Prometheus metrics", exc_info=True)
 
 
 def record_request_from_arguments(
