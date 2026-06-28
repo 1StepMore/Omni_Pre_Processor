@@ -23,6 +23,11 @@ Document content extraction for DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPU
 - **Manifest metadata** - JSON manifest with source info, extraction stats, and image data
 - **Skeleton preservation** - Original DOCX/PPTX ZIP structure preserved for downstream XLIFF→DOCX/PPTX backfill
 
+## Prerequisites
+
+- **Python >= 3.13** — required by all Omni Suite components (OPP, OL, ORF).
+  Verify with `python3 --version`.
+
 ## Installation
 
 ```bash
@@ -95,21 +100,7 @@ opp --ocr-engine tesseract scan.png
 opp --batch file1.docx file2.pdf file3.pptx
 ```
 
-### Windows Batch Scripts
-
-| Script | Description |
-|--------|-------------|
-| `md.bat` | Convert to Markdown |
-| `en2cn_xliff.bat` | English source → Chinese XLIFF |
-| `cn2en_xliff.bat` | Chinese source → English XLIFF |
-
-```batch
-md.bat "document.docx"
-md.bat "folder"
-
-en2cn_xliff.bat "english.docx"
-cn2en_xliff.bat "中文.docx"
-```
+> **Note:** Windows `.bat` helper scripts are no longer provided. Use the CLI directly — see examples above.
 
 Supports drag-drop of files **and folders**. Logs saved to `logs/`.
 
@@ -292,7 +283,7 @@ OPP outputs standardized artifacts for downstream processing:
 | `{name}_manifest.json` | Metadata: source info, output paths, resources | ORF (manifest parser) |
 | `{name}.skeleton.zip` | Original DOCX/PPTX ZIP structure | ORF (XLIFF→DOCX backfill) |
 
-**MCP Tools Available:** `extract_document`, `batch_extract`, `detect_format`, `generate_markdown`, `generate_xliff`
+**MCP Tools Available:** `extract_document`, `batch_extract`, `detect_format_tool`, `generate_markdown`, `generate_xliff`, `save_skeleton`, `ping`
 
 ### Floating Image Metadata
 
@@ -306,7 +297,7 @@ The OPP MCP server provides document extraction capabilities to AI agents via th
 
 - **Agent integration** - Connect OPP to any MCP-compatible AI assistant
 - **stdio transport** - Communication over standard input/output for security
-- **5 extraction tools** - Cover all major document formats
+- **7 extraction tools** - Cover all major document formats
 - **Path security** - Directory allowlist prevents unauthorized file access
 
 ### Installation
@@ -359,6 +350,8 @@ agents:
 | `detect_format` | Identify the file format of a document using magic bytes detection. Works regardless of file extension. Returns format name and confidence score. |
 | `generate_markdown` | Convert a document to markdown format. Specify source and target languages for proper text processing. |
 | `generate_xliff` | Convert a document to XLIFF format for translation workflows. Requires source-lang and target-lang parameters. |
+| `save_skeleton` | Save the skeleton ZIP for an extracted document, preserving original OOXML structure (required by ORF `apply-xliff`). |
+| `ping` | Health check endpoint. Returns server version and status. |
 
 ### Security
 

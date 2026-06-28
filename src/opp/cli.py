@@ -235,7 +235,7 @@ def create_parser() -> argparse.ArgumentParser:
         "--config",
         type=Path,
         default=None,
-        help="Path to opp_config.yaml configuration file"
+        help="Path to config file (default: config/default.yaml; opp_config.yaml also accepted with deprecation warning)"
     )
 
     parser.add_argument(

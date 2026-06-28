@@ -54,7 +54,7 @@ opp [OPTIONS] FILE [FILE ...]
 | `--ocr-lang CODE` | string | (none) | Tesseract language code (`eng`, `chi_sim`, ...). |
 | `--asr-engine {whisper}` | choice | (none) | ASR engine for audio files. |
 | `--model-size {tiny,base,small,medium,large-v3}` | choice | `tiny` | Whisper model size. |
-| `--config PATH` | path | (none) | Path to `opp_config.yaml`. |
+| `--config PATH` | path | (none) | Path to config file (`config/default.yaml` by default; `opp_config.yaml` also accepted with deprecation warning). |
 | `--no-cache` | bool | `False` | Skip the `~/.omni_cache/opp/` cache check. |
 | `--clear-cache` | bool | `False` | Remove all cached OPP outputs and exit immediately. |
 | `--max-file-size MB` | int | `0` (unlimited) | Reject files larger than this size in MB. |

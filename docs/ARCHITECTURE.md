@@ -142,7 +142,7 @@ The CLI wraps this in `process_single_file()` (`src/opp/cli.py:312`) and additio
 
 ### ADR-5: Content-addressed cache keyed on file bytes + config hash
 
-**Decision** — Re-runs of `opp` on the same file with the same `opp_config.yaml` skip extraction and copy the cached `.xlf` directly. Implemented in `cli.py:34-96` (A6, 2026-06).
+**Decision** — Re-runs of `opp` on the same file with the same config (currently `config/default.yaml`; legacy `opp_config.yaml` is deprecated) skip extraction and copy the cached `.xlf` directly. Implemented in `cli.py:34-96` (A6, 2026-06).
 
 **Why** — A 100-file batch interrupted at file 73 should resume in seconds, not minutes. CI pipelines that re-run on the same fixture also benefit.
 
@@ -230,7 +230,7 @@ PDF XLIFF is intentionally blocked at the OPP level — see [TROUBLESHOOTING.md]
 OPP merges configuration from (in order of precedence, highest first):
 
 1. CLI flags (`--source-lang`, `--ocr-engine`, etc.)
-2. `--config` YAML file (`opp_config.yaml` in repo root, see `config/default.yaml`)
+2. `--config` YAML file (`config/default.yaml` in repo root or CWD; legacy `opp_config.yaml` also accepted with deprecation warning)
 3. Environment variables (`OPP_OCR_ENGINE`, `OMNI_CACHE_DIR`, ...)
 4. Built-in defaults
 

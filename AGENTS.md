@@ -10,6 +10,8 @@ OPP.
 > standardized **Markdown + XLIFF + skeleton.zip** for downstream
 > translation and backfill.
 
+> **Prerequisite:** Python >= 3.13. Verify with `python3 --version`.
+
 ## Quick start
 
 ```bash
