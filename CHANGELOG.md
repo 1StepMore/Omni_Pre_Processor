@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **feat(src/opp/cli.py)**: opt-in `.env` auto-loading (`env-autoload`) via `--load-dotenv` flag and `OPP_AUTOLOAD_DOTENV=1` env var. Search path: `$OPP_DOTENV` → `./.env` → walk parents → `~/.config/opp/.env`. Mirrors OL's existing `_load_dotenv` pattern (no python-dotenv dependency).
+
+### Fixed
+
+- **fix(.env.example, config/default.yaml, opp_config.yaml, src/opp/cli.py, docs/ARCHITECTURE.md, docs/API.md, AGENTS.md, README.md)**: Update stale `opp_config.yaml` references to `config/default.yaml`; add Python 3.13 prerequisite; expand `.env.example` with 20+ MCP/observability vars; remove dead `OPP_RESOURCE_STORAGE_DIR` and `# pdf: complex` comment; correct MCP tool count 5→7 (add `save_skeleton`, `ping`).
+
+### Documentation
+
+- **docs(ARCHITECTURE.md)**: Add cross-reference to suite-level `ARCHITECTURE.md`.
+
 ## [0.7.3] - 2026-06-25
 
 ### Added
