@@ -96,6 +96,56 @@ def _clear_opp_cache() -> int:
     return count
 
 
+def _load_env_for_opp() -> None:
+    """Load .env file for OPP CLI commands.
+
+    Search order:
+      1. $OPP_DOTENV env var (explicit override)
+      2. ./.env (current working directory)
+      3. Walk up parent directories looking for .env
+      4. ~/.config/opp/.env (user-level fallback)
+
+    If no .env is found, the function returns silently.
+    """
+    import os
+    from pathlib import Path
+
+    search_paths: list[Path] = []
+    explicit = os.environ.get("OPP_DOTENV")
+    if explicit:
+        search_paths.append(Path(explicit))
+    search_paths.append(Path.cwd() / ".env")
+    for parent in Path.cwd().resolve().parents:
+        candidate = parent / ".env"
+        if candidate not in search_paths:
+            search_paths.append(candidate)
+    search_paths.append(Path.home() / ".config" / "opp" / ".env")
+
+    for env_path in search_paths:
+        if env_path.exists() and env_path.is_file():
+            _load_dotenv_for_opp(env_path)
+            return
+
+
+def _load_dotenv_for_opp(env_path: Path) -> None:
+    """Parse and export .env file without blocking on missing keys."""
+    import os
+    try:
+        content = env_path.read_text()
+        for line in content.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key and value:
+                os.environ.setdefault(key, value)
+    except Exception as exc:
+        from opp.logger import get_logger
+        get_logger().warning("Failed to load .env file %s: %s", env_path, exc)
+
+
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="opp",
@@ -261,6 +311,12 @@ def create_parser() -> argparse.ArgumentParser:
         choices=["console", "json"],
         default=None,
         help="日志输出格式 (默认: console)。也可通过 OMNI_LOG_FORMAT 环境变量设置。",
+    )
+
+    parser.add_argument(
+        "--load-dotenv",
+        action="store_true",
+        help="Load .env file before running (opt-in)"
     )
 
     return parser
@@ -503,6 +559,10 @@ def process_single_file(
 def main(argv: list[str] | None = None) -> int:
     parser = create_parser()
     args = parser.parse_args(argv)
+
+    # Load .env early so env vars are available for config, LLM auth, etc.
+    if args.load_dotenv or os.environ.get("OPP_AUTOLOAD_DOTENV") == "1":
+        _load_env_for_opp()
 
     if args.target_format in ("xlf", "both") and not args.target_lang:
         parser.error("--target-lang is required when --target-format is 'xlf' or 'both'")
