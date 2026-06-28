@@ -1,3 +1,4 @@
+import zipfile
 from enum import Enum
 from pathlib import Path
 import re
@@ -19,6 +20,7 @@ class FormatType(Enum):
     PPTX = "pptx"
     PDF = "pdf"
     XLSX = "xlsx"
+    ODT = "odt"
     CSV = "csv"
     JSON = "json"
     XML = "xml"
@@ -31,6 +33,36 @@ class FormatType(Enum):
     IPYNB = "ipynb"
     YOUTUBE = "youtube"
     UNKNOWN = "unknown"
+
+
+_ZIP_FORMAT_TO_TYPE: dict[str, FormatType] = {
+    "docx": FormatType.DOCX,
+    "pptx": FormatType.PPTX,
+    "xlsx": FormatType.XLSX,
+    "epub": FormatType.EPUB,
+    "odt": FormatType.ODT,
+}
+
+
+def _disambiguate_zip_format(path: Path) -> str:
+    try:
+        with zipfile.ZipFile(path) as zf:
+            names = set(zf.namelist())
+            if "word/document.xml" in names:
+                return "docx"
+            if "ppt/presentation.xml" in names:
+                return "pptx"
+            if "xl/workbook.xml" in names:
+                return "xlsx"
+            if "META-INF/container.xml" in names:
+                if any(n.startswith("OEBPS/") for n in names):
+                    return "epub"
+                return "odt"
+            if "content.xml" in names:
+                return "odt"
+    except (zipfile.BadZipFile, FileNotFoundError, PermissionError):
+        pass
+    return "zip/unknown"
 
 
 def detect_format(path: Path | str) -> tuple[FormatType, float]:
@@ -57,6 +89,9 @@ def detect_format(path: Path | str) -> tuple[FormatType, float]:
             return (FormatType.DOCX, 0.5)
         elif ext == ".potx":
             return (FormatType.PPTX, 0.5)
+        zip_fmt = _disambiguate_zip_format(path)
+        if zip_fmt in _ZIP_FORMAT_TO_TYPE:
+            return (_ZIP_FORMAT_TO_TYPE[zip_fmt], 0.9)
         return (FormatType.UNKNOWN, 0.0)
 
     if header.startswith(b"%PDF"):

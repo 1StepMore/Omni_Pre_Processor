@@ -1,6 +1,10 @@
 """OPP - Omni Pre-Processor: Document content extraction package."""
 
-__version__ = "0.7.8"
+try:
+    from importlib.metadata import version as _v
+    __version__ = _v("omni-pre-processor")
+except Exception:
+    __version__ = "0.9.0"  # fallback matching pyproject.toml
 
 from opp.extractors.docx import DOCXExtractor
 from opp.extractors.pptx import PPTXExtractor

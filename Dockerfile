@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM python:3.12-slim AS builder
+FROM python:3.13-slim AS builder
 
 # Install uv (fast Python package manager)
 COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /uvx /usr/local/bin/
@@ -14,7 +14,7 @@ COPY src ./src
 RUN uv sync --frozen --all-extras --no-dev
 
 # --- Runtime stage ---
-FROM python:3.12-slim AS runtime
+FROM python:3.13-slim AS runtime
 
 # ULTRAREADY-VERIFY (2026-06-07): install tesseract for the OCR path
 # (ImageOCRExtractor). The image-OCR feature is documented in README
@@ -35,6 +35,9 @@ COPY --from=builder /app /app
 
 # Add the venv to PATH so `opp` is on PATH
 ENV PATH="/app/.venv/bin:$PATH"
+
+RUN adduser --disabled-password --gecos '' oppuser
+USER oppuser
 
 # Default: show help
 ENTRYPOINT ["opp"]
