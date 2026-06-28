@@ -10,10 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **feat(src/opp/cli.py)**: opt-in `.env` auto-loading (`env-autoload`) via `--load-dotenv` flag and `OPP_AUTOLOAD_DOTENV=1` env var. Search path: `$OPP_DOTENV` → `./.env` → walk parents → `~/.config/opp/.env`. Mirrors OL's existing `_load_dotenv` pattern (no python-dotenv dependency).
+- **`tests/test_env_autoload.py`** — comprehensive tests for `_load_dotenv_for_opp()` (135 lines): covers empty file, comments-only, simple KEY=value, double-quoted values, single-quoted values, malformed line tolerance. Verifies the `setdefault` precedence (shell env wins over .env file).
 
 ### Fixed
 
 - **fix(.env.example, config/default.yaml, opp_config.yaml, src/opp/cli.py, docs/ARCHITECTURE.md, docs/API.md, AGENTS.md, README.md)**: Update stale `opp_config.yaml` references to `config/default.yaml`; add Python 3.13 prerequisite; expand `.env.example` with 20+ MCP/observability vars; remove dead `OPP_RESOURCE_STORAGE_DIR` and `# pdf: complex` comment; correct MCP tool count 5→7 (add `save_skeleton`, `ping`).
+- **HTMLExtractor strips structural HTML tags** (`src/opp/extractors/html.py`): added regex (`_STRUCTURE_HTML_TAGS`) and helper (`_strip_structural_html_tags()`) to remove bare lines like `<html>`, `</body>`, `<!doctype html>` that were leaking as visible text in markdown output. Called in the markdown conversion path after `_fix_tables()`.
+- **`_load_dotenv_for_opp()` handles `export KEY=val` prefix** (`src/opp/cli.py`): added `line.removeprefix("export ").lstrip()` before partition. Previously `export FOO=bar` would set `export FOO` instead of `FOO`.
 
 ### Documentation
 
