@@ -136,6 +136,8 @@ def _load_dotenv_for_opp(env_path: Path) -> None:
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
                 continue
+            # Strip optional 'export' prefix (common shell convention)
+            line = line.removeprefix("export ").lstrip()
             key, _, value = line.partition("=")
             key = key.strip()
             value = value.strip().strip('"').strip("'")
