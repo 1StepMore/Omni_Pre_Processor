@@ -64,3 +64,4 @@ jobs:
           echo "=== Test exit code: ${exit_status} ==="
           tail -100 test_output.log
           exit ${exit_status}
+
