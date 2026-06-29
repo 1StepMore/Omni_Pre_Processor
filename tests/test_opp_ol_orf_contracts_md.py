@@ -15,6 +15,7 @@ tests can assert translation actually happened.
 
 import asyncio
 import json
+import os
 import sys
 import xml.etree.ElementTree as ET
 import zipfile
@@ -24,6 +25,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 pytest.importorskip("ol_mcp", reason="ol_mcp not installed (cross-module contract tests)")
+
+if os.environ.get("OMNI_SUITE_RUNNING_OPP_TESTS"):
+    pytest.skip("Cross-module OPP tests are run in standalone OPP CI")
 # Cross-repo path setup: OL and ORF live in sibling repos under Omni_Suite
 _OL_SRC = Path(__file__).resolve().parents[2] / "Omni_Localizer" / "src"
 _ORF_SRC = Path(__file__).resolve().parents[2] / "Omni_Re_Formatter" / "src"

@@ -16,6 +16,7 @@ tests can assert translation actually happened.
 
 import asyncio
 import json
+import os
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
@@ -24,6 +25,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 pytest.importorskip("ol_mcp", reason="ol_mcp not installed (cross-module contract tests)")
+
+if os.environ.get("OMNI_SUITE_RUNNING_OPP_TESTS"):
+    pytest.skip("Cross-module OPP tests are run in standalone OPP CI")
 
 
 # ============================================================================
