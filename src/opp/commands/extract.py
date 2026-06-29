@@ -125,7 +125,7 @@ def process_single_file(
             )
             get_logger().info(f"Generated: {xliff_path}")
 
-        if args.target_format == "html":
+        if args.target_format in ("html", "both"):
             html_out_path = output_dir / f"{base_name}.html"
             if proc_result.extraction_result and proc_result.extraction_result.skeleton_html:
                 html_out_path.write_text(
