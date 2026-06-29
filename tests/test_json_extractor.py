@@ -668,3 +668,175 @@ class TestJSONExtractorRoundTrip:
         assert base["desc"] == "日本語の説明"
         assert translations["title"] == "中文标题 [TR]"
         assert translations["desc"] == "日本語の説明 [TR]"
+
+
+class TestJSONExtractorXLIFF:
+    """OPP#42: JSON --target-format xlf produces valid XLIFF 1.2."""
+
+    def _run_opp_cli(self, json_data: dict, tmp_path: Path, target_format: str = "xlf") -> tuple[Path, str]:
+        """Run opp CLI on a JSON file and return (xlf_path, content)."""
+        import subprocess
+        import sys
+        import json as _json
+
+        json_file = tmp_path / "test.json"
+        json_file.write_text(_json.dumps(json_data, ensure_ascii=False), encoding="utf-8")
+
+        output_dir = tmp_path / "out"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        result = subprocess.run([
+            sys.executable, "-m", "opp.cli",
+            str(json_file),
+            "--target-format", target_format,
+            "--source-lang", "en",
+            "--target-lang", "zh",
+            "--output-dir", str(output_dir),
+        ], capture_output=True, text=True)
+
+        assert result.returncode == 0, \
+            f"CLI failed:\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}"
+
+        xlf_path = output_dir / "test.xlf"
+        assert xlf_path.exists(), \
+            f"XLIFF file not found at {xlf_path}"
+
+        return xlf_path, xlf_path.read_text("utf-8")
+
+    def test_json_extract_md_still_works(self, tmp_path: Path):
+        """OPP#42: Existing MD path must remain unchanged."""
+        import json as _json
+
+        json_file = tmp_path / "test.json"
+        json_file.write_text('{"name": "Alice", "value": 42}', encoding="utf-8")
+
+        output_dir = tmp_path / "out_md"
+        import subprocess, sys
+        result = subprocess.run([
+            sys.executable, "-m", "opp.cli",
+            str(json_file),
+            "--target-format", "md",
+            "--output-dir", str(output_dir),
+        ], capture_output=True, text=True)
+
+        assert result.returncode == 0
+        md_path = output_dir / "test.md"
+        assert md_path.exists(), f"MD file not found: {md_path}"
+        md_content = md_path.read_text("utf-8")
+        assert "```json" in md_content, "MD should contain fenced code block"
+        assert "Alice" in md_content, "MD should contain JSON values"
+
+    def _get_trans_units(self, xliff_content: str) -> list[dict[str, str]]:
+        """Parse XLIFF and extract trans-unit id + source pairs."""
+        from lxml import etree
+        root = etree.fromstring(xliff_content.encode("utf-8"))
+        ns = {"x": "urn:oasis:names:tc:xliff:document:1.2"}
+        units = []
+        for tu in root.xpath("//x:trans-unit", namespaces=ns):
+            unit_id = tu.get("id", "")
+            source = tu.findtext("x:source", "", namespaces=ns)
+            units.append({"id": unit_id, "source": source})
+        return units
+
+    def test_json_extract_xlf_produces_valid_xliff(self, tmp_path: Path):
+        """OPP#42: Simple JSON produces valid XLIFF 1.2 with correct trans-units."""
+        data = {"name": "Alice", "greeting": "Hello"}
+        xlf_path, content = self._run_opp_cli(data, tmp_path)
+
+        assert 'version="1.2"' in content, "Should be XLIFF 1.2"
+        assert 'urn:oasis:names:tc:xliff:document:1.2' in content, "Should use 1.2 namespace"
+
+        units = self._get_trans_units(content)
+        assert len(units) == 2, f"Expected 2 trans-units, got {len(units)}"
+
+        ids = {u["id"]: u["source"] for u in units}
+        assert ids.get("name") == "Alice", f"Expected name=Alice, got {ids}"
+        assert ids.get("greeting") == "Hello", f"Expected greeting=Hello, got {ids}"
+
+    def test_json_extract_xlf_handles_nested_objects(self, tmp_path: Path):
+        """OPP#42: Nested JSON emits all leaf values as flat dot-notation trans-units."""
+        data = {
+            "user": {
+                "name": "Alice",
+                "profile": {
+                    "bio": "Developer",
+                    "location": "Beijing",
+                }
+            },
+            "settings": {
+                "theme": "dark",
+                "count": 42,
+            }
+        }
+        xlf_path, content = self._run_opp_cli(data, tmp_path)
+        units = self._get_trans_units(content)
+
+        ids = {u["id"]: u["source"] for u in units}
+
+        assert ids.get("user.name") == "Alice", f"Missing user.name: {ids}"
+        assert ids.get("user.profile.bio") == "Developer", f"Missing user.profile.bio: {ids}"
+        assert ids.get("user.profile.location") == "Beijing", f"Missing user.profile.location: {ids}"
+        assert ids.get("settings.theme") == "dark", f"Missing settings.theme: {ids}"
+        assert ids.get("settings.count") == "42", f"Missing settings.count (as str): {ids}"
+
+    def test_json_extract_xlf_handles_arrays(self, tmp_path: Path):
+        """OPP#42: JSON arrays with strings emit numeric-indexed trans-units."""
+        data = {"items": ["first", "second", "third"]}
+        xlf_path, content = self._run_opp_cli(data, tmp_path)
+        units = self._get_trans_units(content)
+
+        ids = {u["id"]: u["source"] for u in units}
+        assert ids.get("items.0") == "first", f"Missing items.0: {ids}"
+        assert ids.get("items.1") == "second", f"Missing items.1: {ids}"
+        assert ids.get("items.2") == "third", f"Missing items.2: {ids}"
+
+    def test_json_extract_xlf_includes_all_values(self, tmp_path: Path):
+        """OPP#42: All leaf values (including numbers/bools) included as strings in XLIFF."""
+        data = {
+            "name": "Alice",
+            "age": 30,
+            "active": True,
+            "score": 3.14,
+        }
+        xlf_path, content = self._run_opp_cli(data, tmp_path)
+        units = self._get_trans_units(content)
+
+        ids = {u["id"]: u["source"] for u in units}
+        assert ids.get("name") == "Alice", f"Missing string value: {ids}"
+        assert ids.get("age") == "30", f"Numeric value should be str '30': {ids}"
+        assert ids.get("active") == "True", f"Bool value should be str 'True': {ids}"
+        assert ids.get("score") == "3.14", f"Float value should be str '3.14': {ids}"
+
+    def test_json_extract_xlf_target_format_both(self, tmp_path: Path):
+        """OPP#42: --target-format both produces both MD and proper XLIFF."""
+        import subprocess, sys, json as _json
+
+        json_file = tmp_path / "test_both.json"
+        json_file.write_text('{"key": "value"}', encoding="utf-8")
+
+        output_dir = tmp_path / "out_both"
+        result = subprocess.run([
+            sys.executable, "-m", "opp.cli",
+            str(json_file),
+            "--target-format", "both",
+            "--source-lang", "en",
+            "--target-lang", "zh",
+            "--output-dir", str(output_dir),
+        ], capture_output=True, text=True)
+
+        assert result.returncode == 0, f"CLI failed: {result.stderr}"
+
+        md_path = output_dir / "test_both.md"
+        assert md_path.exists(), "MD file must exist for --target-format both"
+        md_content = md_path.read_text("utf-8")
+        assert "```json" in md_content, "MD should have fenced code block"
+
+        xlf_path = output_dir / "test_both.xlf"
+        assert xlf_path.exists(), "XLIFF file must exist for --target-format both"
+        xlf_content = xlf_path.read_text("utf-8")
+        assert 'version="1.2"' in xlf_content, "Should be XLIFF 1.2"
+
+        units = self._get_trans_units(xlf_content)
+        assert len(units) == 1, f"Expected 1 trans-unit, got {len(units)}"
+        assert units[0]["id"] == "key"
+        assert units[0]["source"] == "value"

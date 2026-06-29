@@ -250,3 +250,120 @@ class TestEPUBExtractor:
         extractor = EPUBExtractor()
         with pytest.raises(CorruptedFileError):
             extractor.extract(epub_samples['missing_opf.epub'])
+
+
+# ── OPP#39: EPUB skeleton + segment IDs ─────────────────────────
+
+
+def test_epub_skeleton_bytes(tmp_path: Path):
+    """OPP#39: EPUB extract must produce skeleton bytes (raw EPUB ZIP)."""
+    epub = create_epub_with_ebooklib(
+        tmp_path, "skel_test.epub",
+        [("Ch1", "<html><body><p>A</p><p>B</p></body></html>")]
+    )
+    extractor = EPUBExtractor()
+    result = extractor.extract(epub)
+    assert result.skeleton is not None, "EPUB extract must set skeleton bytes"
+    assert len(result.skeleton) > 0, "Skeleton bytes must not be empty"
+
+    import zipfile, io
+    with zipfile.ZipFile(io.BytesIO(result.skeleton)) as z:
+        names = z.namelist()
+        xhtml_files = [n for n in names if n.endswith(('.xhtml', '.html', '.htm'))]
+        assert len(xhtml_files) > 0, "Skeleton ZIP must contain XHTML files"
+
+
+def test_epub_skeleton_has_segment_ids(tmp_path: Path):
+    """OPP#39: Skeleton XHTML must have data-trans-unit-id attributes."""
+    epub = create_epub_with_ebooklib(
+        tmp_path, "segid_test.epub",
+        [("Ch1", "<html><body><p>Hello</p><p>World</p></body></html>")]
+    )
+    extractor = EPUBExtractor()
+    result = extractor.extract(epub)
+    assert result.skeleton is not None
+
+    import zipfile, io
+    with zipfile.ZipFile(io.BytesIO(result.skeleton)) as z:
+        spine_xhtml = [
+            n for n in z.namelist()
+            if n.endswith(('.xhtml', '.html', '.htm'))
+            and 'nav' not in n.lower()
+        ]
+        assert len(spine_xhtml) > 0, "No spine XHTML files found in skeleton"
+        for name in spine_xhtml:
+            content = z.read(name).decode('utf-8', errors='replace')
+            assert 'data-trans-unit-id=' in content, \
+                f"Missing data-trans-unit-id in {name}"
+
+
+def test_epub_skeleton_segment_ids_sequential(tmp_path: Path):
+    """OPP#39: Segment IDs must be sequential (para-0, para-1, ...) across chapters."""
+    import re
+    epub = create_epub_with_ebooklib(
+        tmp_path, "seq_test.epub",
+        [
+            ("Ch1", "<html><body><p>First</p><p>Second</p></body></html>"),
+            ("Ch2", "<html><body><p>Third</p><h1>Fourth</h1></body></html>"),
+        ]
+    )
+    extractor = EPUBExtractor()
+    result = extractor.extract(epub)
+    assert result.skeleton is not None
+
+    import zipfile, io
+    with zipfile.ZipFile(io.BytesIO(result.skeleton)) as z:
+        xhtml_names = sorted(n for n in z.namelist() if n.endswith('.xhtml'))
+        all_ids: list[str] = []
+        for name in xhtml_names:
+            content = z.read(name).decode('utf-8')
+            ids = re.findall(r'data-trans-unit-id="para-(\d+)"', content)
+            all_ids.extend(ids)
+
+        assert len(all_ids) == 4, f"Expected 4 segment IDs, got {len(all_ids)}: {all_ids}"
+        assert all_ids == ["0", "1", "2", "3"], f"IDs not sequential: {all_ids}"
+
+
+def test_epub_skeleton_preserves_paragraphs(tmp_path: Path):
+    """OPP#39: Paragraph text must be preserved in skeleton (no content corruption)."""
+    epub = create_epub_with_ebooklib(
+        tmp_path, "content_test.epub",
+        [("Ch1", "<html><body><p>Preserve this text</p><h1>Heading</h1></body></html>")]
+    )
+    extractor = EPUBExtractor()
+    result = extractor.extract(epub)
+
+    # Paragraphs must be extracted correctly
+    assert len(result.paragraphs) >= 2
+    texts = [p.text for p in result.paragraphs]
+    assert "Preserve this text" in texts
+    assert "Heading" in texts
+
+
+def test_epub_skeleton_multichapter(tmp_path: Path):
+    """OPP#39: Multi-chapter EPUB must produce skeleton with segment IDs in each chapter."""
+    import re
+    epub = create_epub_with_ebooklib(
+        tmp_path, "multi_test.epub",
+        [
+            ("Ch1", "<html><body><p>Chapter1 Para1</p></body></html>"),
+            ("Ch2", "<html><body><p>Chapter2 Para1</p><p>Chapter2 Para2</p></body></html>"),
+            ("Ch3", "<html><body><h1>Chapter3 Title</h1></body></html>"),
+        ]
+    )
+    extractor = EPUBExtractor()
+    result = extractor.extract(epub)
+    assert result.skeleton is not None
+
+    import zipfile, io
+    with zipfile.ZipFile(io.BytesIO(result.skeleton)) as z:
+        xhtml_names = sorted(n for n in z.namelist() if n.endswith('.xhtml'))
+        all_ids: list[str] = []
+        for name in xhtml_names:
+            content = z.read(name).decode('utf-8')
+            ids = re.findall(r'data-trans-unit-id="para-(\d+)"', content)
+            all_ids.extend(ids)
+
+        # 1 + 2 + 1 = 4 elements total
+        assert len(all_ids) == 4, f"Expected 4 segment IDs, got {len(all_ids)}"
+        assert all_ids == ["0", "1", "2", "3"], f"IDs not sequential: {all_ids}"
