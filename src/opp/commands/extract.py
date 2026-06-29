@@ -125,6 +125,39 @@ def process_single_file(
             )
             get_logger().info(f"Generated: {xliff_path}")
 
+        # Data-format XLIFF override (JSON)
+        # For data formats like JSON, the paragraph-based XLIFF generator
+        # produces unusable output. Override with KeyValueChannel XLIFF 1.2
+        # compatible with ORF's xliff2json.py channel.
+        if (
+            proc_result.format_type == FormatType.JSON
+            and args.target_format in ("xlf", "both")
+        ):
+            if proc_result.extraction_result:
+                from opp.channels.keyvalue_channel import KeyValueChannel
+                from opp.extractors.json import JSONExtractor
+                try:
+                    json_extractor = JSONExtractor()
+                    kv_data = json_extractor.extract_key_values(file_path)
+                    if kv_data:
+                        channel = KeyValueChannel()
+                        xliff_content = channel.convert(kv_data)
+                        # translate-toolkit produces XLIFF 1.1;
+                        # fix namespace for ORF xliff2json 1.2 compat
+                        xliff_content = xliff_content.replace(
+                            "urn:oasis:names:tc:xliff:document:1.1",
+                            "urn:oasis:names:tc:xliff:document:1.2",
+                        ).replace('version="1.1"', 'version="1.2"')
+                        xliff_path.write_text(xliff_content, encoding="utf-8")
+                        get_logger().info(
+                            f"Generated (JSON KV XLIFF): {xliff_path}"
+                            f" ({len(kv_data)} keys)"
+                        )
+                except Exception as e:
+                    get_logger().warning(
+                        f"JSON XLIFF generation override failed: {e}"
+                    )
+
         if args.target_format in ("html", "both"):
             html_out_path = output_dir / f"{base_name}.html"
             if proc_result.extraction_result and proc_result.extraction_result.skeleton_html:
