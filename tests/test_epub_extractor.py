@@ -317,11 +317,11 @@ def test_epub_skeleton_segment_ids_sequential(tmp_path: Path):
         all_ids: list[str] = []
         for name in xhtml_names:
             content = z.read(name).decode('utf-8')
-            ids = re.findall(r'data-trans-unit-id="para-(\d+)"', content)
+            ids = re.findall(r'data-trans-unit-id="(\d+)"', content)
             all_ids.extend(ids)
 
         assert len(all_ids) == 4, f"Expected 4 segment IDs, got {len(all_ids)}: {all_ids}"
-        assert all_ids == ["0", "1", "2", "3"], f"IDs not sequential: {all_ids}"
+        assert all_ids == ["1", "2", "3", "4"], f"IDs not 1-indexed sequential: {all_ids}"
 
 
 def test_epub_skeleton_preserves_paragraphs(tmp_path: Path):
@@ -361,9 +361,9 @@ def test_epub_skeleton_multichapter(tmp_path: Path):
         all_ids: list[str] = []
         for name in xhtml_names:
             content = z.read(name).decode('utf-8')
-            ids = re.findall(r'data-trans-unit-id="para-(\d+)"', content)
+            ids = re.findall(r'data-trans-unit-id="(\d+)"', content)
             all_ids.extend(ids)
 
         # 1 + 2 + 1 = 4 elements total
         assert len(all_ids) == 4, f"Expected 4 segment IDs, got {len(all_ids)}"
-        assert all_ids == ["0", "1", "2", "3"], f"IDs not sequential: {all_ids}"
+        assert all_ids == ["1", "2", "3", "4"], f"IDs not 1-indexed sequential: {all_ids}"

@@ -212,7 +212,7 @@ class EPUBExtractor(ExtractorBase):
                                     for element in soup.find_all(tag):
                                         if not _should_process_element(element, heading_tags):
                                             continue
-                                        element['data-trans-unit-id'] = f'para-{para_counter}'
+                                        element['data-trans-unit-id'] = str(para_counter + 1)
                                         para_counter += 1
                                 modified = str(soup).encode('utf-8')
                                 z_out.writestr(name, modified)
