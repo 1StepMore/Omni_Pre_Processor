@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **feat(src/opp/cli.py)**: opt-in `.env` auto-loading (`env-autoload`) via `--load-dotenv` flag and `OPP_AUTOLOAD_DOTENV=1` env var. Search path: `$OPP_DOTENV` → `./.env` → walk parents → `~/.config/opp/.env`. Mirrors OL's existing `_load_dotenv` pattern (no python-dotenv dependency).
 - **`tests/test_env_autoload.py`** — comprehensive tests for `_load_dotenv_for_opp()` (135 lines): covers empty file, comments-only, simple KEY=value, double-quoted values, single-quoted values, malformed line tolerance. Verifies the `setdefault` precedence (shell env wins over .env file).
+- **`test(tests/test_structure_html_tags.py)`**: new test class `TestStructureHtmlTags` covering bare HTML tags, tags with attributes (OPP#36 regression guard), and content tags. Locks in the regex fix from commit 21e890d. 28 parametrized test cases. (Resolves OPP#41)
 
 ### Fixed
 
@@ -18,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **HTMLExtractor strips structural HTML tags** (`src/opp/extractors/html.py`): added regex (`_STRUCTURE_HTML_TAGS`) and helper (`_strip_structural_html_tags()`) to remove bare lines like `<html>`, `</body>`, `<!doctype html>` that were leaking as visible text in markdown output. Called in the markdown conversion path after `_fix_tables()`.
 - **`_load_dotenv_for_opp()` handles `export KEY=val` prefix** (`src/opp/cli.py`): added `line.removeprefix("export ").lstrip()` before partition. Previously `export FOO=bar` would set `export FOO` instead of `FOO`.
 - **OPP#36 — `_STRUCTURE_HTML_TAGS` regex now strips tags with attributes** (`src/opp/extractors/html/markdown_converter.py:45-48`): the original regex required `>` immediately after the tag name, so `<html lang="en">` and `<body bgcolor="">` slipped through. Added `(?:\s[^>]*)?` to match optional attributes. Tests extended in `tests/test_html_extractor_split.py::test_strip_structural_html_tags_with_attributes` (single-attr, multi-attr, doctype, uppercase, unquoted) and a new end-to-end guard `tests/test_html_extractor.py::test_opp36_no_leaking_html_tags_with_attributes`.
+- **`fix(src/opp/commands/extract.py)`**: skeleton.html now written for `--target-format both` (was only for `== "html"`, silently dropped when using `both`). One-line fix bringing the skeleton-write check into alignment with the PDF→HTML routing at line 72. (Resolves OPP#40)
+- **`feat(src/opp/extractors/epub.py)`**: `EPUBExtractor.extract()` now sets `skeleton=result_bytes` and `skeleton_files=[(chapter_path, modified_bytes)]` in `ExtractionResult`. The new `_build_epub_skeleton_with_segment_ids()` method injects `data-trans-unit-id="N"` attributes into EPUB chapter XHTML elements (1-indexed numeric IDs matching XLIFF generator's `str(idx + 1)` format). This enables ORF's xliff2epub channel to match translated segments back to original elements (previously 0/N translations were applied because the EPUB had no segment identifiers). (Resolves OPP#39 OPP side)
+- **`feat(src/opp/commands/extract.py)`**: added JSON-specific override that uses `JSONExtractor.extract_key_values()` + `KeyValueChannel.convert()` to produce proper XLIFF for JSON inputs when `--target-format` is `xlf` or `both`. This closes the loop on the JSON XLIFF pipeline: OPP → XLIFF → OL → ORF → JSON. The override is placed before manifest computation so the XLIFF file is correct for unit counting. (Resolves OPP#42 OPP side)
 
 ### Documentation
 
