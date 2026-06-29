@@ -18,32 +18,40 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.13
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.13"
 
-      - name: Create virtual environment
-        run: uv venv .venv
+      - name: Create virtual environment (pinned to Python 3.13)
+        run: uv venv --python 3.13 .venv
 
-      - name: Install dependencies
+      - name: Install base + dev dependencies
         run: |
-          echo "=== Installing base dependencies ==="
-          uv pip install python-docx pymupdf translate-toolkit lxml pytest pytest-cov || true
-          echo "=== Installing in dev mode ==="
-          uv pip install -e . || true
-          echo "=== Installing extra dependencies ==="
-          uv pip install openpyxl pandas chardet markdownify readability-lxml ebooklib beautifulsoup4 docling extract-msg rapidocr-onnxruntime pytesseract Pillow faster-whisper markitdown[youtube] pydub nbformat || true
-          echo "=== Installation complete ==="
+          uv pip install --python .venv/bin/python -e ".[dev]"
+
+      - name: Install extra test dependencies (extractors, OCR, etc.)
+        run: |
+          uv pip install --python .venv/bin/python \
+            openpyxl pandas chardet markdownify readability-lxml ebooklib \
+            beautifulsoup4 docling extract-msg rapidocr-onnxruntime pytesseract \
+            Pillow faster-whisper 'markitdown[youtube]' pydub nbformat
+
+      - name: Verify Python + opp import
+        run: |
           .venv/bin/python -c "import sys; print(f'Python {sys.version}')"
-          .venv/bin/python -c "import opp; print('opp OK')" || echo "opp import FAILED"
+          .venv/bin/python -c "import opp; print(f'opp OK ({opp.__version__})')"
 
       - name: Run tests
         env:
           PYTHONPATH: ${{ github.workspace }}/src
+          OMNI_TEST_FAKE_LLM: "1"
+          OMNI_TEST_FAKE_PANDOC: "1"
         shell: bash
         run: |
           echo "=== Running tests ==="
