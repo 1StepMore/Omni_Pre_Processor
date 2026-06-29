@@ -31,9 +31,12 @@ jobs:
       - name: Create virtual environment (pinned to Python 3.13)
         run: uv venv --python 3.13 .venv
 
-      - name: Install base + dev dependencies
+      - name: Install base + dev + mcp dependencies
         run: |
-          uv pip install --python .venv/bin/python -e ".[dev]"
+          # .[dev]  = pytest, pytest-cov
+          # .[mcp]  = mcp, fastmcp, pyyaml (needed by tests/mcp/test_server.py
+          #          and tests/mcp/test_security_attacks.py)
+          uv pip install --python .venv/bin/python -e ".[dev,mcp]"
 
       - name: Install extra test dependencies (extractors, OCR, etc.)
         run: |
