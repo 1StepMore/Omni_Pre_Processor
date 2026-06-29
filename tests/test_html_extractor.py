@@ -78,9 +78,9 @@ class TestHTMLExtractor:
 
     def test_large_file_performance(self, html_sample_files: Path):
         """Test large file processing (slow, runs in seconds-to-minutes)."""
-        import sys
+        import os
         import time
-        if "ci" in sys.argv[0] or any("github" in a for a in sys.argv):
+        if os.environ.get("CI"):
             pytest.skip("Large-file perf test is too slow for CI")
 
         large_file = html_sample_files / "large.html"

@@ -31,9 +31,23 @@ def mcp_server():
 
 
 def _content(result: dict) -> dict:
-    """MCP responses wrap payload in 'content'. Fall back to root for legacy tools."""
-    if isinstance(result, dict) and "content" in result and isinstance(result["content"], dict):
-        return result["content"]
+    """Return the test-facing view of an MCP tool response.
+
+    The current server returns either:
+      - {"success": True, "content": {...}}  (new MCP stdio shape)
+      - {"success": True, ...payload...}      (legacy direct shape)
+    Both expose success at the top level and the payload either at
+    "content" or as the response body itself. Returns a dict that has
+    "success" + the payload merged.
+    """
+    if not isinstance(result, dict):
+        return {"success": False, "error": str(result)}
+    if "content" in result and isinstance(result["content"], dict):
+        merged = dict(result["content"])
+        merged.setdefault("success", result.get("success"))
+        if "error" not in merged and "error" in result:
+            merged["error"] = result["error"]
+        return merged
     return result
 
 

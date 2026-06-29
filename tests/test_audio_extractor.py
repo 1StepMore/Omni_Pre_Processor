@@ -1,3 +1,4 @@
+import importlib.util
 import struct
 import wave
 from pathlib import Path
@@ -24,9 +25,11 @@ class TestAudioExtractor:
         assert result.metadata.file_size > 0
         assert result.metadata.format_type == "wav"
 
+    @pytest.mark.skipif(
+        importlib.util.find_spec("faster_whisper") is not None,
+        reason="only valid when faster-whisper is NOT installed (CI installs it)",
+    )
     def test_extract_wav_without_faster_whisper(self, tmp_path: Path):
-        pytest.importorskip("faster_whisper")
-
         wav_path = tmp_path / "test.wav"
         self._create_wav_file(wav_path, duration_seconds=1)
 
