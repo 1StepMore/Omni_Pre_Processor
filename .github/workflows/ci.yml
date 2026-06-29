@@ -44,7 +44,7 @@ jobs:
             openpyxl pandas chardet markdownify readability-lxml ebooklib \
             beautifulsoup4 docling extract-msg rapidocr-onnxruntime pytesseract \
             Pillow faster-whisper 'markitdown[youtube]' pydub nbformat \
-            pytest-timeout
+            pytest-timeout pytest-asyncio
 
       - name: Verify Python + opp import
         run: |
