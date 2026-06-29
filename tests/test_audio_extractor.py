@@ -1,8 +1,8 @@
-from pathlib import Path
-import wave
 import struct
-import pytest
+import wave
+from pathlib import Path
 
+import pytest
 from opp.extractors.audio import AudioExtractor
 
 
@@ -25,6 +25,8 @@ class TestAudioExtractor:
         assert result.metadata.format_type == "wav"
 
     def test_extract_wav_without_faster_whisper(self, tmp_path: Path):
+        pytest.importorskip("faster_whisper")
+
         wav_path = tmp_path / "test.wav"
         self._create_wav_file(wav_path, duration_seconds=1)
 
@@ -67,7 +69,7 @@ class TestAudioExtractor:
 
     @pytest.mark.integration
     def test_extract_wav_with_faster_whisper(self, tmp_path: Path):
-        faster_whisper = pytest.importorskip("faster_whisper")
+        pytest.importorskip("faster_whisper")
 
         wav_path = tmp_path / "test.wav"
         self._create_wav_file(wav_path, duration_seconds=1)

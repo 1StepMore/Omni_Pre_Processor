@@ -10,8 +10,7 @@ import os
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
+from opp.mcp import common as _c
 from opp.mcp.config import MCPConfig
 
 
@@ -26,126 +25,110 @@ def _make_config(tmp_path: Path, cleanup: bool = False) -> MCPConfig:
 class TestTempfileRegistration:
 
     def test_tempfile_registered_in_tempfiles_set(self, tmp_path: Path):
-        from opp.mcp import server as srv
-
-        srv._tempfiles.clear()
-        p = srv._safe_temp_output(suffix=".md", parent=tmp_path)
+        _c._tempfiles.clear()
+        p = _c._safe_temp_output(suffix=".md", parent=tmp_path)
         try:
-            assert p in srv._tempfiles
+            assert p in _c._tempfiles
             assert p.exists()
             assert p.name.startswith("opp_mcp_")
             assert p.suffix == ".md"
         finally:
-            srv._tempfiles.discard(p)
+            _c._tempfiles.discard(p)
             p.unlink(missing_ok=True)
 
 
 class TestCleanupTempfiles:
 
     def test_cleanup_tempfiles_removes_tracked_files(self, tmp_path: Path):
-        from opp.mcp import server as srv
-
-        srv._tempfiles.clear()
-        files = [srv._safe_temp_output(suffix=".txt", parent=tmp_path) for _ in range(3)]
+        _c._tempfiles.clear()
+        files = [_c._safe_temp_output(suffix=".txt", parent=tmp_path) for _ in range(3)]
         for f in files:
             assert f.exists()
 
-        removed = srv._cleanup_tempfiles()
+        removed = _c._cleanup_tempfiles()
         assert removed == 3
-        assert len(srv._tempfiles) == 0
+        assert len(_c._tempfiles) == 0
         for f in files:
             assert not f.exists()
 
     def test_cleanup_tempfiles_ignores_missing_files(self, tmp_path: Path):
-        from opp.mcp import server as srv
-
-        srv._tempfiles.clear()
-        p = srv._safe_temp_output(suffix=".txt", parent=tmp_path)
+        _c._tempfiles.clear()
+        p = _c._safe_temp_output(suffix=".txt", parent=tmp_path)
         p.unlink()
         assert not p.exists()
 
-        removed = srv._cleanup_tempfiles()
+        removed = _c._cleanup_tempfiles()
         assert removed == 0
-        assert len(srv._tempfiles) == 0
+        assert len(_c._tempfiles) == 0
 
 
 class TestCleanupResourceDir:
 
     def test_cleanup_resource_dir_when_flag_false(self, tmp_path: Path):
-        from opp.mcp import server as srv
-
         cfg = _make_config(tmp_path, cleanup=False)
-        srv._config = cfg
+        _c._config = cfg
         res_dir = cfg.resource_storage_dir
         res_dir.mkdir(parents=True)
         (res_dir / "img.png").write_bytes(b"fake")
 
-        count = srv._cleanup_resource_dir()
+        count = _c._cleanup_resource_dir()
         assert count == 0
         assert res_dir.exists()
 
     def test_cleanup_resource_dir_when_flag_true(self, tmp_path: Path):
-        from opp.mcp import server as srv
-
         cfg = _make_config(tmp_path, cleanup=True)
-        srv._config = cfg
+        _c._config = cfg
         res_dir = cfg.resource_storage_dir
         res_dir.mkdir(parents=True)
         (res_dir / "a.png").write_bytes(b"a")
         (res_dir / "b.png").write_bytes(b"b")
 
-        count = srv._cleanup_resource_dir()
+        count = _c._cleanup_resource_dir()
         assert count == 2
         assert not res_dir.exists()
 
     def test_cleanup_resource_dir_refuses_root_path(self, tmp_path: Path):
-        from opp.mcp import server as srv
-
         cfg = MCPConfig(
             allowed_directories=[Path("/tmp")],
             cleanup_on_shutdown=True,
             resource_storage_dir=Path("/"),
         )
-        srv._config = cfg
+        _c._config = cfg
 
-        count = srv._cleanup_resource_dir()
+        count = _c._cleanup_resource_dir()
         assert count == 0
 
 
 class TestAtexitIntegration:
 
     def test_shutdown_cleanup_runs_on_atexit(self, tmp_path: Path):
-        import atexit
+        import atexit  # noqa: F401  (kept for documentation that atexit is the integration point)
 
-        from opp.mcp import server as srv
-
-        srv._tempfiles.clear()
-        srv._config = _make_config(tmp_path, cleanup=False)
-        p = srv._safe_temp_output(suffix=".txt", parent=tmp_path)
+        _c._tempfiles.clear()
+        _c._config = _make_config(tmp_path, cleanup=False)
+        p = _c._safe_temp_output(suffix=".txt", parent=tmp_path)
         assert p.exists()
 
-        srv._shutdown_cleanup()
+        _c._shutdown_cleanup()
         assert not p.exists()
-        assert len(srv._tempfiles) == 0
+        assert len(_c._tempfiles) == 0
 
     def test_atexit_always_runs_even_on_exception(self, tmp_path: Path):
-        from opp.mcp import server as srv
-
-        srv._tempfiles.clear()
+        _c._tempfiles.clear()
         cfg = _make_config(tmp_path, cleanup=True)
-        srv._config = cfg
+        _c._config = cfg
         res_dir = cfg.resource_storage_dir
         res_dir.mkdir(parents=True)
         (res_dir / "x.txt").write_bytes(b"x")
 
-        p = srv._safe_temp_output(suffix=".txt", parent=tmp_path)
+        p = _c._safe_temp_output(suffix=".txt", parent=tmp_path)
         assert p.exists()
 
-        with patch.object(srv, "_cleanup_tempfiles", side_effect=RuntimeError("boom")):
-            srv._shutdown_cleanup()
+        with patch.object(_c, "_cleanup_tempfiles", side_effect=RuntimeError("boom")):
+            _c._shutdown_cleanup()
 
         assert not res_dir.exists()
-        srv._tempfiles.discard(p)
+        _c._tempfiles.discard(p)
 
 
 class TestSignalHandlerControl:

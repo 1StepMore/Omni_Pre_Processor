@@ -9,13 +9,10 @@ from __future__ import annotations
 
 import inspect
 import os
-import shutil
 from pathlib import Path
 
 import pytest
-
 from opp.mcp.config import MCPConfig
-
 
 # ── OPP#9: ocr_lang param tests ─────────────────────────────────────────
 
@@ -111,10 +108,9 @@ class TestOcrLangParam:
         original_val = os.environ.get("OPP_OCR_LANG")
         try:
             os.environ.pop("OPP_OCR_LANG", None)
-            result = await srv.extract_document(
+            await srv.extract_document(
                 str(pdf_path),
                 output_formats=["md"],
-                ocr_lang=None,
             )
             # OPP_OCR_LANG should NOT have been set
             assert os.environ.get("OPP_OCR_LANG") is None
@@ -131,9 +127,9 @@ class TestImagesDirCleanup:
 
     def test_cleanup_tempfiles_removes_directories(self, tmp_path: Path):
         """_cleanup_tempfiles() must use rmtree for directory entries."""
-        from opp.mcp import server as srv
+        from opp.mcp import common as _c
 
-        srv._tempfiles.clear()
+        _c._tempfiles.clear()
         # Create a directory with content
         test_dir = tmp_path / "opp_mcp_test_images"
         test_dir.mkdir()
@@ -141,21 +137,21 @@ class TestImagesDirCleanup:
         (test_dir / "img2.png").write_bytes(b"fake_png")
         assert test_dir.exists()
 
-        srv._tempfiles.add(test_dir)
-        removed = srv._cleanup_tempfiles()
+        _c._tempfiles.add(test_dir)
+        removed = _c._cleanup_tempfiles()
 
         assert removed == 1
         assert not test_dir.exists()
-        assert len(srv._tempfiles) == 0
+        assert len(_c._tempfiles) == 0
 
     def test_cleanup_tempfiles_handles_mixed_files_and_dirs(self, tmp_path: Path):
         """_cleanup_tempfiles() handles both files and directories."""
-        from opp.mcp import server as srv
+        from opp.mcp import common as _c
 
-        srv._tempfiles.clear()
+        _c._tempfiles.clear()
 
         # Create a file
-        test_file = srv._safe_temp_output(suffix=".txt", parent=tmp_path)
+        test_file = _c._safe_temp_output(suffix=".txt", parent=tmp_path)
         assert test_file.exists()
 
         # Create a directory
@@ -163,21 +159,21 @@ class TestImagesDirCleanup:
         test_dir.mkdir()
         (test_dir / "nested.txt").write_text("content")
 
-        srv._tempfiles.add(test_dir)
-        removed = srv._cleanup_tempfiles()
+        _c._tempfiles.add(test_dir)
+        removed = _c._cleanup_tempfiles()
 
         assert removed == 2  # file + dir
         assert not test_file.exists()
         assert not test_dir.exists()
 
     def test_safe_rmtree_exists(self):
-        """_safe_rmtree helper must exist in server module."""
-        from opp.mcp import server as srv
-        assert hasattr(srv, "_safe_rmtree")
+        """_safe_rmtree helper must exist in common module."""
+        from opp.mcp import common as _c
+        assert hasattr(_c, "_safe_rmtree")
 
     def test_safe_rmtree_removes_directory(self, tmp_path: Path):
         """_safe_rmtree removes a directory tree."""
-        from opp.mcp import server as srv
+        from opp.mcp import common as _c
 
         test_dir = tmp_path / "rmtree_test"
         test_dir.mkdir()
@@ -187,16 +183,16 @@ class TestImagesDirCleanup:
         sub.mkdir()
         (sub / "c.txt").write_text("c")
 
-        srv._safe_rmtree(test_dir)
+        _c._safe_rmtree(test_dir)
         assert not test_dir.exists()
 
     def test_safe_rmtree_ignores_missing(self, tmp_path: Path):
         """_safe_rmtree does not raise on missing directory."""
-        from opp.mcp import server as srv
+        from opp.mcp import common as _c
 
         missing = tmp_path / "does_not_exist"
         # Should not raise
-        srv._safe_rmtree(missing)
+        _c._safe_rmtree(missing)
 
 
 # ── OPP#10: cleanup_on_shutdown default ─────────────────────────────────
@@ -264,13 +260,13 @@ class TestCleanupOnShutdownDefault:
 
 
 class TestVersionBump:
-    """Version must be 0.7.7."""
+    """Version must be 0.9.1."""
 
-    def test_init_version_is_0_7_7(self):
+    def test_init_version_is_0_9_1(self):
         from opp import __version__
-        assert __version__ == "0.7.7"
+        assert __version__ == "0.9.1"
 
-    def test_pyproject_version_is_0_7_7(self):
+    def test_pyproject_version_is_0_9_1(self):
         pyproject = Path(__file__).parent.parent / "pyproject.toml"
         content = pyproject.read_text()
-        assert 'version = "0.7.7"' in content
+        assert 'version = "0.9.1"' in content

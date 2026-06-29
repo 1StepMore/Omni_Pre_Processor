@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pytest
 
-
 BATCH_TEST_DIR = Path(__file__).parent.parent.parent / "batch_test"
 PHASE0_OFFICE_DIR = BATCH_TEST_DIR / "phase0_office"
 DOCX_PATH = str(PHASE0_OFFICE_DIR / "normal.docx")
@@ -31,6 +30,13 @@ def mcp_server():
     return True
 
 
+def _content(result: dict) -> dict:
+    """MCP responses wrap payload in 'content'. Fall back to root for legacy tools."""
+    if isinstance(result, dict) and "content" in result and isinstance(result["content"], dict):
+        return result["content"]
+    return result
+
+
 class TestOPPFunctions:
     """Test OPP MCP server functions directly."""
 
@@ -39,25 +45,28 @@ class TestOPPFunctions:
         from opp.mcp.server import ping
 
         result = asyncio.run(ping())
-        assert result == {"success": True}
+        body = _content(result)
+        assert body.get("success") is True
 
     def test_detect_format_docx(self, mcp_server):
         """Test format detection for DOCX."""
         from opp.mcp.server import detect_format_tool
 
         result = asyncio.run(detect_format_tool(DOCX_PATH))
-        assert result["success"] is True
-        assert result["format"].upper() == "DOCX"
-        assert 0.0 <= result["confidence"] <= 1.0
+        body = _content(result)
+        assert body.get("success") is True
+        assert body["format"].upper() == "DOCX"
+        assert 0.0 <= body["confidence"] <= 1.0
 
     def test_detect_format_pdf(self, mcp_server):
         """Test format detection for PDF."""
         from opp.mcp.server import detect_format_tool
 
         result = asyncio.run(detect_format_tool(PDF_PATH))
-        assert result["success"] is True
-        assert result["format"].upper() == "PDF"
-        assert 0.0 <= result["confidence"] <= 1.0
+        body = _content(result)
+        assert body.get("success") is True
+        assert body["format"].upper() == "PDF"
+        assert 0.0 <= body["confidence"] <= 1.0
 
     def test_extract_document_md(self, mcp_server):
         """Test extract_document with markdown output."""
@@ -67,9 +76,10 @@ class TestOPPFunctions:
             file_path=DOCX_PATH,
             output_formats=["md"],
         ))
-        assert result["success"] is True
-        assert "md_content" in result
-        assert len(result["md_content"]) > 0
+        body = _content(result)
+        assert body.get("success") is True
+        assert "md_content" in body
+        assert len(body["md_content"]) > 0
 
     def test_extract_document_invalid_path(self, mcp_server):
         """Test extract_document with invalid path."""
@@ -78,18 +88,20 @@ class TestOPPFunctions:
         result = asyncio.run(extract_document(
             file_path="/nonexistent/path.docx",
         ))
-        assert result["success"] is False
-        assert "error" in result
+        body = _content(result)
+        assert body.get("success") is False
+        assert "error" in body
 
     def test_generate_markdown(self, mcp_server):
         """Test generate_markdown tool."""
         from opp.mcp.server import generate_markdown
 
         result = asyncio.run(generate_markdown(file_path=DOCX_PATH))
-        assert result["success"] is True
-        assert "markdown_content" in result
-        assert len(result["markdown_content"]) > 0
-        assert "output_path" in result
+        body = _content(result)
+        assert body.get("success") is True
+        assert "markdown_content" in body
+        assert len(body["markdown_content"]) > 0
+        assert "output_path" in body
 
     def test_generate_xliff(self, mcp_server):
         """Test generate_xliff tool."""
@@ -100,10 +112,11 @@ class TestOPPFunctions:
             source_lang="en",
             target_lang="zh",
         ))
-        assert result["success"] is True
-        assert "xliff_content" in result
-        assert "units_count" in result
-        assert result["units_count"] > 0
+        body = _content(result)
+        assert body.get("success") is True
+        assert "xliff_content" in body
+        assert "units_count" in body
+        assert body["units_count"] > 0
 
     def test_batch_extract(self, mcp_server):
         """Test batch_extract with multiple files."""
@@ -113,10 +126,11 @@ class TestOPPFunctions:
             file_paths=[DOCX_PATH],
             output_formats=["md"],
         ))
-        assert result["success"] is True
-        assert result["successful"] == 1
-        assert result["failed"] == 0
-        assert len(result["results"]) == 1
+        body = _content(result)
+        assert body.get("success") is True
+        assert body.get("successful") == 1
+        assert body.get("failed") == 0
+        assert len(body.get("results", [])) == 1
 
     def test_batch_extract_invalid_file(self, mcp_server):
         """Test batch_extract with one invalid file."""
@@ -126,9 +140,10 @@ class TestOPPFunctions:
             file_paths=["/invalid/docx"],
             output_formats=["md"],
         ))
-        assert result["success"] is False
-        assert result["failed"] == 1
-        assert result["successful"] == 0
+        body = _content(result)
+        assert body.get("success") is False
+        assert body.get("failed") == 1
+        assert body.get("successful") == 0
 
     def test_output_formats_string_coercion(self, mcp_server):
         """Test that string output_formats is coerced to list."""
@@ -138,4 +153,5 @@ class TestOPPFunctions:
             file_path=DOCX_PATH,
             output_formats="md",
         ))
-        assert result["success"] is True
+        body = _content(result)
+        assert body.get("success") is True

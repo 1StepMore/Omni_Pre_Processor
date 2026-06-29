@@ -75,15 +75,15 @@ class TestOPPPathTraversal:
         assert "error" in result
 
     def test_batch_extract_rejects_traversal(self, mcp_server, tmp_path):
+        from mcp.shared.exceptions import McpError
         from opp.mcp.server import batch_extract
 
         traversal_path = str(tmp_path / ".." / ".." / "etc" / "passwd")
-        result = asyncio.run(batch_extract(
-            file_paths=[traversal_path],
-        ))
-        assert result["success"] is False
-        assert any("PATH" in e.get("error", "").upper() or "PATH" in str(e).upper()
-                   for e in result.get("validation_errors", []))
+        with pytest.raises(McpError) as exc_info:
+            asyncio.run(batch_extract(
+                file_paths=[traversal_path],
+            ))
+        assert "PATH" in str(exc_info.value).upper()
 
     def test_save_skeleton_rejects_traversal(self, mcp_server, tmp_path):
         from opp.mcp.server import save_skeleton

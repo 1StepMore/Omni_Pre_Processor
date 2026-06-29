@@ -16,16 +16,14 @@ tests can assert translation actually happened.
 
 import asyncio
 import json
-import os
-import shutil
-import subprocess
-import sys
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
+
+pytest.importorskip("ol_mcp", reason="ol_mcp not installed (cross-module contract tests)")
 
 
 # ============================================================================
@@ -226,7 +224,7 @@ class TestOPPtoOLContract:
         mock. The mock guarantees <target> != <source> so the test
         asserts translation actually happened.
         """
-        from ol_mcp.tools import translate_xliff, TranslateXliffInput
+        from ol_mcp.tools import TranslateXliffInput, translate_xliff
 
         result = opp_pipeline.process_file(real_docx_input)
         assert result.extraction_result is not None
@@ -274,7 +272,7 @@ class TestOLtoORFContract:
         xliff_path, output_path) which produces a real DOCX on disk,
         and verifies the DOCX structure + contains translation markers.
         """
-        from ol_mcp.tools import translate_xliff, TranslateXliffInput
+        from ol_mcp.tools import TranslateXliffInput, translate_xliff
         from orf.channels.xliff2docx import XLIFF2DOCXConverter
 
         # Step 1: Real OPP → real XLIFF + real skeleton
@@ -350,7 +348,7 @@ class TestFullPipelineContracts:
         Verifies each contract at every step and the final DOCX contains
         translation markers.
         """
-        from ol_mcp.tools import translate_xliff, TranslateXliffInput
+        from ol_mcp.tools import TranslateXliffInput, translate_xliff
         from orf.channels.xliff2docx import XLIFF2DOCXConverter
 
         # Step 1: Real OPP pipeline → real XLIFF + real skeleton

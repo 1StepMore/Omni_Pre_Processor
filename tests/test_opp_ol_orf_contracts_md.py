@@ -23,7 +23,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
+pytest.importorskip("ol_mcp", reason="ol_mcp not installed (cross-module contract tests)")
 # Cross-repo path setup: OL and ORF live in sibling repos under Omni_Suite
 _OL_SRC = Path(__file__).resolve().parents[2] / "Omni_Localizer" / "src"
 _ORF_SRC = Path(__file__).resolve().parents[2] / "Omni_Re_Formatter" / "src"
@@ -202,7 +202,7 @@ class TestOPPtoOLContract_MD:
         mock. The mock guarantees translated != source so the test
         asserts translation actually happened.
         """
-        from ol_mcp.tools import translate_md_text, TranslateInput
+        from ol_mcp.tools import TranslateInput, translate_md_text
 
         result = opp_pipeline.process_file(real_docx_input)
         assert result.extraction_result is not None
@@ -248,7 +248,7 @@ class TestOLtoORFContract_MD:
         output_path) which produces a real DOCX on disk (pandoc mocked),
         and verifies the DOCX structure.
         """
-        from ol_mcp.tools import translate_md_text, TranslateInput
+        from ol_mcp.tools import TranslateInput, translate_md_text
         from orf.channels.md2docx import MD2DOCXConverter
 
         # Step 1: Real OPP → real MD
@@ -313,7 +313,7 @@ class TestFullPipelineContracts_MD:
 
         Verifies each contract at every step and the final DOCX is valid.
         """
-        from ol_mcp.tools import translate_md_text, TranslateInput
+        from ol_mcp.tools import TranslateInput, translate_md_text
         from orf.channels.md2docx import MD2DOCXConverter
 
         # Step 1: Real OPP pipeline → real MD
