@@ -216,7 +216,8 @@ class EPUBExtractor(ExtractorBase):
                                         para_counter += 1
                                 modified = str(soup).encode('utf-8')
                                 z_out.writestr(name, modified)
-                            except Exception:
+                            except Exception as e:  # expected: malformed item, preserve raw
+                                logger.debug("Skipping malformed EPUB item %s: %s", name, e)
                                 z_out.writestr(name, content)
                         else:
                             z_out.writestr(name, content)
