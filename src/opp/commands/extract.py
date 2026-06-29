@@ -26,6 +26,70 @@ from opp.cliutils import (
 )
 
 
+def _align_skeleton_with_xliff_ids(skeleton_path: Path, xliff_path: Path) -> None:
+    """Post-process the skeleton ZIP to align data-trans-unit-id with XLIFF ids.
+
+    The OPP XLIFF generator iterates `extraction_result.paragraphs` and assigns
+    `id=str(idx+1)`. The EPUB skeleton builder iterates spine chapters' DOM order.
+    These two iterators are different, so the IDs in the skeleton and XLIFF
+    don't match by default. After both are written, parse the XLIFF to build
+    a text→id map, then update the skeleton's `data-trans-unit-id` attributes
+    in each XHTML by matching the element's text to the XLIFF source.
+
+    This enables ORF's `_apply_segments_to_xhtml()` to find matches by id.
+    """
+    if not skeleton_path.exists() or not xliff_path.exists():
+        return
+    try:
+        from lxml import etree
+        from bs4 import BeautifulSoup
+        import zipfile
+
+        # Parse XLIFF to build text -> trans-unit-id map
+        ns = {"x": "urn:oasis:names:tc:xliff:document:1.2"}
+        tree = etree.parse(str(xliff_path))
+        text_to_id: dict[str, str] = {}
+        for tu in tree.xpath("//x:trans-unit", namespaces=ns):
+            source = tu.findtext("x:source", "", namespaces=ns)
+            tu_id = tu.get("id", "")
+            if source and tu_id:
+                text_to_id[source.strip()] = tu_id
+        if not text_to_id:
+            return
+
+        # Read the skeleton ZIP
+        with zipfile.ZipFile(skeleton_path, "r") as z_in:
+            contents = {name: z_in.read(name) for name in z_in.namelist()}
+
+        # Update XHTML entries
+        updated = False
+        for name in list(contents.keys()):
+            if not (name.endswith(".xhtml") or name.endswith(".html") or name.endswith(".htm")):
+                continue
+            data = contents[name]
+            if b"data-trans-unit-id" not in data:
+                continue
+            soup = BeautifulSoup(data.decode("utf-8"), "html.parser")
+            file_changed = False
+            for element in soup.find_all(attrs={"data-trans-unit-id": True}):
+                text = element.get_text(strip=True)
+                if text in text_to_id:
+                    element["data-trans-unit-id"] = text_to_id[text]
+                    file_changed = True
+            if file_changed:
+                contents[name] = str(soup).encode("utf-8")
+                updated = True
+
+        # Write the updated skeleton ZIP
+        if updated:
+            with zipfile.ZipFile(skeleton_path, "w", zipfile.ZIP_DEFLATED) as z_out:
+                for name, data in contents.items():
+                    z_out.writestr(name, data)
+    except Exception as e:
+        # Non-fatal: log and continue
+        get_logger().debug(f"Failed to align skeleton IDs with XLIFF: {e}")
+
+
 def process_single_file(
     file_path: Path,
     args: argparse.Namespace,
@@ -125,7 +189,7 @@ def process_single_file(
             )
             get_logger().info(f"Generated: {xliff_path}")
 
-        if args.target_format == "html":
+        if args.target_format in ("html", "both"):
             html_out_path = output_dir / f"{base_name}.html"
             if proc_result.extraction_result and proc_result.extraction_result.skeleton_html:
                 html_out_path.write_text(
@@ -214,6 +278,16 @@ def process_single_file(
         )
         if skeleton_path:
             get_logger().info(f"Skeleton saved: {skeleton_path}")
+            # Align skeleton data-trans-unit-id with XLIFF trans-unit ids.
+            # OPP XLIFF generator and skeleton builder iterate the same paragraph
+            # list in different orders, so the IDs in the skeleton don't match the
+            # XLIFF's. Post-process by matching element text to XLIFF source.
+            if (
+                args.target_format in ("xlf", "both")
+                and proc_result.format_type == FormatType.EPUB
+                and xliff_path.exists()
+            ):
+                _align_skeleton_with_xliff_ids(skeleton_path, xliff_path)
             manifest["skeleton"] = {
                 "path": str(skeleton_path.relative_to(output_dir)),
                 "format": "ZIP",

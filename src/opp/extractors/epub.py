@@ -38,6 +38,16 @@ class EPUBExtractor(ExtractorBase):
         cover = self._extract_cover(book)
         images = self._extract_images(image_items, cover)
 
+        # ── NEW: Build skeleton bytes with data-trans-unit-id injected ──
+        try:
+            spine_filenames = self._get_spine_filenames(book, spine_items)
+            skeleton_bytes = self._build_epub_skeleton_with_segment_ids(
+                input_path, spine_filenames
+            )
+        except Exception as e:
+            logger.debug(f"Skeleton build failed (non-fatal): {e}")
+            skeleton_bytes = None
+
         if cover and cover not in images:
             images.insert(0, cover)
 
@@ -56,6 +66,7 @@ class EPUBExtractor(ExtractorBase):
             images=images,
             metadata=metadata,
             warnings=warnings,
+            skeleton=skeleton_bytes,
         )
 
     def _parse_epub(
@@ -139,6 +150,86 @@ class EPUBExtractor(ExtractorBase):
             paragraphs.extend(chapter_paragraphs)
 
         return paragraphs
+
+    @staticmethod
+    def _get_spine_filenames(book: epub.EpubBook, spine_items: list) -> set[str]:
+        """Extract the set of spine item file names (content chapters only)."""
+        import ebooklib
+        filenames: set[str] = set()
+        for spine_ref in spine_items:
+            if isinstance(spine_ref, tuple):
+                item_id = spine_ref[0]
+            else:
+                item_id = spine_ref
+            item = book.get_item_with_id(item_id)
+            if item is None:
+                continue
+            if item.get_type() != ebooklib.ITEM_DOCUMENT:
+                continue
+            name = item.get_name()
+            if name:
+                filenames.add(name)
+        return filenames
+
+    def _build_epub_skeleton_with_segment_ids(
+        self, input_path: Path, spine_filenames: set[str]
+    ) -> bytes | None:
+        """Build EPUB skeleton with ``data-trans-unit-id`` on spine chapter elements.
+
+        Opens the original EPUB as a ZIP, injects ``data-trans-unit-id`` onto
+        each ``<p>`` and ``<h1>``-``<h6>`` in spine XHTML files only (skipping
+        nav / non-spine XHTML like ``nav.xhtml``), and returns the modified
+        ZIP bytes.
+        """
+        import zipfile
+        import io
+
+        heading_tags = {'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}
+        paragraph_tags = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']
+        spine_tails = {Path(f).name for f in spine_filenames}
+
+        try:
+            with zipfile.ZipFile(input_path, 'r') as z_in:
+                original_names = z_in.namelist()
+
+                buf = io.BytesIO()
+                para_counter = 0
+                with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as z_out:
+                    for name in original_names:
+                        content = z_in.read(name)
+
+                        is_spine = (
+                            name.lower().endswith(('.xhtml', '.html', '.htm'))
+                            and 'META-INF/' not in name
+                            and Path(name).name in spine_tails
+                        )
+
+                        if is_spine:
+                            try:
+                                decoded = content.decode('utf-8', errors='ignore')
+                                soup = BeautifulSoup(decoded, 'html.parser')
+                                for tag in paragraph_tags:
+                                    for element in soup.find_all(tag):
+                                        if not _should_process_element(element, heading_tags):
+                                            continue
+                                        element['data-trans-unit-id'] = str(para_counter + 1)
+                                        para_counter += 1
+                                modified = str(soup).encode('utf-8')
+                                z_out.writestr(name, modified)
+                            except Exception:
+                                z_out.writestr(name, content)
+                        else:
+                            z_out.writestr(name, content)
+
+                skeleton_bytes = buf.getvalue()
+
+        except Exception as e:
+            logger.debug(f"Failed to build EPUB skeleton with segment IDs: {e}")
+            return None
+
+        if not skeleton_bytes:
+            return None
+        return skeleton_bytes
 
     def _parse_html_elements(self, html_content: str, chapter: str | None = None) -> list[ParagraphData]:
         """Parse HTML and extract text elements as separate ParagraphData objects."""
@@ -325,7 +416,7 @@ class EPUBExtractor(ExtractorBase):
         return mime_types.get(ext, "application/octet-stream")
 
 
-def _should_process_element(element: Any, heading_tags: list[str]) -> bool:
+def _should_process_element(element: Any, heading_tags: set[str]) -> bool:
     for child in element.children:
         if hasattr(child, 'name') and child.name in heading_tags:
             return False
