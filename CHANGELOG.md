@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`fix(pyproject.toml)`: pin `faster-whisper` upper bound** — was unpinned (`"faster-whisper"`), now `>=1.0.0,<2.0.0`. **Important note**: `ctranslate2` (a faster-whisper core dependency) does not publish Python 3.13 wheels as of 2026-06. Users on Python 3.13 may need to build `ctranslate2` from source or use the `[audio]` extra on Python 3.12. The OPP CLI and other components are unaffected — this only blocks the `[audio]` optional extra.
+
 ### Added
 
 - **feat(src/opp/cli.py)**: opt-in `.env` auto-loading (`env-autoload`) via `--load-dotenv` flag and `OPP_AUTOLOAD_DOTENV=1` env var. Search path: `$OPP_DOTENV` → `./.env` → walk parents → `~/.config/opp/.env`. Mirrors OL's existing `_load_dotenv` pattern (no python-dotenv dependency).
@@ -22,6 +26,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Documentation
 
 - **docs(ARCHITECTURE.md)**: Add cross-reference to suite-level `ARCHITECTURE.md`.
+
+## [0.8.0] - 2026-06-XX
+
+### Unknown
+
+- Version bumped in `pyproject.toml` to `0.8.0` but release notes were not retroactively written.
+
+## [0.8.1] - 2026-06-XX
+
+### Unknown
+
+- Version bumped in `pyproject.toml` to `0.8.1` but release notes were not retroactively written.
+
+## [0.8.2] - 2026-06-XX
+
+### Unknown
+
+- Version bumped in `pyproject.toml` to `0.8.2` but release notes were not retroactively written.
+
+## [0.8.3] - 2026-06-XX
+
+### Unknown
+
+- Version bumped in `pyproject.toml` to `0.8.3` but release notes were not retroactively written.
+
+## [0.8.4] - 2026-06-XX
+
+### Unknown
+
+- Version bumped in `pyproject.toml` to `0.8.4` but release notes were not retroactively written.
+
+## [0.8.5] - 2026-06-XX
+
+### Unknown
+
+- Version bumped in `pyproject.toml` to `0.8.5` but release notes were not retroactively written.
+
+## [0.9.0] - 2026-06-XX
+
+### Unknown
+
+- Version bumped in `pyproject.toml` to `0.9.0` but release notes were not retroactively written.
+
+## [0.9.1] - 2026-06-XX
+
+### Unknown
+
+- Version bumped in `pyproject.toml` to `0.9.1` but release notes were not retroactively written.
 
 ## [0.7.3] - 2026-06-25
 
