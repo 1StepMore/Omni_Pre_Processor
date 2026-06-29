@@ -60,7 +60,7 @@ jobs:
         run: |
           echo "=== Running tests ==="
           set -o pipefail
-          .venv/bin/python -m pytest tests/ -v --tb=short --timeout=120 -x 2>&1 | tee test_output.log
+          .venv/bin/python -m pytest tests/ -v --tb=short --timeout=120 2>&1 | tee test_output.log
           exit_status=$?
           echo "=== Test exit code: ${exit_status} ==="
           tail -100 test_output.log
