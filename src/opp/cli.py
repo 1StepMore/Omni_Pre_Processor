@@ -63,9 +63,9 @@ def create_parser() -> argparse.ArgumentParser:
 
     parser.add_argument(
         "files",
-        nargs="+",
+        nargs="*",
         type=Path,
-        help="Input files or folders to process (DOCX, PPTX, PDF, HTML, EPUB)"
+        help="Input files or folders to process (DOCX, PPTX, PDF, HTML, EPUB). Optional when --capabilities is set."
     )
 
     parser.add_argument(
@@ -218,6 +218,12 @@ def create_parser() -> argparse.ArgumentParser:
         help="Load .env file before running (opt-in)"
     )
 
+    parser.add_argument(
+        "--capabilities",
+        action="store_true",
+        help="Print OPP module capabilities (input formats, output formats, available tools) and exit"
+    )
+
     return parser
 
 
@@ -238,6 +244,25 @@ def main(argv: list[str] | None = None) -> int:
         # A6: short-circuit: clear the cache and exit before any work.
         n = _clear_opp_cache()
         logger.info(f"Cleared {n} cached file(s) from {_cache_root()}")
+        return 0
+
+    if args.capabilities:
+        # Print module capabilities and exit
+        import asyncio as _asyncio
+        from opp.mcp.tools.get_capabilities import get_capabilities as _get_caps
+        result = _asyncio.run(_get_caps())
+        import json as _json
+        if result.get("success"):
+            content = result["content"]
+            print(f"Module: {content.get('module')}")
+            print(f"Version: {content.get('version')}")
+            print(f"Input formats ({len(content.get('input_formats', []))}): {', '.join(content.get('input_formats', []))}")
+            print(f"Output formats: {', '.join(content.get('output_formats', []))}")
+            print(f"Tools ({len(content.get('tools', []))}):")
+            for tool in content.get("tools", []):
+                print(f"  - {tool}")
+        else:
+            print(_json.dumps(result, indent=2), file=sys.stderr)
         return 0
 
     # B1: Restrict --resource-dir to prevent path traversal.
