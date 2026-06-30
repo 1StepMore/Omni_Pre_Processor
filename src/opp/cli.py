@@ -224,6 +224,27 @@ def create_parser() -> argparse.ArgumentParser:
         help="Print OPP module capabilities (input formats, output formats, available tools) and exit"
     )
 
+    parser.add_argument(
+        "--validate-xliff",
+        action="store_true",
+        help="Validate an XLIFF 1.2 file (schema + trans-unit content rules) and exit. "
+             "Uses --xliff-content (inline) if provided, otherwise --xliff-file."
+    )
+
+    parser.add_argument(
+        "--xliff-content",
+        type=str,
+        default=None,
+        help="Inline XLIFF XML string. Used with --validate-xliff (takes precedence over --xliff-file)."
+    )
+
+    parser.add_argument(
+        "--xliff-file",
+        type=str,
+        default=None,
+        help="Path to .xlf/.xliff file. Used with --validate-xliff (when --xliff-content is not set)."
+    )
+
     return parser
 
 
@@ -263,6 +284,43 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  - {tool}")
         else:
             print(_json.dumps(result, indent=2), file=sys.stderr)
+        return 0
+
+    if args.validate_xliff:
+        # Validate XLIFF and exit
+        if not args.xliff_content and not args.xliff_file:
+            print("Error: --validate-xliff requires --xliff-content or --xliff-file", file=sys.stderr)
+            return 2
+        # Call the validator directly (bypass the MCP tool wrapper which
+        # requires the validator singleton to be initialized — only the
+        # MCP server does that). The CLI uses the validator directly.
+        from opp.xliff.validator import XLIFFValidator
+        import json as _json
+        if args.xliff_content:
+            raw_bytes = args.xliff_content.encode("utf-8")
+        else:
+            raw_bytes = open(args.xliff_file, "rb").read()
+        try:
+            validator = XLIFFValidator()
+            schema_valid, schema_errors = validator.validate_schema(raw_bytes)
+            tu_valid, tu_warnings, tu_errors = validator.validate_trans_units(raw_bytes)
+        except Exception as e:
+            print(_json.dumps({"success": False, "error": {"code": "OPP_VALIDATE_FAILED", "message": str(e)}}, indent=2), file=sys.stderr)
+            return 2
+        result = {
+            "success": True,
+            "content": {
+                "is_valid": bool(schema_valid) and bool(tu_valid),
+                "schema_valid": bool(schema_valid),
+                "trans_units_valid": bool(tu_valid),
+                "schema_errors": list(schema_errors or []),
+                "trans_unit_errors": list(tu_errors or []),
+                "trans_unit_warnings": list(tu_warnings or []),
+                "error_count": len(schema_errors or []) + len(tu_errors or []),
+                "warning_count": len(tu_warnings or []),
+            },
+        }
+        print(_json.dumps(result, indent=2, ensure_ascii=False))
         return 0
 
     # B1: Restrict --resource-dir to prevent path traversal.
