@@ -63,6 +63,7 @@ from opp.mcp.tools import (
     ping,
     save_skeleton,
     validate_xliff,
+    get_capabilities,
 )
 
 __all__ = [
@@ -74,6 +75,7 @@ __all__ = [
     "ping",
     "save_skeleton",
     "validate_xliff",
+    "get_capabilities",
     "_init_server",
 ]
 
@@ -257,12 +259,26 @@ _TOOL_SCHEMAS: list[dict[str, Any]] = [
                 },
                 "file_path": {
                     "type": "string",
-                    "description": "Path to .xlf/.xliff file. Used only if xliff_content is not provided.",
-                },
-                "auth_token": {"type": "string"},
-            },
-        },
-    },
+                     "description": "Path to .xlf/.xliff file. Used only if xliff_content is not provided.",
+                 },
+                 "auth_token": {"type": "string"},
+             },
+         },
+     },
+     {
+         "name": "get_capabilities",
+         "description": (
+             "Return OPP module capabilities: supported input formats (16), "
+             "output formats (md/xliff), and the list of available MCP tools. "
+             "Use this to discover what the server can do at runtime."
+         ),
+         "inputSchema": {
+             "type": "object",
+             "properties": {
+                 "auth_token": {"type": "string"},
+             },
+         },
+     },
 ]
 
 
@@ -279,6 +295,7 @@ _TOOL_DISPATCH: dict[str, Any] = {
     "save_skeleton": save_skeleton,
     "ping": ping,
     "validate_xliff": validate_xliff,
+    "get_capabilities": get_capabilities,
 }
 
 

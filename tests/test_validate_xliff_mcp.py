@@ -107,13 +107,14 @@ class TestValidateXliffContent:
 
         import asyncio
         result = asyncio.run(validate_xliff(file_path="/nonexistent/path/test.xlf"))
-        # In a real MCP server context the path validator returns
-        # OPP_INVALID_INPUT. When the validator singleton is uninitialized
-        # (e.g. running tests outside the server), the tool returns
-        # OPP_INTERNAL_ERROR. Either is acceptable — the test just
-        # verifies that the call doesn't hang or crash.
+        # When the OPP path validator singleton is initialized (which it
+        # is in the OPP MCP test environment), a non-allowlisted path
+        # returns OPP_PATH_DENIED. When the validator is uninitialized
+        # (e.g. in standalone unit tests), the tool returns
+        # OPP_INTERNAL_ERROR. Both indicate the tool correctly rejected
+        # the input.
         assert result["success"] is False
-        assert result["error_code"] in ("OPP_INVALID_INPUT", "OPP_INTERNAL_ERROR")
+        assert result["error_code"] in ("OPP_PATH_DENIED", "OPP_INTERNAL_ERROR")
 
     def test_content_takes_precedence_over_file_path(self, tmp_path):
         """When both are given, xliff_content wins."""
