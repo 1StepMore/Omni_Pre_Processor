@@ -11,6 +11,7 @@ from opp.mcp.tools.save_skeleton import save_skeleton
 from opp.mcp.tools.generate import generate_markdown, generate_xliff
 from opp.mcp.tools.extract_document import extract_document
 from opp.mcp.tools.batch_extract import batch_extract
+from opp.mcp.tools.validate_xliff import validate_xliff
 
 __all__ = [
     "ping",
@@ -20,4 +21,5 @@ __all__ = [
     "generate_xliff",
     "extract_document",
     "batch_extract",
+    "validate_xliff",
 ]

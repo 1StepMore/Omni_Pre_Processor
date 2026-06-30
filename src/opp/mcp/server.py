@@ -62,6 +62,7 @@ from opp.mcp.tools import (
     generate_xliff,
     ping,
     save_skeleton,
+    validate_xliff,
 )
 
 __all__ = [
@@ -72,6 +73,7 @@ __all__ = [
     "generate_xliff",
     "ping",
     "save_skeleton",
+    "validate_xliff",
     "_init_server",
 ]
 
@@ -239,6 +241,28 @@ _TOOL_SCHEMAS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "name": "validate_xliff",
+        "description": (
+            "Validate an XLIFF 1.2 file against the OASIS XSD schema and the "
+            "trans-unit content rules (non-empty source, unique IDs, valid lang codes). "
+            "Pass either xliff_content (inline string) or file_path."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "xliff_content": {
+                    "type": "string",
+                    "description": "Inline XLIFF XML. Takes precedence over file_path if both provided.",
+                },
+                "file_path": {
+                    "type": "string",
+                    "description": "Path to .xlf/.xliff file. Used only if xliff_content is not provided.",
+                },
+                "auth_token": {"type": "string"},
+            },
+        },
+    },
 ]
 
 
@@ -254,6 +278,7 @@ _TOOL_DISPATCH: dict[str, Any] = {
     "generate_markdown": generate_markdown,
     "save_skeleton": save_skeleton,
     "ping": ping,
+    "validate_xliff": validate_xliff,
 }
 
 
