@@ -95,6 +95,8 @@ class OPPPipeline:
         Returns:
             The output_path that was written to
         """
+        # Issue #50: accept both str and Path (idempotent — Path() of Path is the same)
+        output_path = Path(output_path)
         self.markdown_generator.generate_to_file(
             result, output_path, style_mapping=style_mapping, embed_images=embed_images,
         )
@@ -123,6 +125,8 @@ class OPPPipeline:
         Raises:
             ValueError: If the source format is PDF (XLIFF not supported for PDF)
         """
+        # Issue #50: accept both str and Path (idempotent — Path() of Path is the same)
+        output_path = Path(output_path)
         if result.metadata and result.metadata.format_type == "pdf":
             error_msg = "XLIFF not supported for PDF format"
             self.error_handler.add_error(
@@ -155,6 +159,8 @@ class OPPPipeline:
         Returns:
             The output_path that was written to
         """
+        # Issue #50: accept both str and Path (idempotent — Path() of Path is the same)
+        output_path = Path(output_path)
         generate_images_json(result, output_path)
         return output_path
 
@@ -174,6 +180,8 @@ class OPPPipeline:
         Returns:
             Path to skeleton file, or None if no skeleton
         """
+        # Issue #50: accept both str and Path (idempotent — Path() of Path is the same)
+        output_dir = Path(output_dir)
         if not result or not result.skeleton:
             return None
 
