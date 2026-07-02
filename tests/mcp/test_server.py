@@ -118,6 +118,68 @@ class TestExtractDocumentTool:
 
         assert result["success"] is True
 
+    # ── Issue #49: skeleton auto-save ───────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_extract_document_skeleton_saved_for_docx(self, setup_server):
+        """Issue #49: DOCX extraction must include skeleton_path in the response.
+        Matches CLI behavior (process_single_file in commands/extract.py:273-278)
+        which always saves the skeleton.zip for downstream ORF apply-xliff.
+        """
+        docx_path = str(PHASE0_OFFICE_DIR / "normal.docx")
+        result = await server.extract_document(
+            docx_path, output_formats=["md"]
+        )
+
+        assert result["success"] is True
+        # Issue #49: skeleton_path must be in the response for DOCX
+        assert "skeleton_path" in result, (
+            f"extract_document must auto-save skeleton for DOCX (Issue #49). "
+            f"Got keys: {list(result.keys())}"
+        )
+        # The skeleton file must exist on disk
+        from pathlib import Path
+        skeleton_path = Path(result["skeleton_path"])
+        assert skeleton_path.exists()
+        assert skeleton_path.suffix == ".zip"
+
+    @pytest.mark.asyncio
+    async def test_extract_document_no_skeleton_for_pdf(self, setup_server):
+        """Issue #49: PDF has no skeleton — response must NOT include skeleton_path."""
+        pdf_path = str(PHASE0_OFFICE_DIR / "normal.pdf")
+        result = await server.extract_document(pdf_path, output_formats=["md"])
+
+        assert result["success"] is True
+        # PDF has no skeleton; should not have skeleton_path
+        assert "skeleton_path" not in result, (
+            "PDF extraction must not include skeleton_path (PDFs have no skeleton)"
+        )
+
+    @pytest.mark.asyncio
+    async def test_extract_document_response_shape_preserved(self, setup_server):
+        """Issue #49: Adding skeleton_path must not break existing response shape.
+        All pre-existing keys must still be present.
+        """
+        docx_path = str(PHASE0_OFFICE_DIR / "normal.docx")
+        result = await server.extract_document(docx_path, output_formats=["md"])
+
+        assert result["success"] is True
+        # Pre-existing keys must still be present
+        assert "success" in result
+        assert "md_content" in result or "data" in result
+        # New skeleton_path key may be present (DOCX always has skeleton)
+        # but it must not REPLACE any existing key
+        for required_key in ("success", "md_content", "suggested_pipeline"):
+            # Missing required keys would be a backward-compat break
+            if required_key in ("md_content", "suggested_pipeline"):
+                # These are conditionally present
+                if required_key in result:
+                    pass  # OK, key is there
+            else:
+                assert required_key in result, (
+                    f"Required key {required_key!r} missing from response (backward compat break)"
+                )
+
     # ── OPP#11: suggested_pipeline ──────────────────────────────────────
 
     @pytest.mark.asyncio

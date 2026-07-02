@@ -221,6 +221,27 @@ async def extract_document(
                 if not _c._config.output_dir:
                     _c._safe_unlink(xliff_output_path)
 
+    # -- Skeleton output (Issue #49) -------------------------------------
+    # Always save the skeleton.zip when extraction produced one, so the
+    # XLIFF path via MCP is a single tool call (CLI parity: commands/extract.py:273-278).
+    # The skeleton is persistent output (required by ORF apply-xliff) so it is NOT
+    # added to the _tempfiles cleanup set.
+    if result.extraction_result and result.extraction_result.skeleton:
+        try:
+            sk_output_dir = (
+                Path(_c._config.output_dir) if _c._config.output_dir
+                else Path(file_path).parent
+            )
+            sk_result = _c._pipeline.save_skeleton(
+                result.extraction_result,
+                Path(file_path).stem,
+                sk_output_dir,
+            )
+            if sk_result:
+                response["skeleton_path"] = str(sk_result)
+        except Exception as e:
+            logger.debug("Skeleton save note: %s", e)
+
     # -- verbose metadata --------------------------------------------------
     if verbose:
         response["detected_format"] = (
