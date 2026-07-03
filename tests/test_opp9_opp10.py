@@ -2,7 +2,7 @@
 
 OPP#9: extract_document() accepts ocr_lang param and sets OPP_OCR_LANG env var.
 OPP#10: (a) images_dir registered in _tempfiles; _cleanup_tempfiles handles dirs.
-        (b) cleanup_on_shutdown defaults to True.
+        (b) cleanup_on_shutdown defaults to False (P0-T4 fix: prevents silent data loss).
 """
 
 from __future__ import annotations
@@ -199,22 +199,22 @@ class TestImagesDirCleanup:
 
 
 class TestCleanupOnShutdownDefault:
-    """OPP#10: cleanup_on_shutdown must default to True."""
+    """OPP#10: cleanup_on_shutdown must default to False (P0-T4)."""
 
-    def test_config_dataclass_default_is_true(self):
-        """MCPConfig.cleanup_on_shutdown default must be True."""
+    def test_config_dataclass_default_is_false(self):
+        """MCPConfig.cleanup_on_shutdown default must be False."""
         from opp.mcp.config import MCPConfig
 
         # Check the field default
         fields = {f.name: f for f in MCPConfig.__dataclass_fields__.values()}
         assert "cleanup_on_shutdown" in fields
         field = fields["cleanup_on_shutdown"]
-        assert field.default is True, (
-            f"MCPConfig.cleanup_on_shutdown default is {field.default}, expected True"
+        assert field.default is False, (
+            f"MCPConfig.cleanup_on_shutdown default is {field.default}, expected False"
         )
 
-    def test_load_config_default_is_true(self, tmp_path: Path):
-        """load_config() must default cleanup_on_shutdown to True."""
+    def test_load_config_default_is_false(self, tmp_path: Path):
+        """load_config() must default cleanup_on_shutdown to False."""
         from opp.mcp.config import load_config
 
         original_cleanup = os.environ.pop("OPP_MCP_CLEANUP_ON_SHUTDOWN", None)
@@ -222,9 +222,9 @@ class TestCleanupOnShutdownDefault:
         try:
             os.environ["OPP_MCP_ALLOWED_DIRS"] = str(tmp_path)
             cfg = load_config()
-            assert cfg.cleanup_on_shutdown is True, (
+            assert cfg.cleanup_on_shutdown is False, (
                 f"load_config() defaulted cleanup_on_shutdown to "
-                f"{cfg.cleanup_on_shutdown}, expected True"
+                f"{cfg.cleanup_on_shutdown}, expected False"
             )
         finally:
             if original_cleanup is not None:
@@ -234,17 +234,17 @@ class TestCleanupOnShutdownDefault:
             else:
                 os.environ.pop("OPP_MCP_ALLOWED_DIRS", None)
 
-    def test_env_var_false_overrides_default(self, tmp_path: Path):
-        """OPP_MCP_CLEANUP_ON_SHUTDOWN=false must override the default."""
+    def test_env_var_true_overrides_default(self, tmp_path: Path):
+        """OPP_MCP_CLEANUP_ON_SHUTDOWN=true must override the default."""
         from opp.mcp.config import load_config
 
         original_cleanup = os.environ.get("OPP_MCP_CLEANUP_ON_SHUTDOWN")
         original_dirs = os.environ.get("OPP_MCP_ALLOWED_DIRS")
         try:
             os.environ["OPP_MCP_ALLOWED_DIRS"] = str(tmp_path)
-            os.environ["OPP_MCP_CLEANUP_ON_SHUTDOWN"] = "false"
+            os.environ["OPP_MCP_CLEANUP_ON_SHUTDOWN"] = "true"
             cfg = load_config()
-            assert cfg.cleanup_on_shutdown is False
+            assert cfg.cleanup_on_shutdown is True
         finally:
             if original_cleanup is not None:
                 os.environ["OPP_MCP_CLEANUP_ON_SHUTDOWN"] = original_cleanup
