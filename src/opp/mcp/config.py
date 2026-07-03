@@ -16,7 +16,7 @@ class MCPConfig:
 
     allowed_directories: list[Path]
     max_file_size_bytes: int = 100_000_000
-    request_timeout_seconds: int = 60
+    request_timeout_seconds: int = 120
     max_images_per_extraction: int = 100
     max_extraction_depth: int = 3
     resource_storage_dir: Path = field(default_factory=lambda: Path("./mcp_resources"))
@@ -72,7 +72,7 @@ def _load_from_env() -> dict:
     """Load configuration from environment variables."""
     config = {}
 
-    allowed_dirs = os.environ.get("OPP_MCP_ALLOWED_DIRS", "")
+    allowed_dirs = os.environ.get("MCP_ALLOWED_DIRECTORIES") or os.environ.get("OPP_MCP_ALLOWED_DIRS", "")
     if allowed_dirs:
         config["allowed_directories"] = _parse_allowed_dirs(allowed_dirs)
 
@@ -85,13 +85,13 @@ def _load_from_env() -> dict:
                 "Invalid OPP_MCP_MAX_FILE_SIZE=%r; falling back to default", max_file_size
             )
 
-    timeout = os.environ.get("OPP_MCP_TIMEOUT")
+    timeout = os.environ.get("MCP_TOOL_TIMEOUT") or os.environ.get("OPP_MCP_TIMEOUT")
     if timeout:
         try:
             config["request_timeout_seconds"] = int(timeout)
         except ValueError:
             logger.warning(
-                "Invalid OPP_MCP_TIMEOUT=%r; falling back to default", timeout
+                "Invalid MCP_TOOL_TIMEOUT/OPP_MCP_TIMEOUT=%r; falling back to default", timeout
             )
 
     # 2026-06-18 round 16 Phase A3: host/port env vars. Without
@@ -149,7 +149,7 @@ def load_config(config_path: Path | None = None) -> MCPConfig:
     if "max_file_size_bytes" not in config_data:
         config_data["max_file_size_bytes"] = 100_000_000
     if "request_timeout_seconds" not in config_data:
-        config_data["request_timeout_seconds"] = 60
+        config_data["request_timeout_seconds"] = 120
     if "max_images_per_extraction" not in config_data:
         config_data["max_images_per_extraction"] = 100
     if "max_extraction_depth" not in config_data:

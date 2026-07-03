@@ -300,7 +300,7 @@ _TOOL_DISPATCH: dict[str, Any] = {
 
 
 # Build the standard mcp Server instance.
-server: Server = Server("OPP MCP Server")
+server: Server = Server("opp-mcp")
 
 
 @server.list_tools()

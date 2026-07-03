@@ -6,6 +6,7 @@ Delegates core validation checks to ``opp.utils.security.validate_path()``
 - ``ValidationResult`` dataclass API for structured success/error returns
 """
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -72,6 +73,15 @@ class PathValidator:
     ):
         self.allowed_directories = [Path(d).resolve() for d in allowed_directories]
         self.max_file_size_bytes = max_file_size_bytes
+        env_ext = os.environ.get("MCP_ALLOWED_EXTENSIONS")
+        if env_ext:
+            self._allowed_extensions = {
+                e.strip() if e.strip().startswith(".") else f".{e.strip()}"
+                for e in env_ext.split(",")
+                if e.strip()
+            }
+        else:
+            self._allowed_extensions = self.ALLOWED_EXTENSIONS
 
     def validate_path(
         self, path: str, allow_missing: bool = False
@@ -111,7 +121,7 @@ class PathValidator:
             return ValidationResult(success=False, error="File does not exist")
 
         # --- Phase 2: Extension whitelist (OPP/ORF specific) ---
-        if p.suffix.lower() not in self.ALLOWED_EXTENSIONS:
+        if p.suffix.lower() not in self._allowed_extensions:
             return ValidationResult(
                 success=False,
                 error=f"Extension '{p.suffix}' not in allowed set",
