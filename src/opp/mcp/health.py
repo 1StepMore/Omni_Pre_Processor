@@ -11,7 +11,7 @@ method that returns a JSON-serializable dict::
     }
 
 A separate HTTP endpoint can be started on ``OMNI_HEALTH_PORT``
-(default 8766) via ``start_health_server()``; this is **never**
+(default 8767) via ``start_health_server()``; this is **never**
 on the same port as the MCP stdio transport (which would corrupt
 the JSON-RPC stream).
 
@@ -31,7 +31,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
 MODULE_NAME = "opp"
-DEFAULT_HEALTH_PORT = 8766
+DEFAULT_HEALTH_PORT = 8767
 _start_time: float = time.monotonic()
 
 
