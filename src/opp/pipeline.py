@@ -127,7 +127,7 @@ class OPPPipeline:
         """
         # Issue #50: accept both str and Path (idempotent — Path() of Path is the same)
         output_path = Path(output_path)
-        if result.metadata and result.metadata.format_type == "pdf":
+        if result.metadata and result.metadata.format_type == FormatType.PDF.value:
             error_msg = "XLIFF not supported for PDF format"
             self.error_handler.add_error(
                 ErrorContext(
@@ -208,7 +208,7 @@ class OPPPipeline:
         start_time = datetime.now()
         file_path = Path(file_path)
 
-        if self.max_file_size_mb is not None:
+        if self.max_file_size_mb is not None and self.max_file_size_mb > 0:
             try:
                 size_bytes = file_path.stat().st_size
             except (FileNotFoundError, OSError):
