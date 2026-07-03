@@ -202,14 +202,14 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--max-file-size", "--max-file-size-mb",
         type=int, default=0,
-        help="拒绝超过此大小 (MB) 的文件 (默认: 不限制)"
+        help="Reject files larger than this size in MB (default: no limit)"
     )
 
     parser.add_argument(
         "--log-format",
         choices=["console", "json"],
         default=None,
-        help="日志输出格式 (默认: console)。也可通过 OMNI_LOG_FORMAT 环境变量设置。",
+        help="Log output format (default: console). Also configurable via OMNI_LOG_FORMAT env var.",
     )
 
     parser.add_argument(

@@ -23,6 +23,7 @@ or other deps, to honor the no-new-deps rule).
 """
 from __future__ import annotations
 
+import atexit
 import json
 import os
 import threading
@@ -133,6 +134,8 @@ def stop_health_server() -> None:
             _server.server_close()
             _server = None
 
+
+atexit.register(stop_health_server)
 
 __all__ = [
     "MODULE_NAME",

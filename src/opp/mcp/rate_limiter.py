@@ -5,6 +5,11 @@ Configured via environment variables:
 
 - OMNI_RATE_LIMIT_RPM: requests per minute (default: 60, 0 = disabled)
 - OMNI_RATE_LIMIT_BURST: max burst size (default: 10)
+
+Per-tool buckets (P5-T3): each MCP tool gets its own independent token
+bucket so that a burst on one tool (e.g. ``ping``) cannot starve another
+(e.g. ``extract_document``).  Diagnostic tools like ``ping`` are exempt
+from rate limiting entirely.
 """
 
 from __future__ import annotations
@@ -14,6 +19,9 @@ import threading
 import time
 
 __all__ = ["TokenBucket", "check_rate_limit", "rate_limit_failure_response"]
+
+# Tools that are exempt from rate limiting (diagnostics, health checks).
+_EXEMPT_TOOLS: frozenset[str] = frozenset({"ping"})
 
 
 class TokenBucket:
@@ -57,20 +65,37 @@ class TokenBucket:
             return (1.0 - self.tokens) / self.rate
 
 
-_bucket: TokenBucket | None = None
+_buckets: dict[str, TokenBucket] = {}
+_buckets_lock = threading.Lock()
 
 
-def check_rate_limit() -> tuple[bool, str | None]:
-    """Check rate limit using env-var-configured defaults.
+def check_rate_limit(tool_name: str = "") -> tuple[bool, str | None]:
+    """Check rate limit for a specific tool.
 
-    Returns (True, None) if allowed, (False, error_message) if limited.
+    Args:
+        tool_name: Name of the MCP tool being called.  Diagnostic tools
+            listed in ``_EXEMPT_TOOLS`` (e.g. ``ping``) always return
+            ``(True, None)``.  An empty string uses a shared default bucket
+            for backward compatibility.
+
+    Returns:
+        ``(True, None)`` if allowed, ``(False, error_message)`` if limited.
     """
-    global _bucket
-    if _bucket is None:
-        rpm = int(os.environ.get("OMNI_RATE_LIMIT_RPM", "60"))
-        burst = int(os.environ.get("OMNI_RATE_LIMIT_BURST", "10"))
-        _bucket = TokenBucket(rpm=rpm, burst=burst)
-    if not _bucket.consume():
+    # Exempt diagnostic tools
+    if tool_name in _EXEMPT_TOOLS:
+        return True, None
+
+    global _buckets
+    key = tool_name or "__default__"
+
+    with _buckets_lock:
+        if key not in _buckets:
+            rpm = int(os.environ.get("OMNI_RATE_LIMIT_RPM", "60"))
+            burst = int(os.environ.get("OMNI_RATE_LIMIT_BURST", "10"))
+            _buckets[key] = TokenBucket(rpm=rpm, burst=burst)
+        bucket = _buckets[key]
+
+    if not bucket.consume():
         return False, "RATE_LIMITED: too many requests."
     return True, None
 
