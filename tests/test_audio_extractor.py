@@ -70,12 +70,11 @@ class TestAudioExtractor:
         from opp.extractors.audio import _MAX_FILE_SIZE_BYTES
         assert _MAX_FILE_SIZE_BYTES == 500 * 1024 * 1024
 
+    @pytest.mark.xfail(reason="Synthetic WAV is not recognizable by faster-whisper; see integration suite for end-to-end audio tests.")
     @pytest.mark.integration
     def test_extract_wav_with_faster_whisper(self, tmp_path: Path):
         pytest.importorskip("faster_whisper")
         pytest.importorskip("torch")
-        pytest.skip("Synthetic WAV is not recognizable by faster-whisper; "
-                    "see integration suite for end-to-end audio tests.")
 
     @staticmethod
     def _create_wav_file(path: Path, duration_seconds: int = 1, sample_rate: int = 16000):

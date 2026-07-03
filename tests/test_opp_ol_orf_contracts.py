@@ -27,7 +27,10 @@ import pytest
 pytest.importorskip("ol_mcp", reason="ol_mcp not installed (cross-module contract tests)")
 
 if os.environ.get("OMNI_SUITE_RUNNING_OPP_TESTS"):
-    pytest.skip("Cross-module OPP tests are run in standalone OPP CI")
+    pytestmark = pytest.mark.xfail(
+        reason="Cross-module OPP tests are run in standalone OPP CI",
+        strict=False,
+    )
 
 
 # ============================================================================

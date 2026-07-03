@@ -58,7 +58,7 @@ class TestPathValidator:
         ("/System", "system directory"),
         ("/Library", "system directory"),
     ])
-    @pytest.mark.skipif(os.name != "nt", reason="Windows-specific paths only on Windows")
+    @pytest.mark.xfail(os.name != "nt", reason="Windows-specific paths only on Windows", strict=False)
     def test_system_dirs_blocked(self, validator: PathValidator, system_dir: str, expected_error_fragment: str):
         test_path = f"{system_dir}/some/file.txt"
         result = validator.validate_path(test_path)

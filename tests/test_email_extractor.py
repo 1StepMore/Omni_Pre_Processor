@@ -9,9 +9,9 @@ from opp.extractors.email import EmailExtractor
 
 
 class TestEmailExtractor:
+    @pytest.mark.xfail(reason="extract_msg.openMsg() does not create files before writing - requires pre-built MSG fixtures")
     def test_extract_msg_metadata(self, tmp_path: Path):
         pytest.importorskip("extract_msg")
-        pytest.skip("extract_msg.openMsg() does not create files before writing - requires pre-built MSG fixtures")
 
     def test_extract_eml_metadata(self, tmp_path: Path):
         from email.message import EmailMessage
@@ -33,9 +33,9 @@ class TestEmailExtractor:
         assert result.metadata is not None
         assert "subject" in dir(result.metadata) or hasattr(result.metadata, "subject")
 
+    @pytest.mark.xfail(reason="extract_msg.openMsg() does not create files before writing - requires pre-built MSG fixtures")
     def test_extract_msg_body(self, tmp_path: Path):
         pytest.importorskip("extract_msg")
-        pytest.skip("extract_msg.openMsg() does not create files before writing - requires pre-built MSG fixtures")
 
     def test_extract_eml_html_body(self, tmp_path: Path):
         from email.message import EmailMessage
@@ -60,9 +60,9 @@ class TestEmailExtractor:
         assert "HTML" in body_text
         assert "bold" in body_text
 
+    @pytest.mark.xfail(reason="extract_msg.openMsg() does not create files before writing - requires pre-built MSG fixtures")
     def test_extract_msg_attachments(self, tmp_path: Path):
         pytest.importorskip("extract_msg")
-        pytest.skip("extract_msg.openMsg() does not create files before writing - requires pre-built MSG fixtures")
 
     def test_extract_eml_attachments(self, tmp_path: Path):
         from email.mime.multipart import MIMEMultipart
