@@ -284,6 +284,10 @@ class OPPPipeline:
                         # Large image already streamed to disk — use directly
                         self.resource_manager.add_image(image.temp_path)
                         images_stored += 1
+                        # Bug #51: read bytes into image.data before unlinking so
+                        # downstream generate_images_json() can compute data_base64
+                        if not image.data:
+                            image.data = image.temp_path.read_bytes()
                         # Clean up temp file and its directory if empty
                         temp_dir = image.temp_path.parent
                         image.temp_path.unlink(missing_ok=True)

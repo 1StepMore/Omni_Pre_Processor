@@ -79,6 +79,9 @@ def generate_images_json(result: ExtractionResult, output_path: Path) -> dict:
 
         if img.data:
             image_entry["data_base64"] = base64.b64encode(img.data).decode("ascii")
+        elif img.temp_path is not None and img.temp_path.exists():
+            with open(img.temp_path, "rb") as f:
+                image_entry["data_base64"] = base64.b64encode(f.read()).decode("ascii")
 
         images_list.append(image_entry)
 
