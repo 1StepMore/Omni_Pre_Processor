@@ -52,14 +52,10 @@ async def validate_xliff(
         )
 
     if not xliff_content and not file_path:
-        return {
-            "success": False,
-            "error": {
-                "code": "OPP_INVALID_INPUT",
-                "message": "Either xliff_content or file_path is required.",
-            },
-            "error_code": "OPP_INVALID_INPUT",
-        }
+        raise McpError(
+            code="OPP_INVALID_INPUT",
+            message="Either xliff_content or file_path is required.",
+        )
 
     if xliff_content:
         raw_bytes = xliff_content.encode("utf-8")
@@ -77,25 +73,17 @@ async def validate_xliff(
             )
         path = Path(file_path)
         if not path.is_file():
-            return {
-                "success": False,
-                "error": {
-                    "code": "OPP_INVALID_INPUT",
-                    "message": f"File not found: {file_path}",
-                },
-                "error_code": "OPP_INVALID_INPUT",
-            }
+            raise McpError(
+                code="OPP_INVALID_INPUT",
+                message=f"File not found: {file_path}",
+            )
         raw_bytes = path.read_bytes()
 
     if not raw_bytes:
-        return {
-            "success": False,
-            "error": {
-                "code": "OPP_INVALID_INPUT",
-                "message": "XLIFF content is empty.",
-            },
-            "error_code": "OPP_INVALID_INPUT",
-        }
+        raise McpError(
+            code="OPP_INVALID_INPUT",
+            message="XLIFF content is empty.",
+        )
 
     from opp.xliff.validator import XLIFFValidator
 
