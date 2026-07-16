@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from opp.mcp.config import MCPConfig, load_config
-from opp.mcp.security import PathValidator
+from opp.mcp.security import PathValidationError, PathValidator
 from opp.mcp.serializers import ExtractionResultSerializer
 from opp.pipeline import OPPPipeline
 
@@ -89,7 +89,10 @@ def _safe_unlink(path: Path) -> bool:
         return False
     if path.is_symlink():
         return False
-    result = _validator.validate_path(str(resolved), allow_missing=True)
+    try:
+        result = _validator.validate_path(str(resolved), allow_missing=True)
+    except PathValidationError:
+        return False
     if not result.success:
         return False
     try:

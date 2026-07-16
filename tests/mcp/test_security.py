@@ -11,6 +11,7 @@ spec = importlib.util.spec_from_file_location("security", Path(__file__).parent.
 security_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(security_module)
 PathValidator = security_module.PathValidator
+PathValidationError = security_module.PathValidationError
 ValidationResult = security_module.ValidationResult
 SYSTEM_DIRS = security_module.SYSTEM_DIRS
 BLOCKED_EXTENSIONS = security_module.BLOCKED_EXTENSIONS
@@ -45,9 +46,9 @@ class TestPathValidator:
     ])
     def test_path_traversal_blocked(self, validator: PathValidator, allowed_dir: Path, path: str):
         """Path traversal attempts (.. components) should be blocked."""
-        result = validator.validate_path(path)
-        assert result.success is False
-        assert "traversal" in result.error.lower()
+        with pytest.raises(PathValidationError) as e:
+            validator.validate_path(path)
+        assert "traversal" in str(e.value).lower()
 
     # --- System Directory Tests ---
 
@@ -61,9 +62,9 @@ class TestPathValidator:
     @pytest.mark.xfail(os.name != "nt", reason="Windows-specific paths only on Windows", strict=False)
     def test_system_dirs_blocked(self, validator: PathValidator, system_dir: str, expected_error_fragment: str):
         test_path = f"{system_dir}/some/file.txt"
-        result = validator.validate_path(test_path)
-        assert result.success is False
-        assert expected_error_fragment in result.error.lower() or "not allowed" in result.error.lower()
+        with pytest.raises(PathValidationError) as e:
+            validator.validate_path(test_path)
+        assert expected_error_fragment in str(e.value).lower() or "not allowed" in str(e.value).lower()
 
     @pytest.mark.parametrize("system_dir", [
         "C:\\Windows",
@@ -71,14 +72,14 @@ class TestPathValidator:
     ])
     def test_windows_paths_on_unix(self, validator: PathValidator, system_dir: str):
         test_path = f"{system_dir}/some/file.txt"
-        result = validator.validate_path(test_path)
-        assert result.success is False
+        with pytest.raises(PathValidationError):
+            validator.validate_path(test_path)
 
     def test_path_within_system_dir_blocked(self, validator: PathValidator):
         """Path that resolves to a subdirectory of a system dir should be blocked."""
         # /etc/passwd should be blocked
-        result = validator.validate_path("/etc/passwd")
-        assert result.success is False
+        with pytest.raises(PathValidationError):
+            validator.validate_path("/etc/passwd")
 
     # --- Symlink Tests ---
 
@@ -94,9 +95,9 @@ class TestPathValidator:
         symlink_path = allowed_dir / "link_to_outside.txt"
         try:
             symlink_path.symlink_to(outside_file)
-            result = validator.validate_path(str(symlink_path))
-            assert result.success is False
-            assert "symlink" in result.error.lower() or "outside" in result.error.lower()
+            with pytest.raises(PathValidationError) as e:
+                validator.validate_path(str(symlink_path))
+            assert "symlink" in str(e.value).lower() or "outside" in str(e.value).lower()
         except OSError:
             pytest.skip("Symlinks not supported on this platform")
 
@@ -125,10 +126,10 @@ class TestPathValidator:
         blocked_file = allowed_dir / f"script{ext}"
         blocked_file.write_text("malicious code")
 
-        result = validator.validate_path(str(blocked_file))
-        assert result.success is False
-        assert "extension" in result.error.lower()
-        assert ext in result.error
+        with pytest.raises(PathValidationError) as e:
+            validator.validate_path(str(blocked_file))
+        assert "extension" in str(e.value).lower()
+        assert ext in str(e.value)
 
     # --- File Size Limit Tests ---
 
@@ -145,9 +146,9 @@ class TestPathValidator:
         large_file = allowed_dir / "large.txt"
         large_file.write_text("x" * 1_500_000)  # 1.5MB, over 1MB limit
 
-        result = validator_with_size_limit.validate_path(str(large_file))
-        assert result.success is False
-        assert "exceeds" in result.error.lower() or "size" in result.error.lower()
+        with pytest.raises(PathValidationError) as e:
+            validator_with_size_limit.validate_path(str(large_file))
+        assert "exceeds" in str(e.value).lower() or "size" in str(e.value).lower()
 
     def test_default_size_limit(self, validator: PathValidator, allowed_dir: Path):
         """Files under default 100MB limit should be accepted."""
@@ -163,15 +164,15 @@ class TestPathValidator:
     def test_nonexistent_file_rejected(self, validator: PathValidator, allowed_dir: Path):
         """Non-existent files should be rejected."""
         nonexistent = allowed_dir / "does_not_exist.txt"
-        result = validator.validate_path(str(nonexistent))
-        assert result.success is False
-        assert "does not exist" in result.error.lower()
+        with pytest.raises(PathValidationError) as e:
+            validator.validate_path(str(nonexistent))
+        assert "does not exist" in str(e.value).lower()
 
     def test_directory_rejected(self, validator: PathValidator, allowed_dir: Path):
         """Directories should be rejected (only files allowed)."""
-        result = validator.validate_path(str(allowed_dir))
-        assert result.success is False
-        assert "directory" in result.error.lower() or "file" in result.error.lower()
+        with pytest.raises(PathValidationError) as e:
+            validator.validate_path(str(allowed_dir))
+        assert "directory" in str(e.value).lower() or "file" in str(e.value).lower()
 
     # --- Valid Path Tests ---
 
@@ -205,9 +206,9 @@ class TestPathValidator:
         outside_file = outside_dir / "outside.txt"
         outside_file.write_text("outside content")
 
-        result = validator.validate_path(str(outside_file))
-        assert result.success is False
-        assert "not in allowed directories" in result.error.lower()
+        with pytest.raises(PathValidationError) as e:
+            validator.validate_path(str(outside_file))
+        assert "not in allowed directories" in str(e.value).lower()
 
     # --- Invalid Path Format Tests ---
 
@@ -217,9 +218,8 @@ class TestPathValidator:
     ])
     def test_invalid_path_format(self, validator: PathValidator, invalid_path: str):
         """Invalid path formats should be rejected."""
-        result = validator.validate_path(invalid_path)
-        assert result.success is False
-        assert "not in allowed directories" in result.error.lower() or "resolve" in result.error.lower() or "invalid" in result.error.lower()
+        with pytest.raises(PathValidationError):
+            validator.validate_path(invalid_path)
 
     # --- Case Sensitivity Tests ---
 
@@ -235,11 +235,12 @@ class TestPathValidator:
         test_file = allowed_dir / f"script{ext}"
         test_file.write_text("content")
 
-        result = validator.validate_path(str(test_file))
         if expected_blocked:
-            assert result.success is False
-            assert "extension" in result.error.lower()
+            with pytest.raises(PathValidationError) as e:
+                validator.validate_path(str(test_file))
+            assert "extension" in str(e.value).lower()
         else:
+            result = validator.validate_path(str(test_file))
             assert result.success is True
 
     # --- Multiple Allowed Directories Tests ---

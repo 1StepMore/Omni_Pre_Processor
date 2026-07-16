@@ -98,15 +98,15 @@ class PathValidator:
         """
         # --- Phase 1: Core shared validation (traversal, symlink, system dirs,
         #              blocked extensions, directory containment, size) ---
-        try:
-            _shared_validate(
-                path,
-                self.allowed_directories,
-                max_file_size_bytes=self.max_file_size_bytes,
-                allow_missing=allow_missing,
-            )
-        except PathValidationError as e:
-            return ValidationResult(success=False, error=str(e))
+        # PathValidationError propagates here; @mcp_error_boundary in the
+        # caller's tool function catches it and returns a consistent
+        # OPP_PATH_DENIED error response (see OPP #52).
+        _shared_validate(
+            path,
+            self.allowed_directories,
+            max_file_size_bytes=self.max_file_size_bytes,
+            allow_missing=allow_missing,
+        )
 
         # Phase 1 succeeded — get the resolved path
         try:
