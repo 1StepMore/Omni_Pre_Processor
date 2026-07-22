@@ -406,3 +406,27 @@ extraction:
 | `OPP_LOG_LEVEL` | CLI | Log level | `INFO` |
 | `OMNI_LOG_FORMAT` | CLI/MCP | `console` (default) or `json` | `console` |
 | `OMNI_TEST_FAKE_LLM=1` | CLI | Mock LLM responses (hermetic testing) | unset |
+
+---
+
+## Validation Master Plan
+
+A comprehensive validation master plan for OPP is available in the Omni Suite docs at `../docs/OPP_VALIDATION_MASTER_PLAN.md`. It covers **17 user questions** across **80 executable scenarios**, organized in the AutoInfo-style format:
+
+| Part | Focus | Questions |
+|------|-------|-----------|
+| 1–2 | Core extraction & format support (13 formats) | Q1-OPP — Q8-OPP |
+| 3 | MCP Surface Mastery (7 MCP tools) | Q9-OPP |
+| 4 | Agent-as-User Workflows | Q10-OPP — Q11-OPP |
+| 5 | CLI Surface Mastery | Q12-OPP |
+| 6 | Error & Boundary Matrix | Q13-OPP — Q14-OPP |
+| 7 | Production Validation | Q15-OPP |
+| 8 | Real OCR & System Dependency Tests | Q16-OPP — Q17-OPP |
+
+**How to use:**
+1. Open `../docs/OPP_VALIDATION_MASTER_PLAN.md` (from the Suite root)
+2. Pick a user question (e.g. "Can I extract a DOCX with images?")
+3. Execute the scenario as a CLI command or Python script
+4. Compare actual vs. expected result and mark the verdict
+
+Each scenario includes prerequisites, expected output, and a `**PASS / FAIL:**` box for recording results. Run through all scenarios to validate production readiness.
