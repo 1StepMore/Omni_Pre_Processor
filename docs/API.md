@@ -3,7 +3,7 @@
 Complete reference for every command-line flag, every MCP tool, every error code, and every exit code exposed by the Omni Pre-Processor (OPP) package.
 
 Package: `omni-pre-processor` (PyPI distribution) / `opp` (Python import)
-Version: 0.6.1
+Version: 0.9.1
 Source: `Omni_Pre_Processor/src/opp/`
 Console scripts: `opp`, `opp-mcp-server`
 

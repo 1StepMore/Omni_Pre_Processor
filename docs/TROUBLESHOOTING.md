@@ -116,7 +116,7 @@ Verify:
 
 ```bash
 python -c "import opp; print(opp.__version__)"
-# → 0.6.1
+# → 0.9.1 (or your installed version)
 ```
 
 ---
@@ -276,7 +276,7 @@ export OPP_MCP_MAX_FILE_SIZE=$((50*1024*1024))  # 50MB cap
 
 ```bash
 pip install omni-pre-processor
-python -c "import opp; print(opp.__version__)"   # → 0.6.1
+python -c "import opp; print(opp.__version__)"   # → 0.9.1 (or your installed version)
 ```
 
 This is intentional. The original PyPI name `opp` collides with PAY.ON's payment-processing library.
