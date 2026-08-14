@@ -11,10 +11,12 @@ import base64
 import logging
 import re
 import tempfile
+from dataclasses import replace
 from pathlib import Path
 
 from bs4 import BeautifulSoup
 
+from opp.detector import FormatType
 from opp.extractors.base import ExtractorBase
 from opp.extractors.html import HTMLExtractor
 from opp.utils.dataclasses import ExtractionResult
@@ -207,6 +209,12 @@ class PDF2HTMLExtractor(ExtractorBase):
             html_extractor = HTMLExtractor()
             result = html_extractor.extract(html_path)
             result.skeleton_html = pandoc_html
-            # Format type is "html" (not "pdf") to bypass OPP's PDF->XLIFF guard
-            # (pipeline.py checks result.metadata.format_type == "pdf")
+            # Source is a PDF: keep metadata.format_type="pdf" so the
+            # PDF→XLIFF guard in pipeline.generate_xliff fires. Relabeling
+            # to "html" (HTMLExtractor's default) bypasses the guard and
+            # lets `opp <pdf> --target-format xlf` write a broken .xlf.
+            if result.metadata is not None:
+                result.metadata = replace(
+                    result.metadata, format_type=FormatType.PDF.value
+                )
             return result

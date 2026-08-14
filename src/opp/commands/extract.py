@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -302,4 +303,7 @@ def process_single_file(
     except Exception as e:
         stats["errors"] += 1
         get_logger().exception(f"Error processing {file_path}: {e}")
+        # Surface the failure reason on stderr (STANDARDS.md#exit-codes):
+        # the log file is not visible to CLI callers.
+        print(f"Error processing {file_path}: {e}", file=sys.stderr)
         return False

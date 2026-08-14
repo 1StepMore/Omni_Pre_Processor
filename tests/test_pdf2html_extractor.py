@@ -34,7 +34,10 @@ def test_pdf2html_extracts_text(tmp_path: Path):
     assert result.paragraphs, "Expected at least one paragraph"
     assert result.skeleton_html is not None
     assert result.metadata is not None
-    assert result.metadata.format_type == "html"
+    # The SOURCE is a PDF: format_type must report "pdf" so the PDF→XLIFF
+    # guard fires. Relabeling to "html" (HTMLExtractor's default) bypasses
+    # the guard on the live CLI path (T2 format-relabel regression).
+    assert result.metadata.format_type == "pdf"
 
 
 def test_pdf2html_raises_on_missing_file(tmp_path: Path):

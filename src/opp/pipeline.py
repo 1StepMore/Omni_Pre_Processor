@@ -1,5 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
 import logging
@@ -15,6 +15,11 @@ from opp.resource_manager import ResourceManager
 from opp.xliff import XLIFFFileGenerator
 from opp.utils.dataclasses import ExtractionResult
 from opp.utils.images_json import generate_images_json
+
+
+# Pinned by the T2 regression scenario + OPP tests + suite W3.2; the CLI
+# surfaces it on stderr verbatim (STANDARDS.md#exit-codes). Do not reword.
+PDF_XLIFF_UNSUPPORTED_MSG = "XLIFF not supported for PDF format"
 
 
 @dataclass
@@ -128,7 +133,7 @@ class OPPPipeline:
         # Issue #50: accept both str and Path (idempotent — Path() of Path is the same)
         output_path = Path(output_path)
         if result.metadata and result.metadata.format_type == FormatType.PDF.value:
-            error_msg = "XLIFF not supported for PDF format"
+            error_msg = PDF_XLIFF_UNSUPPORTED_MSG
             self.error_handler.add_error(
                 ErrorContext(
                     file_path=str(output_path),
@@ -274,6 +279,15 @@ class OPPPipeline:
         try:
             result: ExtractionResult = extractor.extract(file_path)
 
+            # Belt-and-suspenders for the PDF→XLIFF guard: the DETECTED
+            # input format is authoritative. PDF2HTMLExtractor returns an
+            # HTML-shaped result; force truthful metadata so the guard in
+            # generate_xliff fires even if an extractor relabels it.
+            if fmt == FormatType.PDF and result.metadata is not None:
+                result.metadata = replace(
+                    result.metadata, format_type=FormatType.PDF.value
+                )
+
             # Collect warnings from extraction
             warnings.extend(result.warnings)
 
@@ -365,7 +379,12 @@ class OPPPipeline:
 
         return ProcessingResult(
             content=result.content,
-            format_type=FormatType.HTML if result.metadata and result.metadata.format_type == "html" else fmt,
+            # PDF input is processed through the PDF→HTML→MD pipeline, so
+            # the ProcessingResult is reported as HTML (historical contract
+            # locked by test_pdf_e2e/test_pipeline_pdf2html_integration).
+            # Keyed on the DETECTED format so it does not depend on an
+            # extractor relabeling metadata.format_type.
+            format_type=FormatType.HTML if fmt == FormatType.PDF else fmt,
             images_stored=images_stored,
             errors=errors,
             warnings=warnings,

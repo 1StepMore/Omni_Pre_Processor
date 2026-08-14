@@ -77,3 +77,120 @@ class TestPDFXliffGuard:
                 pytest.fail(
                     f"Guard fired for non-PDF format: format_type='docx', err={e}"
                 )
+
+
+def _make_real_pdf(path: Path) -> Path:
+    """Generate a small real, parseable PDF via PyMuPDF.
+
+    The guard must be tested against a REAL PDF: a `%PDF-` magic-byte stub
+    would fail inside PDF2HTMLExtractor (fitz.open) before generate_xliff
+    ever runs, never exercising the guard on the live path.
+    """
+    import fitz
+
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((72, 72), "Hello PDF guard")
+    doc.save(str(path))
+    doc.close()
+    return path
+
+
+class TestPDFXliffGuardCLI:
+    """CLI-level regression: the guard must fire on the LIVE CLI path.
+
+    The unit tests above hand-build ``ExtractionResult(format_type="pdf")``,
+    but the live CLI never produced such a result for PDF input: since
+    commit c0caeb2 (2026-06-27) ALL PDF inputs route through
+    PDF2HTMLExtractor, which relabeled ``result.metadata.format_type`` to
+    ``"html"`` — silently bypassing the guard at pipeline.py:130. The CLI
+    exited 0 and wrote a broken .xlf (T2 re-occurrence, format-relabel
+    variant). These tests run the REAL CLI end-to-end so the guard is
+    locked on the live path, not just on hand-built unit results.
+    """
+
+    def _run_cli(self, pdf: Path, out_dir: Path, target_format: str):
+        import subprocess
+        import sys
+
+        return subprocess.run(
+            [
+                sys.executable, "-m", "opp.cli", str(pdf),
+                "--target-format", target_format,
+                "--source-lang", "en",
+                "--target-lang", "zh",
+                "--output-dir", str(out_dir),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+
+    def test_cli_refuses_pdf_xliff(self, tmp_path: Path):
+        """`opp <pdf> --target-format xlf` must exit 1 with the guard
+        message on stderr, and MUST NOT write a .xlf."""
+        pdf = _make_real_pdf(tmp_path / "sample.pdf")
+        out_dir = tmp_path / "out"
+        proc = self._run_cli(pdf, out_dir, "xlf")
+
+        assert proc.returncode == 1, (
+            f"expected exit 1, got {proc.returncode}; "
+            f"stdout={proc.stdout!r} stderr={proc.stderr!r}"
+        )
+        assert "XLIFF not supported for PDF format" in proc.stderr, (
+            f"guard message missing from stderr: {proc.stderr!r}"
+        )
+        assert not (out_dir / "sample.xlf").exists(), (
+            "a .xlf was produced — the guard was bypassed"
+        )
+
+    def test_cli_refuses_pdf_both(self, tmp_path: Path):
+        """`--target-format both` on a PDF must ALSO fail on the xlf half
+        (md may be written first, but no .xlf may exist and exit must be 1)."""
+        pdf = _make_real_pdf(tmp_path / "sample.pdf")
+        out_dir = tmp_path / "out"
+        proc = self._run_cli(pdf, out_dir, "both")
+
+        assert proc.returncode == 1, (
+            f"expected exit 1 for --target-format both, got {proc.returncode}; "
+            f"stdout={proc.stdout!r} stderr={proc.stderr!r}"
+        )
+        assert "XLIFF not supported for PDF format" in proc.stderr, (
+            f"guard message missing from stderr: {proc.stderr!r}"
+        )
+        assert not (out_dir / "sample.xlf").exists(), (
+            "a .xlf was produced — the guard was bypassed on the 'both' path"
+        )
+
+    def test_cli_pdf_md_still_works(self, tmp_path: Path):
+        """PDF→MD extraction must remain unaffected (exit 0)."""
+        pdf = _make_real_pdf(tmp_path / "sample.pdf")
+        out_dir = tmp_path / "out"
+        proc = self._run_cli(pdf, out_dir, "md")
+
+        assert proc.returncode == 0, (
+            f"expected exit 0 for --target-format md, got {proc.returncode}; "
+            f"stdout={proc.stdout!r} stderr={proc.stderr!r}"
+        )
+        assert (out_dir / "sample.md").exists()
+
+    def test_cli_docx_xliff_unaffected(self, tmp_path: Path):
+        """Non-PDF formats must be unaffected: DOCX→XLIFF still exits 0."""
+        import subprocess
+        import sys
+
+        from docx import Document
+
+        docx_path = tmp_path / "sample.docx"
+        doc = Document()
+        doc.add_paragraph("Hello DOCX guard")
+        doc.save(str(docx_path))
+
+        out_dir = tmp_path / "out"
+        proc = self._run_cli(docx_path, out_dir, "xlf")
+
+        assert proc.returncode == 0, (
+            f"expected exit 0 for DOCX→XLIFF, got {proc.returncode}; "
+            f"stdout={proc.stdout!r} stderr={proc.stderr!r}"
+        )
+        assert (out_dir / "sample.xlf").exists()

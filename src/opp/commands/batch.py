@@ -6,6 +6,7 @@ file-processing loop that was previously inline in ``main()``.
 
 from __future__ import annotations
 
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -13,6 +14,7 @@ from pathlib import Path
 from opp.detector import FormatType, detect_format
 from opp.error_handler import ErrorContext
 from opp.logger import get_logger
+from opp.pipeline import PDF_XLIFF_UNSUPPORTED_MSG
 from opp.cliutils import (
     expand_directories,
     get_supported_extensions,
@@ -90,6 +92,19 @@ def batch_process(
                 if file_size_mb > args.max_file_size:
                     logger.warning("跳过 %s: 文件大小 %.1fMB 超过限制 %dMB", file_path, file_size_mb, args.max_file_size)
                     stats["errors"] += 1
+                    continue
+
+            # PDF→XLIFF guard must fire BEFORE the A6 cache check: a cached
+            # .xlf written by a pre-guard run would otherwise replay the
+            # bypassed output and the CLI would exit 0 (T2 regression).
+            if args.target_format in ("xlf", "both"):
+                fmt, _ = detect_format(file_path)
+                if fmt == FormatType.PDF:
+                    stats["errors"] += 1
+                    print(
+                        f"Error processing {file_path}: {PDF_XLIFF_UNSUPPORTED_MSG}",
+                        file=sys.stderr,
+                    )
                     continue
 
             # A6: cache check before any expensive work. If the input+config
