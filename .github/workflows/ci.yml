@@ -69,3 +69,63 @@ jobs:
 
 
 
+
+  # Suite validation: OPP's own scenarios (scenarios/opp/ + tool-opp-*)
+  # via the Omni Suite validation framework's per-module filter.
+  # Hermetic (tier 1, no LLM keys, no mocks) — the suite repo provides
+  # the engine + scenario library; the sub-repos are cloned fresh by
+  # scripts/clone_subrepos.sh.
+  validate:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clone Omni Suite (engine + scenarios + fixtures)
+        uses: actions/checkout@v4
+        with:
+          repository: 1StepMore/e2e-test-suite
+          path: suite
+          ref: main
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Clone 3 sub-repos into the suite (workspace members for uv sync)
+        working-directory: suite
+        run: bash scripts/clone_subrepos.sh
+
+      - name: uv sync (root workspace)
+        working-directory: suite
+        run: uv sync --frozen
+
+      - name: Create .venv_ol symlink for legacy paths
+        working-directory: suite
+        run: ln -s .venv .venv_ol
+
+      - name: Ensure .venv/bin/python exists
+        working-directory: suite
+        run: cd .venv/bin && [ ! -e python ] && [ -e python3 ] && ln -s python3 python; cd -
+
+      - name: Install this repo's OPP over the cloned upstream (validate THIS HEAD)
+        working-directory: suite
+        run: |
+          rm -rf Omni_Pre_Processor
+          cp -r ${{ github.workspace }} Omni_Pre_Processor
+          uv pip install --python .venv/bin/python -e ./Omni_Pre_Processor
+
+      - name: Run OPP validation scenarios (tier 1, hermetic)
+        working-directory: suite
+        env:
+          MCP_ALLOWED_DIRECTORIES: /tmp
+          OPP_MCP_ALLOWED_DIRS: /tmp
+          OMNI_RATE_LIMIT_RPM: "0"
+        run: |
+          .venv/bin/python scripts/validation/run_validation.py --module opp --tier 1
