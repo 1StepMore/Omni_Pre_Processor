@@ -57,7 +57,7 @@ async def get_capabilities(
     try:
         from opp import __version__ as _v  # type: ignore
         version = _v
-    except Exception:
+    except Exception:  # expected: version fetch is best-effort
         pass
 
     return {

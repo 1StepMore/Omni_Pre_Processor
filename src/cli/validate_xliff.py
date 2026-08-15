@@ -41,7 +41,7 @@ def validate_xliff(
             xliff_content=xliff_content,
             file_path=file_path,
         ))
-    except Exception as e:
+    except Exception as e:  # expected: convert validation failure to CLI exit
         typer.echo(f"Error: validation failed: {e}", err=True)
         raise typer.Exit(code=ExitCode.PIPELINE_ERROR)
 

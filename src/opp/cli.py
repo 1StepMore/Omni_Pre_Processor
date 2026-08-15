@@ -304,7 +304,7 @@ def main(argv: list[str] | None = None) -> int:
             validator = XLIFFValidator()
             schema_valid, schema_errors = validator.validate_schema(raw_bytes)
             tu_valid, tu_warnings, tu_errors = validator.validate_trans_units(raw_bytes)
-        except Exception as e:
+        except Exception as e:  # expected: surface validation failure as structured JSON + exit 2
             print(_json.dumps({"success": False, "error": {"code": "OPP_VALIDATE_FAILED", "message": str(e)}}, indent=2), file=sys.stderr)
             return 2
         result = {
