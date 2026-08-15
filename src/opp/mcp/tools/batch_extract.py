@@ -7,7 +7,12 @@ import time
 import uuid
 from pathlib import Path
 
-from opp.mcp._errors import mcp_error_boundary, validate_file_paths, McpError
+from opp.mcp._errors import (
+    McpError,
+    PathValidationError,
+    mcp_error_boundary,
+    validate_file_paths,
+)
 
 logger = logging.getLogger(__name__)
 from opp.mcp.auth import check_auth
@@ -72,17 +77,24 @@ async def batch_extract(
 
     validation_errors = []
     for file_path in file_paths:
-        validation_result = _c._validator.validate_path(file_path)
-        if not validation_result.success:
+        try:
+            validation_result = _c._validator.validate_path(file_path)
+            if not validation_result.success:
+                validation_errors.append({
+                    "file_path": file_path,
+                    "error": validation_result.error or "Path validation failed",
+                })
+        except PathValidationError as e:
             validation_errors.append({
                 "file_path": file_path,
-                "error": validation_result.error or "Path validation failed",
+                "error": str(e),
             })
 
     if validation_errors:
         raise McpError(
             code="OPP_PATH_DENIED",
             message="Path validation failed for one or more files",
+            validation_errors=validation_errors,
         )
 
     results = []

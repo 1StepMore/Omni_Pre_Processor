@@ -34,12 +34,12 @@ from opp.utils.mcp_errors import (  # noqa: F401  (re-exported)
     MAX_BATCH_FILES,
     MAX_BATCH_TEXTS,
     MAX_IMAGE_BYTES,
-    PathValidationError,
     ResourceExhausted,
     validate_batch_input,
     validate_file_paths,
     log_mcp_audit,
 )
+from opp.utils.security import PathValidationError  # noqa: F401 (re-exported)
 
 _logger = logging.getLogger("opp_mcp.errors")
 
@@ -53,9 +53,10 @@ class McpError(Exception):
     the backward-compat flat ``error_code`` field.
     """
 
-    def __init__(self, code: str, message: str):
+    def __init__(self, code: str, message: str, **extra: Any):
         self.code = code
         self.message = message
+        self.extra = extra
         super().__init__(message)
 
 
@@ -104,6 +105,14 @@ def _format_error_response(exc: Exception) -> dict:
     if isinstance(exc, McpError):
         code = exc.code
         msg = exc.message
+        resp: dict[str, Any] = {
+            "success": False,
+            "error": {"code": code, "message": msg},
+            "error_code": code,
+            "message": msg,
+        }
+        resp.update(exc.extra)
+        return resp
     else:
         code = _classify(exc)
         msg = _safe_user_message(exc)

@@ -93,8 +93,13 @@ def log_mcp_audit(tool_name: str, duration_ms: float, success: bool) -> None:
     # Import lazily — omni_metrics is in the main repo, not a submodule dep.
     try:
         import os as _os
+        # Suite root: this file lives at
+        # <suite>/Omni_Pre_Processor/src/opp/utils/mcp_errors.py — five
+        # parent hops reach the suite root where omni_metrics lives.
         _suite_root = _os.path.dirname(
-            _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+            _os.path.dirname(
+                _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+            )
         )
         if _suite_root not in _os.sys.path:
             _os.sys.path.insert(0, _suite_root)
