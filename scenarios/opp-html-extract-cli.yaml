@@ -1,0 +1,97 @@
+name: opp-html-extract-cli
+description: >
+  OPP extraction of a second low-dependency format: the real `opp` CLI
+  extracts a committed HTML fixture with --target-format both, writing BOTH
+  the .md and the .xlf files (plus the manifest). Assert both outputs exist
+  on disk (collect_artifacts + an explicit existence probe), the XLIFF is
+  translation-ready (target-language="zh" and >= 1 trans-unit), and the
+  markdown preserves the H1 heading. Hermetic (tier 1): HTML needs no
+  pandoc/OCR/LLM/network.
+category: opp-extraction
+tier: 1
+instructions: |
+  What to do:
+  1. Prepare a fresh output dir for this run (removes stale outputs).
+  2. Run the real OPP CLI on the committed fixture
+     Omni_Pre_Processor/scenarios/_fixtures/product_page.html with
+     --target-format both --source-lang en --target-lang zh.
+  3. Assert BOTH produced files exist on disk — product_page.md and
+     product_page.xlf (the 'both' contract; collect_artifacts records them
+     for the delivery step).
+  4. Read the XLIFF: target-language="zh" declared and >= 1 trans-unit.
+     Read the markdown: the H1 heading survived extraction.
+  Extraction is deterministic: no LLM, no FAKE_LLM, no network.
+steps:
+  - name: Prepare a fresh output directory
+    kind: python
+    command: |
+      import pathlib, shutil
+      out = pathlib.Path("/tmp/omni_opp_val/opp-html-extract-cli")
+      shutil.rmtree(out, ignore_errors=True)
+      out.mkdir(parents=True, exist_ok=True)
+      print("ready")
+    expect:
+      exit_code: 0
+      stdout_has: ["ready"]
+    standard: STANDARDS.md#tool-contract
+    instructions: |
+      What to check: the prep step creates a fresh output dir and prints
+      "ready"; a failure means the dir could not be prepared.
+  - name: Extract HTML to Markdown and XLIFF via the real OPP CLI
+    kind: cli
+    command: opp Omni_Pre_Processor/scenarios/_fixtures/product_page.html --target-format both --source-lang en --target-lang zh --output-dir /tmp/omni_opp_val/opp-html-extract-cli -v
+    expect:
+      exit_code: 0
+      stderr_has: ["[INFO] Generated:", "[INFO] Completed: 1 succeeded, 0 failed"]
+    timeout_seconds: 180
+    standard: STANDARDS.md#exit-codes
+    instructions: |
+      What to check: the CLI exits 0 (exit-codes standard) and verbose
+      stderr prints the generated-file markers plus a completion line with
+      zero failures.
+    collect_artifacts:
+      - path: '/tmp/omni_opp_val/opp-html-extract-cli/product_page.md'
+      - path: '/tmp/omni_opp_val/opp-html-extract-cli/product_page.xlf'
+      - path: '/tmp/omni_opp_val/opp-html-extract-cli/product_page_manifest.json'
+  - name: Both markdown and xliff exist on disk
+    kind: python
+    command: |
+      import pathlib
+      base = pathlib.Path("/tmp/omni_opp_val/opp-html-extract-cli")
+      print("md-exists" if (base / "product_page.md").is_file() else "no-md")
+      print("xlf-exists" if (base / "product_page.xlf").is_file() else "no-xlf")
+      print("manifest-exists" if (base / "product_page_manifest.json").is_file() else "no-manifest")
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "md-exists"
+        - "xlf-exists"
+        - "manifest-exists"
+    standard: STANDARDS.md#manifest-fidelity
+    instructions: |
+      What to check: the 'both' contract produced ALL THREE files on disk —
+      the manifest is only trustworthy if the outputs it names actually
+      exist (manifest-fidelity standard). The recorded artifacts must be
+      present.
+  - name: XLIFF is translation-ready and markdown keeps the H1 heading
+    kind: python
+    command: |
+      import pathlib, re
+      base = pathlib.Path("/tmp/omni_opp_val/opp-html-extract-cli")
+      xlf = (base / "product_page.xlf").read_text(encoding="utf-8")
+      md = (base / "product_page.md").read_text(encoding="utf-8")
+      print("target-zh" if 'target-language="zh"' in xlf else "no-target-zh")
+      print("units-found" if len(re.findall(r"<trans-unit", xlf)) > 0 else "no-units")
+      print("heading-found" if "# Meridian Robotics" in md else "no-heading")
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "target-zh"
+        - "units-found"
+        - "heading-found"
+    standard: STANDARDS.md#xliff-trans-ready
+    instructions: |
+      What to check: the XLIFF declares target-language="zh" and carries at
+      least one trans-unit (xliff-trans-ready standard — OL's translate
+      input contract), and the markdown preserves the H1 heading
+      (md-content standard).

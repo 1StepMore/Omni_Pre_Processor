@@ -1,0 +1,65 @@
+name: opp-detect-format
+description: >
+  OPP format detection on both surfaces: `opp --detect-format -v` on the
+  committed JSON fixture prints "Detected: json (confidence: 1.0)" on
+  stderr and exits 0, and the real in-process `detect_format_tool` MCP
+  function returns the same detection as a structured payload
+  ({"success": true, "content": {"format": "json", "confidence": 1.0}}).
+  Hermetic (tier 1): magic bytes only, no keys, no network.
+category: opp-extraction
+tier: 1
+instructions: |
+  What to do:
+  1. Run the real OPP CLI with --detect-format -v on the committed JSON
+     fixture. The detector reads the first byte '{' and must report
+     "Detected: json (confidence: 1.0)" on stderr (magic bytes, not
+     extension).
+  2. Initialize the OPP MCP server state (_init_server(load_config()))
+     with the fixture dir on the allowlist and call the real
+     detect_format_tool function. It must return the same detection as a
+     structured success payload.
+  Deterministic: no LLM, no FAKE_LLM, no network.
+steps:
+  - name: CLI detect-format reports JSON via magic bytes
+    kind: cli
+    command: opp --detect-format Omni_Pre_Processor/scenarios/_fixtures/opp_sample.json -v
+    expect:
+      exit_code: 0
+      stderr_has: ["Detected: json (confidence: 1.0)"]
+    timeout_seconds: 120
+    standard: STANDARDS.md#exit-codes
+    instructions: |
+      What to check: the CLI exits 0 (exit-codes standard) and verbose
+      stderr carries the detected format line. The fixture starts with '{',
+      so magic-byte detection must report json at confidence 1.0
+      (detector.py:137-138) — not UNKNOWN.
+  - name: MCP detect_format_tool returns the same detection as a payload
+    kind: python
+    command: |
+      import asyncio, json, os, sys
+      sys.path.insert(0, "Omni_Pre_Processor/src")
+      # Hermetic allowlist: clear any inherited MCP_ALLOWED_DIRECTORIES
+      # (config.py:75 reads it FIRST, over OPP_MCP_ALLOWED_DIRS) so the
+      # fixture dir is the only allowed path for this step.
+      os.environ.pop("MCP_ALLOWED_DIRECTORIES", None)
+      os.environ["OPP_MCP_ALLOWED_DIRS"] = "/mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/scenarios/_fixtures"
+      from opp.mcp.config import load_config
+      from opp.mcp.common import _init_server
+      _init_server(load_config())
+      from opp.mcp.server import detect_format_tool
+      r = asyncio.run(detect_format_tool(
+          file_path="/mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/scenarios/_fixtures/opp_sample.json"))
+      print(json.dumps(r, ensure_ascii=False))
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
+      stdout_has:
+        - '"success": true'
+        - '"format": "json"'
+        - '"confidence": 1.0'
+    standard: STANDARDS.md#tool-contract
+    instructions: |
+      What to check: the real detect_format_tool returns the same magic-byte
+      detection as a structured payload — success true, format json,
+      confidence 1.0 (tool-contract standard). A mismatch with the CLI's
+      detection is a contract break between the two surfaces.

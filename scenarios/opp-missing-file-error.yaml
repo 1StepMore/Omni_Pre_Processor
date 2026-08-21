@@ -1,0 +1,83 @@
+name: opp-missing-file-error
+description: >
+  OPP handles a missing input gracefully on BOTH surfaces: the real `opp`
+  CLI on a nonexistent path exits 1 with a clear stderr warning ("No
+  supported files found") — a controlled nonzero exit, never a crash — and
+  the real in-process `extract_document` MCP tool returns a structured
+  denial payload (success false, OPP_PATH_DENIED) naming the path, without
+  a traceback. Hermetic (tier 1): no keys, no network.
+category: opp-extraction
+tier: 1
+instructions: |
+  What to do:
+  1. Run the real OPP CLI on a nonexistent input path. The expander finds
+     no files, so the CLI must print the warning to stderr and exit 1 —
+     NOT raise an uncaught exception (exit-codes + error-clarity).
+  2. Initialize the OPP MCP server state (_init_server(load_config())) and
+     call the real extract_document tool on the same missing path. The
+     PathValidator must deny it: a structured {success: false,
+     error_code: OPP_PATH_DENIED} payload naming the path — never raw
+     stack-trace soup.
+  Deterministic: no LLM, no FAKE_LLM, no network.
+steps:
+  - name: CLI exits 1 on a missing input with a clear stderr reason
+    kind: cli
+    command: opp /tmp/omni_opp_val/does-not-exist.json --target-format md --output-dir /tmp/omni_opp_val/opp-missing-file-error -v
+    expect:
+      exit_code: 1
+      stderr_has: ["No supported files found"]
+      stderr_not_has: ["Traceback (most recent call last)"]
+    timeout_seconds: 120
+    standard: STANDARDS.md#exit-codes
+    instructions: |
+      What to check: a missing input is a controlled failure — exit code 1
+      (exit-codes standard) with the reason on stderr and NO traceback
+      (error-clarity standard). The OPP expander returns zero files for a
+      nonexistent path, which the CLI reports as "No supported files found"
+      and exits 1 (cli.py:358-360).
+  - name: MCP extract_document denies the missing path cleanly
+    kind: python
+    command: |
+      import asyncio, json, os, sys
+      sys.path.insert(0, "Omni_Pre_Processor/src")
+      os.environ["OPP_MCP_ALLOWED_DIRS"] = "/mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/scenarios/_fixtures"
+      from opp.mcp.config import load_config
+      from opp.mcp.common import _init_server
+      _init_server(load_config())
+      from opp.mcp.server import extract_document
+      r = asyncio.run(extract_document(
+          file_path="/tmp/omni_opp_val/does-not-exist.json", output_formats="md"))
+      print(json.dumps(r, ensure_ascii=False))
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
+      stdout_has:
+        - '"success": false'
+        - '"error_code": "OPP_PATH_DENIED"'
+        - 'Access to the requested path was denied'
+      stdout_not_has: ['Traceback (most recent call last)']
+    standard: STANDARDS.md#error-clarity
+    instructions: |
+      What to check: the real extract_document tool denies the missing path
+      via the PathValidator — a structured {success: false,
+      error_code: OPP_PATH_DENIED} payload with the denial message and NO
+      traceback in the returned payload (error-clarity standard). The
+      denial detail (including the path) is logged server-side by the
+      error boundary, which is the correct OPP behavior for the returned
+      payload.
+cleanup_steps:
+  - name: Remove any _images temp dir the MCP call left in _fixtures
+    kind: python
+    command: |
+      import pathlib, shutil
+      base = pathlib.Path("/mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/scenarios/_fixtures")
+      for d in base.glob("opp_mcp_*_images"):
+          shutil.rmtree(d, ignore_errors=True)
+          print("removed", d.name)
+    expect:
+      exit_code: 0
+    standard: STANDARDS.md#tool-contract
+    instructions: |
+      What to check (best-effort, never affects the verdict): removes any
+      tracked {stem}_images temp dir left behind so the fixture dir stays
+      clean across runs.

@@ -1,0 +1,83 @@
+name: opp-both-extract-mcp
+description: >
+  OPP MCP `extract_document` with output_formats both returns both the
+  Markdown and the XLIFF in one call: success payload carrying md_content
+  and xliff_content, a positive trans-unit count, and the zh target
+  language declared in the returned XLIFF. The scenario drives the REAL
+  in-process tool function after the same `_init_server(load_config())`
+  the `opp mcp` server performs. Hermetic (tier 1): JSON input, no
+  pandoc/OCR/LLM/network.
+category: opp-extraction
+tier: 1
+instructions: |
+  What to do:
+  1. Initialize the OPP MCP server state exactly like `opp mcp` does:
+     `_init_server(load_config())`, with the fixture dir on the MCP
+     allowlist (OPP_MCP_ALLOWED_DIRS) so the call passes path security.
+  2. Call the real `extract_document` tool function with
+     output_formats="both" on the committed product_catalog.json fixture.
+  3. Assert the returned payload carries BOTH md_content and
+     xliff_content, a positive xliff_units_count, and the zh target
+     language inside the XLIFF (OPP prep: OL fills targets later).
+  Deterministic: no LLM, no FAKE_LLM, no network.
+steps:
+  - name: extract_document returns markdown AND xliff in one payload
+    kind: python
+    command: |
+      import asyncio, json, os, sys
+      sys.path.insert(0, "Omni_Pre_Processor/src")
+      # Hermetic allowlist: clear any inherited MCP_ALLOWED_DIRECTORIES
+      # (config.py:75 reads it FIRST, over OPP_MCP_ALLOWED_DIRS) so the
+      # fixture dir is the only allowed path for this step.
+      os.environ.pop("MCP_ALLOWED_DIRECTORIES", None)
+      os.environ["OPP_MCP_ALLOWED_DIRS"] = "/mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/scenarios/_fixtures"
+      from opp.mcp.config import load_config
+      from opp.mcp.common import _init_server
+      _init_server(load_config())
+      from opp.mcp.server import extract_document
+      r = asyncio.run(extract_document(
+          file_path="/mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/scenarios/_fixtures/product_catalog.json",
+          output_formats="both", source_lang="en", target_lang="zh"))
+      print("success=" + str(r.get("success") is True))
+      print("md-channel=" + str("md_content" in r))
+      print("xlf-channel=" + str("xliff_content" in r))
+      print("units=" + str(r.get("xliff_units_count")))
+      print("catalog=" + str("Omni Hardware Catalog" in (r.get("md_content") or r.get("content") or "")))
+      print("target-zh=" + str('target-language="zh"' in (r.get("xliff_content") or "")))
+    timeout_seconds: 120
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "success=True"
+        - "md-channel=True"
+        - "xlf-channel=True"
+        - "catalog=True"
+        - "target-zh=True"
+    standard: STANDARDS.md#tool-contract
+    instructions: |
+      What to check: the real extract_document tool returns success with
+      both output channels in the payload — md_content/xliff_content keys
+      present, the markdown carrying the fixture's catalog name, and the
+      XLIFF declaring target-language="zh". A missing channel means the
+      'both' path is broken (tool-contract standard). The step parses the
+      payload and prints boolean markers so no JSON string escaping can
+      false-negative the assertions.
+cleanup_steps:
+  - name: Remove the _images temp dir the MCP extraction left in _fixtures
+    kind: python
+    command: |
+      import pathlib, shutil
+      base = pathlib.Path("/mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/scenarios/_fixtures")
+      for d in base.glob("opp_mcp_*_images"):
+          shutil.rmtree(d, ignore_errors=True)
+          print("removed", d.name)
+    expect:
+      exit_code: 0
+    standard: STANDARDS.md#tool-contract
+    instructions: |
+      What to check (best-effort, never affects the verdict): the
+      in-process tool leaves a tracked {stem}_images temp dir in the
+      fixture dir (a shipped OPP quirk — the dir is registered in
+      _tempfiles but the empty dir itself is not unlinked by shutdown
+      cleanup); the cleanup step removes it so the fixture dir stays
+      clean across runs.

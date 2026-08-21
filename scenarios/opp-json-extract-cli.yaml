@@ -1,0 +1,91 @@
+name: opp-json-extract-cli
+description: >
+  OPP happy-path extraction: the real `opp` CLI extracts a committed JSON
+  fixture to Markdown (--target-format md). Exit 0, the verbose stderr
+  success marker, a parseable manifest declaring the JSON format, and the
+  JSON payload preserved in a ```json fenced code block. Hermetic (tier 1):
+  JSON needs no pandoc, no OCR, no LLM keys, no network.
+category: opp-extraction
+tier: 1
+instructions: |
+  What to do:
+  1. Prepare a fresh output dir for this run (removes stale outputs from
+     previous runs so existence checks cannot be satisfied by leftovers).
+  2. Run the real OPP CLI on the committed fixture
+     Omni_Pre_Processor/scenarios/_fixtures/opp_sample.json with
+     --target-format md into that dir, verbose.
+  3. Parse the produced opp_sample_manifest.json — valid JSON with the
+     metadata keys and source.format JSON.
+  4. Read the produced opp_sample.md — the payload must survive inside a
+     ```json fenced code block (JSONExtractor structure, CHANGELOG 0.7.0).
+  Extraction is deterministic: no LLM, no FAKE_LLM, no network.
+steps:
+  - name: Prepare a fresh output directory
+    kind: python
+    command: |
+      import pathlib, shutil
+      out = pathlib.Path("/tmp/omni_opp_val/opp-json-extract-cli")
+      shutil.rmtree(out, ignore_errors=True)
+      out.mkdir(parents=True, exist_ok=True)
+      print("ready")
+    expect:
+      exit_code: 0
+      stdout_has: ["ready"]
+    standard: STANDARDS.md#tool-contract
+    instructions: |
+      What to check: the prep step creates a fresh output dir and prints
+      "ready"; a failure means the dir could not be prepared.
+  - name: Extract JSON to Markdown via the real OPP CLI
+    kind: cli
+    command: opp Omni_Pre_Processor/scenarios/_fixtures/opp_sample.json --target-format md --output-dir /tmp/omni_opp_val/opp-json-extract-cli -v
+    expect:
+      exit_code: 0
+      stderr_has: ["[INFO] Generated:", "[INFO] Completed: 1 succeeded, 0 failed"]
+    timeout_seconds: 180
+    standard: STANDARDS.md#exit-codes
+    instructions: |
+      What to check: the CLI exits 0 (exit-codes standard) and verbose
+      stderr prints "[INFO] Generated:" plus the completion line with zero
+      failures — the real success markers OPP emits.
+  - name: Manifest parses as JSON and declares the JSON format
+    kind: python
+    command: |
+      import json, pathlib
+      m = json.loads(pathlib.Path("/tmp/omni_opp_val/opp-json-extract-cli/opp_sample_manifest.json").read_text(encoding="utf-8"))
+      print(",".join(sorted(m.keys())))
+      print("format=" + m["source"]["format"])
+      print("md-path=" + m["extraction"]["outputs"]["markdown"]["path"])
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "manifest_version"
+        - "source"
+        - "extraction"
+        - "format=JSON"
+        - "md-path=opp_sample.md"
+    standard: STANDARDS.md#json-parseable
+    instructions: |
+      What to check: json.loads succeeds (json-parseable standard), the
+      top-level key set includes manifest_version/source/extraction, the
+      declared format is JSON, and the manifest names opp_sample.md as the
+      markdown output path.
+  - name: Markdown preserves the JSON payload in a code block
+    kind: python
+    command: |
+      import pathlib
+      md = pathlib.Path("/tmp/omni_opp_val/opp-json-extract-cli/opp_sample.md").read_text(encoding="utf-8")
+      print("codeblock-found" if "```json" in md else "no-codeblock")
+      print("payload-found" if "Synthetic Widget" in md else "no-payload")
+      print("field-found" if "json_field:product.metadata.license = MIT" in md else "no-field")
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "codeblock-found"
+        - "payload-found"
+        - "field-found"
+    standard: STANDARDS.md#md-content
+    instructions: |
+      What to check: the extraction output carries the expected JSON
+      structure (md-content standard): the full payload survives inside a
+      ```json fenced code block and the translatable json_field lines are
+      present.

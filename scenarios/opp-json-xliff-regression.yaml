@@ -1,0 +1,80 @@
+name: opp-json-xliff-regression
+description: >
+  Regression seed locking OPP#42 (CHANGELOG 0.9.1 "Added"): the JSON
+  extraction path MUST produce a proper XLIFF for JSON inputs when
+  --target-format is xlf or both. Before the fix, JSON inputs fell through
+  to the generic channel and produced a broken XLIFF (single blob unit,
+  no json_field trans-units), breaking the OPP → XLIFF → OL → ORF → JSON
+  loop. The real `opp` CLI on the committed JSON fixture must now write a
+  .xlf with >= 1 json_field trans-unit per translatable string value AND
+  declare target-language="zh". If the override is ever bypassed or
+  removed, this scenario turns RED (no json_field units -> exit 0 with a
+  degraded XLIFF fails the content assertion).
+category: opp-extraction
+regression: true
+regression_issue: "#OPP42"
+tier: 1
+instructions: |
+  What to do:
+  1. Prepare a fresh output dir for this run.
+  2. Run the real OPP CLI on the committed JSON fixture with
+     --target-format both --source-lang en --target-lang zh (the full
+     language pair is required by cli.py:259-260 for xlf/both).
+  3. Read the produced .xlf: the JSON-specific override
+     (commands/extract.py, JSONExtractor.extract_key_values() +
+     KeyValueChannel.convert()) must have produced per-value trans-units —
+     at least one <source> starting with "json_field:" per translatable
+     string — and declared target-language="zh". A degraded XLIFF with only
+     the raw blob unit is exactly the OPP#42 regression class.
+  Deterministic: no LLM, no FAKE_LLM, no network.
+steps:
+  - name: Prepare a fresh output directory
+    kind: python
+    command: |
+      import pathlib, shutil
+      out = pathlib.Path("/tmp/omni_opp_val/opp-json-xliff-regression")
+      shutil.rmtree(out, ignore_errors=True)
+      out.mkdir(parents=True, exist_ok=True)
+      print("ready")
+    expect:
+      exit_code: 0
+      stdout_has: ["ready"]
+    standard: STANDARDS.md#tool-contract
+    instructions: |
+      What to check: the prep step creates a fresh output dir and prints
+      "ready"; a failure means the dir could not be prepared.
+  - name: OPP writes a JSON-aware XLIFF via the OPP#42 override
+    kind: cli
+    command: opp Omni_Pre_Processor/scenarios/_fixtures/opp_sample.json --target-format both --source-lang en --target-lang zh --output-dir /tmp/omni_opp_val/opp-json-xliff-regression -v
+    expect:
+      exit_code: 0
+      stderr_has: ["[INFO] Generated:", "[INFO] Completed: 1 succeeded, 0 failed"]
+    timeout_seconds: 180
+    standard: STANDARDS.md#exit-codes
+    instructions: |
+      What to check: the CLI exits 0 (exit-codes standard) and reports both
+      outputs generated with zero failures. The output .xlf is what the
+      next steps inspect.
+  - name: The XLIFF carries per-value json_field trans-units
+    kind: python
+    command: |
+      import pathlib
+      xlf = pathlib.Path("/tmp/omni_opp_val/opp-json-xliff-regression/opp_sample.xlf").read_text(encoding="utf-8")
+      units = xlf.count("<trans-unit")
+      json_units = xlf.count("json_field:")
+      print("units=" + str(units))
+      print("json-units=" + str(json_units))
+      print("target-zh" if 'target-language="zh"' in xlf else "no-target-zh")
+    expect:
+      exit_code: 0
+      stdout_has:
+        - "json-units=6"
+        - "target-zh"
+    standard: STANDARDS.md#xliff-trans-ready
+    instructions: |
+      What to check: the OPP#42 override produced one json_field trans-unit
+      per translatable string value — the fixture has exactly 6 (Synthetic
+      Widget, 3.2.1, Auto-save, Cloud sync, Test Team, MIT) — and the
+      XLIFF declares target-language="zh" (xliff-trans-ready standard). A
+      count of 0 (or only the raw blob unit) means the JSON-specific
+      override is bypassed — exactly the OPP#42 regression class.

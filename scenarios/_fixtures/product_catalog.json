@@ -1,0 +1,10 @@
+{
+  "catalog": {
+    "name": "Omni Hardware Catalog",
+    "vendor": "Meridian Robotics",
+    "items": [
+      {"sku": "MR-100", "name": "Industrial Actuator", "price": 249.99},
+      {"sku": "MR-200", "name": "Precision Sensor", "price": 89.5}
+    ]
+  }
+}
