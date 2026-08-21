@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **OPP#58 — ships its own validation scenario library in `scenarios/`** (6 tier-1 `opp-extraction` scenarios + `STANDARDS.md` + `_fixtures/`), runnable from the Omni Suite root via `python scripts/validation/run_validation.py --repo opp --tier 1`.
 - **feat(src/opp/cli.py)**: opt-in `.env` auto-loading (`env-autoload`) via `--load-dotenv` flag and `OPP_AUTOLOAD_DOTENV=1` env var. Search path: `$OPP_DOTENV` → `./.env` → walk parents → `~/.config/opp/.env`. Mirrors OL's existing `_load_dotenv` pattern (no python-dotenv dependency).
 - **`tests/test_env_autoload.py`** — comprehensive tests for `_load_dotenv_for_opp()` (135 lines): covers empty file, comments-only, simple KEY=value, double-quoted values, single-quoted values, malformed line tolerance. Verifies the `setdefault` precedence (shell env wins over .env file).
 - **`test(tests/test_structure_html_tags.py)`**: new test class `TestStructureHtmlTags` covering bare HTML tags, tags with attributes (OPP#36 regression guard), and content tags. Locks in the regex fix from commit 21e890d. 28 parametrized test cases. (Resolves OPP#41)
