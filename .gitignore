@@ -44,3 +44,8 @@ resources/*.gif
 resources/*.bmp
 resources/*.tiff
 test_artifacts/
+
+
+# secrets-guard
+gitleaks-report.json
+*.gitleaks-report*.txt
