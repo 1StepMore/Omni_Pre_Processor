@@ -57,7 +57,7 @@ src/opp/
 │   ├── xliff/            # XLIFF 1.2 / 2.0 generators
 │   └── markdown/         # MDGenerator (E2E-75: is_inline_in_md)
 ├── mcp/                  # MCP server (the Agent-facing surface)
-│   ├── server.py         # Standard mcp library, 7 tools
+│   ├── server.py         # Standard mcp library, 9 tools
 │   ├── config.py         # MCPConfig dataclass (E2E-76: reads OPP_MCP_*)
 │   ├── security.py       # PathValidator
 │   ├── auth.py           # MCP_SHARED_SECRET auth
@@ -80,7 +80,7 @@ src/opp/
 | `opp mcp` | Start the MCP server (stdio) |
 | `opp --batch <file1> <file2> …` | Batch extract |
 
-## MCP tools (7 total)
+## MCP tools (9 total)
 
 | Tool | Purpose |
 |------|---------|
