@@ -52,9 +52,10 @@ class IPYNBExtractor(ExtractorBase):
                 )
             elif cell_type == "code":
                 text = source or ""
-                if cell.outputs:
+                outputs = getattr(cell, "outputs", [])
+                if outputs:
                     output_lines = []
-                    for output in cell.outputs:
+                    for output in outputs:
                         if hasattr(output, "text") and output.text:
                             output_lines.append(f"# Output: {output.text}")
                         elif hasattr(output, "data") and output.data:
