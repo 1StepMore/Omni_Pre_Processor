@@ -1,9 +1,27 @@
 # OPP - Omni Pre-Processor
 
-[![PyPI version](https://img.shields.io/pypi/v/opp.svg)](https://pypi.org/project/opp/)
-[![Python versions](https://img.shields.io/pypi/pyversions/opp.svg)](https://pypi.org/project/opp/)
+Omni Localization Suite — OPP is **Step 1** (extract) of the OPP → OL → ORF pipeline:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                     OMNI LOCALIZATION SUITE                             │
+│                                                                        │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐               │
+│  │     OPP     │───▶│     OL      │───▶│     ORF      │               │
+│  │  (提取)     │    │   (翻译)    │    │   (回写)    │               │
+│  └─────────────┘    └─────────────┘    └─────────────┘               │
+│                                                                        │
+│  Step 1: OPP        Step 2: OL            Step 3: ORF                  │
+│  Extract →          Translate →           Backfill →                  │
+│  MD + XLIFF +       MD + XLIFF            DOCX/PPTX                   │
+│  skeleton.zip                                                    │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+[![PyPI version](https://img.shields.io/pypi/v/omni-pre-processor.svg)](https://pypi.org/project/omni-pre-processor/)
+[![Python versions](https://img.shields.io/pypi/pyversions/omni-pre-processor.svg)](https://pypi.org/project/omni-pre-processor/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Downloads](https://img.shields.io/pypi/dm/opp.svg)](https://pypi.org/project/opp/)
+[![Downloads](https://img.shields.io/pypi/dm/omni-pre-processor.svg)](https://pypi.org/project/omni-pre-processor/)
 
 Document content extraction for DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPUB, EML, MSG, and Image (OCR).
 

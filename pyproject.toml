@@ -12,7 +12,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 license = {text = "MIT"}
 authors = [
-    {name = "OPP Contributors"}
+    {name = "1StepMore", email = "renanzai@foxmail.com"}
 ]
 keywords = ["document", "extraction", "pdf", "docx", "pptx", "markdown", "xliff", "translation", "ocr", "content-extraction"]
 classifiers = [
