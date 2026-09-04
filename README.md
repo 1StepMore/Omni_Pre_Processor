@@ -22,6 +22,7 @@ Omni Localization Suite — OPP is **Step 1** (extract) of the OPP → OL → OR
 [![Python versions](https://img.shields.io/pypi/pyversions/omni-pre-processor.svg)](https://pypi.org/project/omni-pre-processor/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Downloads](https://img.shields.io/pypi/dm/omni-pre-processor.svg)](https://pypi.org/project/omni-pre-processor/)
+[![Test status](https://img.shields.io/badge/Test%20status-local%20(see%20below)-lightgrey.svg)](#test-status)
 
 Document content extraction for DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPUB, EML, MSG, and Image (OCR).
 
@@ -225,6 +226,26 @@ src/opp/
 pip install -e ".[dev]"
 pytest tests/ -v --cov=src/opp --cov-report=term-missing
 ```
+
+### Test status
+
+[![Test status](https://img.shields.io/badge/Test%20status-local%20(see%20below)-lightgrey.svg)](#test-status)
+
+Test status is **local-only** — CI is suspended while the upstream
+[1StepMore](https://github.com/1StepMore) origin account is restricted, and the
+`renanzai40` backup mirrors do not run GitHub Actions. The workflows that exist
+in this repo (`.github/workflows/ci.yml`, `.github/workflows/publish.yml`) are
+not triggered during the suspension.
+
+Run the tests locally (from this repo):
+
+```bash
+pytest tests/ -q          # full in-repo suite
+```
+
+For the suite-level validation entry point (per-repo tier-1 scenario library)
+and full per-repo verification guidance, see `AGENTS.md` → "How to validate
+this module".
 
 ## Test Coverage
 
