@@ -30,13 +30,13 @@ steps:
       # (config.py:75 reads it FIRST, over OPP_MCP_ALLOWED_DIRS) so the
       # fixture dir is the only allowed path for this step.
       os.environ.pop("MCP_ALLOWED_DIRECTORIES", None)
-      os.environ["OPP_MCP_ALLOWED_DIRS"] = "/mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/scenarios/_fixtures"
+      os.environ["OPP_MCP_ALLOWED_DIRS"] = os.path.join(os.getcwd(), "Omni_Pre_Processor", "scenarios", "_fixtures")
       from opp.mcp.config import load_config
       from opp.mcp.common import _init_server
       _init_server(load_config())
       from opp.mcp.server import extract_document
       r = asyncio.run(extract_document(
-          file_path="/mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/scenarios/_fixtures/product_catalog.json",
+          file_path=os.path.join(os.getcwd(), "Omni_Pre_Processor", "scenarios", "_fixtures", "product_catalog.json"),
           output_formats="both", source_lang="en", target_lang="zh"))
       print("success=" + str(r.get("success") is True))
       print("md-channel=" + str("md_content" in r))
@@ -67,7 +67,7 @@ cleanup_steps:
     kind: python
     command: |
       import pathlib, shutil
-      base = pathlib.Path("/mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/scenarios/_fixtures")
+      base = pathlib.Path.cwd() / "Omni_Pre_Processor" / "scenarios" / "_fixtures"
       for d in base.glob("opp_mcp_*_images"):
           shutil.rmtree(d, ignore_errors=True)
           print("removed", d.name)
