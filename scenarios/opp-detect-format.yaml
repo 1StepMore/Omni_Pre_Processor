@@ -42,13 +42,13 @@ steps:
       # (config.py:75 reads it FIRST, over OPP_MCP_ALLOWED_DIRS) so the
       # fixture dir is the only allowed path for this step.
       os.environ.pop("MCP_ALLOWED_DIRECTORIES", None)
-      os.environ["OPP_MCP_ALLOWED_DIRS"] = "/mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/scenarios/_fixtures"
+      os.environ["OPP_MCP_ALLOWED_DIRS"] = os.path.join(os.getcwd(), "Omni_Pre_Processor", "scenarios", "_fixtures")
       from opp.mcp.config import load_config
       from opp.mcp.common import _init_server
       _init_server(load_config())
       from opp.mcp.server import detect_format_tool
       r = asyncio.run(detect_format_tool(
-          file_path="/mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/scenarios/_fixtures/opp_sample.json"))
+          file_path=os.path.join(os.getcwd(), "Omni_Pre_Processor", "scenarios", "_fixtures", "opp_sample.json")))
       print(json.dumps(r, ensure_ascii=False))
     timeout_seconds: 120
     expect:

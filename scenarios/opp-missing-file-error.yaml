@@ -40,7 +40,7 @@ steps:
     command: |
       import asyncio, json, os, sys
       sys.path.insert(0, "Omni_Pre_Processor/src")
-      os.environ["OPP_MCP_ALLOWED_DIRS"] = "/mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/scenarios/_fixtures"
+      os.environ["OPP_MCP_ALLOWED_DIRS"] = os.path.join(os.getcwd(), "Omni_Pre_Processor", "scenarios", "_fixtures")
       from opp.mcp.config import load_config
       from opp.mcp.common import _init_server
       _init_server(load_config())
@@ -70,7 +70,7 @@ cleanup_steps:
     kind: python
     command: |
       import pathlib, shutil
-      base = pathlib.Path("/mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/scenarios/_fixtures")
+      base = pathlib.Path.cwd() / "Omni_Pre_Processor" / "scenarios" / "_fixtures"
       for d in base.glob("opp_mcp_*_images"):
           shutil.rmtree(d, ignore_errors=True)
           print("removed", d.name)
