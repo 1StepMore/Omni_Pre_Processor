@@ -455,7 +455,7 @@ A comprehensive validation master plan for OPP is available in the Omni Suite do
 | Part | Focus | Questions |
 |------|-------|-----------|
 | 1–2 | Core extraction & format support (13 formats) | Q1-OPP — Q8-OPP |
-| 3 | MCP Surface Mastery (7 MCP tools) | Q9-OPP |
+| 3 | MCP Surface Mastery (9 MCP tools) | Q9-OPP |
 | 4 | Agent-as-User Workflows | Q10-OPP — Q11-OPP |
 | 5 | CLI Surface Mastery | Q12-OPP |
 | 6 | Error & Boundary Matrix | Q13-OPP — Q14-OPP |
