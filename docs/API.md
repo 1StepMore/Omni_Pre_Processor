@@ -91,7 +91,7 @@ opp --clear-cache
 
 ## MCP tools reference
 
-The MCP server is `opp.mcp.server` (entry point: `opp-mcp-server`). It uses `mcp.server.Server` + `mcp.server.stdio.stdio_server` (stdin/stdout transport). All 7 tool functions are also importable as module-level async functions for direct in-process tests.
+The MCP server is `opp.mcp.server` (entry point: `opp-mcp-server`). It uses `mcp.server.Server` + `mcp.server.stdio.stdio_server` (stdin/stdout transport). All 9 tool functions are also importable as module-level async functions for direct in-process tests. The complete list is enumerated in `AGENTS.md` (see "MCP tools (9 total)") and readable at runtime via the `get_capabilities` tool; the sections below document the pipeline-critical subset.
 
 Security layers: token-bucket rate limiter, optional `MCP_SHARED_SECRET` auth, `PathValidator` (allowlist + extension whitelist + size + symlink checks).
 
