@@ -6,6 +6,7 @@ Entry point: ``opp`` (defined in ``pyproject.toml`` as ``opp.cli:main``).
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 import time
@@ -232,6 +233,14 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        "--json",
+        dest="json",
+        action="store_true",
+        help="Emit exactly one machine-readable JSON object on stdout "
+             "(success, output paths, warnings). Human logs/progress go to stderr."
+    )
+
+    parser.add_argument(
         "--xliff-content",
         type=str,
         default=None,
@@ -248,6 +257,28 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _build_json_payload(stats: dict) -> dict:
+    """Build the single JSON object emitted on stdout under ``--json`` (T-04).
+
+    Single-file runs merge the file's ``outputs`` and (on failure) ``error``
+    to the top level; multi-file runs carry a ``files`` list.
+    """
+    results = stats.get("results", [])
+    payload: dict = {
+        "success": stats.get("errors", 0) == 0,
+        "warnings": [w for r in results for w in r.get("warnings", [])],
+    }
+    if len(results) == 1:
+        r = results[0]
+        payload["file"] = r["file"]
+        payload["outputs"] = r.get("outputs", {})
+        if not r.get("success", True):
+            payload["error"] = r.get("error", "processing failed")
+    else:
+        payload["files"] = results
+    return payload
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = create_parser()
     args = parser.parse_args(argv)
@@ -257,7 +288,14 @@ def main(argv: list[str] | None = None) -> int:
         _load_env_for_opp()
 
     if args.target_format in ("xlf", "both") and not args.target_lang:
-        parser.error("--target-lang is required when --target-format is 'xlf' or 'both'")
+        msg = "--target-lang is required when --target-format is 'xlf' or 'both'"
+        if args.json:
+            print(json.dumps(
+                {"success": False, "error": {"code": "OPP_INVALID_ARGS", "message": msg}, "warnings": []},
+                ensure_ascii=False,
+            ))
+            return 2
+        parser.error(msg)
 
     logger = setup_logger(args.verbose)
 
@@ -357,6 +395,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if not all_files:
         logger.warning("No supported files found")
+        if args.json:
+            print(json.dumps(
+                {"success": False, "error": {"code": "OPP_NO_INPUT", "message": "No supported files found"}, "warnings": []},
+                ensure_ascii=False,
+            ))
         return 1
 
     if len(all_files) > 1 and not args.output_dir:
@@ -373,13 +416,21 @@ def main(argv: list[str] | None = None) -> int:
 
     logger.info(f"Completed: {stats['files_processed']} succeeded, {stats['errors']} failed")
 
+    if args.json:
+        print(json.dumps(_build_json_payload(stats), ensure_ascii=False))
+
     return 0 if stats["errors"] == 0 else 1
 
 
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except Exception:
+    except Exception as exc:
         from opp.logger import get_logger
         get_logger().exception("Uncaught exception in main")
+        if "--json" in sys.argv:
+            print(json.dumps(
+                {"success": False, "error": {"code": "OPP_INTERNAL_ERROR", "message": str(exc)}, "warnings": []},
+                ensure_ascii=False,
+            ))
         sys.exit(1)

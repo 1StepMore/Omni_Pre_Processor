@@ -27,6 +27,15 @@ from opp.cliutils import (
 )
 
 
+def _record_file_result(stats: dict, record: dict) -> None:
+    """Append a per-file result record to ``stats["results"]`` (T-04).
+
+    ``record`` carries ``file``, ``success``, ``outputs`` (absolute paths)
+    and ``warnings`` so the CLI can emit one machine-readable JSON object.
+    """
+    stats.setdefault("results", []).append(record)
+
+
 def _align_skeleton_with_xliff_ids(skeleton_path: Path, xliff_path: Path) -> None:
     """Post-process the skeleton ZIP to align data-trans-unit-id with XLIFF ids.
 
@@ -120,6 +129,13 @@ def process_single_file(
         ``True`` on success, ``False`` on failure.
     """
     try:
+        record: dict = {
+            "file": str(file_path),
+            "success": False,
+            "outputs": {},
+            "warnings": [],
+        }
+        outputs: dict[str, str] = {}
         if getattr(args, "log_format", None):
             os.environ["OMNI_LOG_FORMAT"] = args.log_format
 
@@ -147,6 +163,8 @@ def process_single_file(
                 )
             except Exception as e:
                 stats["errors"] += 1
+                record["error"] = str(e)
+                _record_file_result(stats, record)
                 get_logger().error(f"PDF2HTML extraction failed for {file_path}: {e}")
                 return False
         else:
@@ -156,12 +174,16 @@ def process_single_file(
 
         if proc_result.errors:
             stats["errors"] += 1
+            record["error"] = "; ".join(str(e) for e in proc_result.errors)
+            _record_file_result(stats, record)
             for error in proc_result.errors:
                 get_logger().error(f"{file_path}: {error}")
             return False
 
         if proc_result.extraction_result is None:
             stats["errors"] += 1
+            record["error"] = "No extraction result"
+            _record_file_result(stats, record)
             get_logger().error(f"No extraction result for {file_path}")
             return False
 
@@ -177,6 +199,7 @@ def process_single_file(
                 proc_result.extraction_result, md_path, proc_result.attachment_results,
                 style_mapping=style_mapping, embed_images=not args.no_embed_images,
             )
+            outputs["md"] = str(md_path.resolve())
             get_logger().info(f"Generated: {md_path}")
 
         if args.target_format in ("xlf", "both"):
@@ -188,6 +211,7 @@ def process_single_file(
                 args.target_lang,
                 request_id=request_id,
             )
+            outputs["xliff"] = str(xliff_path.resolve())
             get_logger().info(f"Generated: {xliff_path}")
 
         if args.target_format in ("html", "both"):
@@ -196,6 +220,7 @@ def process_single_file(
                 html_out_path.write_text(
                     proc_result.extraction_result.skeleton_html, encoding="utf-8"
                 )
+                outputs["html"] = str(html_out_path.resolve())
                 get_logger().info(f"Generated: {html_out_path}")
             else:
                 get_logger().warning(f"No HTML skeleton available for {file_path}")
@@ -208,6 +233,8 @@ def process_single_file(
                 proc_result.extraction_result, images_json_path
             )
             get_logger().info(f"Generated: {images_json_path}")
+        if images_json_path is not None:
+            outputs["images_json"] = str(images_json_path.resolve())
 
         md_path = output_dir / f"{base_name}.md"
         xliff_path = output_dir / f"{base_name}.xlf"
@@ -217,6 +244,8 @@ def process_single_file(
             file_hash = _compute_file_md5(file_path)
         except OSError as e:
             stats["errors"] += 1
+            record["error"] = str(e)
+            _record_file_result(stats, record)
             get_logger().error(f"Cannot access file {file_path}: {e}")
             return False
 
@@ -298,10 +327,20 @@ def process_single_file(
             with open(manifest_path, "w", encoding="utf-8") as f:
                 json.dump(manifest, f, indent=2, ensure_ascii=False)
 
+        outputs["manifest"] = str(manifest_path.resolve())
+        if skeleton_path:
+            outputs["skeleton"] = str(skeleton_path.resolve())
+        record["success"] = True
+        record["outputs"] = outputs
+        record["warnings"] = list(proc_result.extraction_result.warnings or [])
+        _record_file_result(stats, record)
+
         return True
 
     except Exception as e:
         stats["errors"] += 1
+        record["error"] = str(e)
+        _record_file_result(stats, record)
         get_logger().exception(f"Error processing {file_path}: {e}")
         # Surface the failure reason on stderr (STANDARDS.md#exit-codes):
         # the log file is not visible to CLI callers.
