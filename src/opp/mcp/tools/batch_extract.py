@@ -20,6 +20,15 @@ from opp.mcp import common as _c
 from opp.mcp.rate_limiter import check_rate_limit
 
 
+def _error_object(code: str, message: str) -> dict[str, str]:
+    """Build the standard ``{code, message}`` error object (T-07).
+
+    Per-file failures inside a batch must never reflect raw exception text;
+    callers log the detail server-side and return this envelope instead.
+    """
+    return {"code": code, "message": message}
+
+
 @mcp_error_boundary
 async def batch_extract(
     file_paths: list[str],
@@ -82,12 +91,24 @@ async def batch_extract(
             if not validation_result.success:
                 validation_errors.append({
                     "file_path": file_path,
-                    "error": validation_result.error or "Path validation failed",
+                    "error": _error_object(
+                        "OPP_PATH_DENIED", "Path validation failed."
+                    ),
+                    "error_code": "OPP_PATH_DENIED",
                 })
         except PathValidationError as e:
+            # T-07: log raw detail server-side; never reflect exception text.
+            logger.warning(
+                "Path validation failed in batch_extract for %s: %s",
+                file_path,
+                e,
+            )
             validation_errors.append({
                 "file_path": file_path,
-                "error": str(e),
+                "error": _error_object(
+                    "OPP_PATH_DENIED", "Path validation failed."
+                ),
+                "error_code": "OPP_PATH_DENIED",
             })
 
     if validation_errors:
@@ -161,9 +182,23 @@ async def batch_extract(
                                 else 0
                             )
                     except ValueError as e:
+                        # T-07: log raw detail server-side; never reflect
+                        # exception text to the client.
+                        logger.warning(
+                            "XLIFF generation rejected in batch_extract for %s: %s",
+                            file_path,
+                            e,
+                        )
+                        message = (
+                            "XLIFF output is not supported for this input format."
+                        )
                         serialized["success"] = False
-                        serialized["error"] = str(e)
-                        serialized["xliff_error"] = str(e)
+                        serialized["error"] = _error_object(
+                            "OPP_XLIFF_UNSUPPORTED", message
+                        )
+                        serialized["error_code"] = "OPP_XLIFF_UNSUPPORTED"
+                        serialized["message"] = message
+                        serialized["xliff_error"] = message
                     except Exception as e:
                         logger.debug("XLIFF generation failed in batch_extract: %s", e)
                         serialized.setdefault("warnings", []).append(
@@ -179,11 +214,17 @@ async def batch_extract(
             })
             successful += 1
         except Exception as e:
-            logger.debug("Extraction failed in batch_extract for %s: %s", file_path, e)
+            # T-07: raw detail is logged server-side only.
+            logger.warning(
+                "Extraction failed in batch_extract for %s: %s", file_path, e
+            )
+            message = "Extraction failed for this file."
             results.append({
                 "file_path": file_path,
                 "success": False,
-                "error": f"Extraction failed: {str(e)}",
+                "error": _error_object("OPP_EXTRACTION_FAILED", message),
+                "error_code": "OPP_EXTRACTION_FAILED",
+                "message": message,
             })
             failed += 1
 
@@ -191,8 +232,10 @@ async def batch_extract(
 
     return {
         "success": True,
-        "results": results,
-        "successful": successful,
-        "failed": failed,
-        "total_duration_ms": total_duration_ms,
+        "content": {
+            "results": results,
+            "successful": successful,
+            "failed": failed,
+            "total_duration_ms": total_duration_ms,
+        },
     }

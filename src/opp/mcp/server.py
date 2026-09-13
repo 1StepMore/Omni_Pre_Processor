@@ -319,11 +319,10 @@ async def _handle_call_tool(
     mcp library doesn't handle exceptions raised by ``call_tool`` the
     same way FastMCP did. The wrapper below provides an additional
     safety net: any exception that escapes the decorator is logged with
-    full traceback server-side and returned to the client as an opaque
-    error response (no internals leaked).
+    full traceback server-side (via ``logger.exception`` below) and
+    returned to the client as an opaque error response (no internals
+    leaked).
     """
-    import traceback
-
     fn = _TOOL_DISPATCH.get(name)
     if fn is None:
         record_request_from_arguments(
@@ -377,19 +376,22 @@ async def _handle_call_tool(
                             "error_code": "OPP_INTERNAL_ERROR",
                             "message": "An internal error occurred. Check server logs.",
                             "tool": name,
-                            "traceback": traceback.format_exc(limit=10),
                         }
                     ),
                 )
             ]
 
         if not isinstance(result, dict):
-            result = {"success": True, "data": result}
+            result = {"success": True, "content": {"data": result}}
 
-        if name == "extract_document" and isinstance(result, dict):
+        if (
+            name == "extract_document"
+            and isinstance(result, dict)
+            and isinstance(result.get("content"), dict)
+        ):
             tp = _tracing_inject_traceparent(_span)
             if tp is not None:
-                result["traceparent"] = tp
+                result["content"]["traceparent"] = tp
 
         status = _classify_status(result)
         record_request_from_arguments(

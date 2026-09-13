@@ -45,7 +45,8 @@ class TestExtractDocumentTool:
         result = await server.extract_document(docx_path, output_formats=["md"])
 
         assert result["success"] is True
-        assert "data" in result or "md_content" in result
+        assert isinstance(result["content"], dict)
+        assert "md_content" in result["content"] or "data" in result["content"]
 
     @pytest.mark.asyncio
     async def test_extract_document_valid_pdf(self, setup_server):
@@ -133,13 +134,13 @@ class TestExtractDocumentTool:
 
         assert result["success"] is True
         # Issue #49: skeleton_path must be in the response for DOCX
-        assert "skeleton_path" in result, (
+        assert "skeleton_path" in result["content"], (
             f"extract_document must auto-save skeleton for DOCX (Issue #49). "
-            f"Got keys: {list(result.keys())}"
+            f"Got content keys: {list(result['content'].keys())}"
         )
         # The skeleton file must exist on disk
         from pathlib import Path
-        skeleton_path = Path(result["skeleton_path"])
+        skeleton_path = Path(result["content"]["skeleton_path"])
         assert skeleton_path.exists()
         assert skeleton_path.suffix == ".zip"
 
@@ -151,7 +152,7 @@ class TestExtractDocumentTool:
 
         assert result["success"] is True
         # PDF has no skeleton; should not have skeleton_path
-        assert "skeleton_path" not in result, (
+        assert "skeleton_path" not in result["content"], (
             "PDF extraction must not include skeleton_path (PDFs have no skeleton)"
         )
 
@@ -164,21 +165,16 @@ class TestExtractDocumentTool:
         result = await server.extract_document(docx_path, output_formats=["md"])
 
         assert result["success"] is True
-        # Pre-existing keys must still be present
+        # Pre-existing keys must still be present inside content
         assert "success" in result
-        assert "md_content" in result or "data" in result
+        assert isinstance(result["content"], dict)
+        assert "md_content" in result["content"] or "data" in result["content"]
         # New skeleton_path key may be present (DOCX always has skeleton)
         # but it must not REPLACE any existing key
-        for required_key in ("success", "md_content", "suggested_pipeline"):
-            # Missing required keys would be a backward-compat break
-            if required_key in ("md_content", "suggested_pipeline"):
-                # These are conditionally present
-                if required_key in result:
-                    pass  # OK, key is there
-            else:
-                assert required_key in result, (
-                    f"Required key {required_key!r} missing from response (backward compat break)"
-                )
+        for required_key in ("md_content", "suggested_pipeline"):
+            # These are conditionally present
+            if required_key in result["content"]:
+                pass  # OK, key is there
 
     # ── OPP#11: suggested_pipeline ──────────────────────────────────────
 
@@ -189,8 +185,8 @@ class TestExtractDocumentTool:
         result = await server.extract_document(docx_path, output_formats=["md"])
 
         assert result["success"] is True
-        assert "suggested_pipeline" in result
-        assert result["suggested_pipeline"] == "both"
+        assert "suggested_pipeline" in result["content"]
+        assert result["content"]["suggested_pipeline"] == "both"
 
     @pytest.mark.asyncio
     async def test_suggested_pipeline_pdf_returns_md_only(self, setup_server):
@@ -199,8 +195,8 @@ class TestExtractDocumentTool:
         result = await server.extract_document(pdf_path, output_formats=["md"])
 
         assert result["success"] is True
-        assert "suggested_pipeline" in result
-        assert result["suggested_pipeline"] == "md_only"
+        assert "suggested_pipeline" in result["content"]
+        assert result["content"]["suggested_pipeline"] == "md_only"
 
     @pytest.mark.asyncio
     async def test_suggested_pipeline_is_always_present(self, setup_server):
@@ -211,8 +207,8 @@ class TestExtractDocumentTool:
             docx_path, output_formats=["md"], verbose=True,
         )
 
-        assert "suggested_pipeline" in result_default
-        assert "suggested_pipeline" in result_verbose
+        assert "suggested_pipeline" in result_default["content"]
+        assert "suggested_pipeline" in result_verbose["content"]
 
     # ── OPP#11: verbose metadata ───────────────────────────────────────
 
@@ -225,14 +221,14 @@ class TestExtractDocumentTool:
         )
 
         assert result["success"] is True
-        assert "detected_format" in result
-        assert result["detected_format"] == "docx"
-        assert "confidence" in result
-        assert isinstance(result["confidence"], (int, float))
-        assert "processing_steps" in result
-        assert isinstance(result["processing_steps"], list)
-        assert "detection" in result["processing_steps"]
-        assert "extraction" in result["processing_steps"]
+        assert "detected_format" in result["content"]
+        assert result["content"]["detected_format"] == "docx"
+        assert "confidence" in result["content"]
+        assert isinstance(result["content"]["confidence"], (int, float))
+        assert "processing_steps" in result["content"]
+        assert isinstance(result["content"]["processing_steps"], list)
+        assert "detection" in result["content"]["processing_steps"]
+        assert "extraction" in result["content"]["processing_steps"]
 
     @pytest.mark.asyncio
     async def test_verbose_false_omits_metadata(self, setup_server):
@@ -241,9 +237,9 @@ class TestExtractDocumentTool:
         result = await server.extract_document(docx_path, output_formats=["md"])
 
         assert result["success"] is True
-        assert "detected_format" not in result
-        assert "confidence" not in result
-        assert "processing_steps" not in result
+        assert "detected_format" not in result["content"]
+        assert "confidence" not in result["content"]
+        assert "processing_steps" not in result["content"]
 
     @pytest.mark.asyncio
     async def test_verbose_processing_steps_md_only(self, setup_server):
@@ -253,8 +249,8 @@ class TestExtractDocumentTool:
             docx_path, output_formats=["md"], verbose=True,
         )
 
-        assert "md_generation" in result["processing_steps"]
-        assert "xliff_generation" not in result["processing_steps"]
+        assert "md_generation" in result["content"]["processing_steps"]
+        assert "xliff_generation" not in result["content"]["processing_steps"]
 
     @pytest.mark.asyncio
     async def test_verbose_processing_steps_both(self, setup_server):
@@ -264,8 +260,8 @@ class TestExtractDocumentTool:
             docx_path, output_formats=["both"], verbose=True,
         )
 
-        assert "md_generation" in result["processing_steps"]
-        assert "xliff_generation" in result["processing_steps"]
+        assert "md_generation" in result["content"]["processing_steps"]
+        assert "xliff_generation" in result["content"]["processing_steps"]
 
     @pytest.mark.asyncio
     async def test_suggested_pipeline_pptx_returns_both(self, setup_server):
@@ -274,7 +270,7 @@ class TestExtractDocumentTool:
         result = await server.extract_document(pptx_path, output_formats=["md"])
 
         assert result["success"] is True
-        assert result["suggested_pipeline"] == "both"
+        assert result["content"]["suggested_pipeline"] == "both"
 
 
 class TestBatchExtractTool:
@@ -302,8 +298,8 @@ class TestBatchExtractTool:
         result = await server.batch_extract(file_paths, output_formats=["md"])
 
         assert result["success"] is True
-        assert "results" in result
-        assert result["successful"] >= 1
+        assert "results" in result["content"]
+        assert result["content"]["successful"] >= 1
 
     @pytest.mark.asyncio
     async def test_batch_extract_fail_fast_on_invalid(self, setup_server):

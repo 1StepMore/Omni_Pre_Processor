@@ -25,6 +25,7 @@ import functools
 import inspect
 import logging
 import time
+from dataclasses import dataclass
 from typing import Any
 from collections.abc import Callable
 
@@ -72,6 +73,97 @@ _ERROR_CODE_MAP: dict[type, str] = {
 }
 
 
+# ── R-09: recovery hints ─────────────────────────────────────────────
+# Hints are static constants: never interpolate the exception message or
+# caller-controlled data (prompt-injection safety). Contract-tested by
+# tests/contract/test_recovery_hints_contract.py.
+
+
+@dataclass(frozen=True, slots=True)
+class RecoveryHint:
+    """A recoverability hint attached to a stable error code."""
+
+    strategy: str
+    hint: str
+
+
+RECOVERY_HINTS: dict[str, RecoveryHint] = {
+    "OPP_FILE_NOT_FOUND": RecoveryHint(
+        "fix_input",
+        "Verify the input path exists and is readable, then re-issue the call.",
+    ),
+    "OPP_PERMISSION_DENIED": RecoveryHint(
+        "fix_input",
+        "Check file and directory permissions for the server process, then re-issue.",
+    ),
+    "OPP_INVALID_INPUT": RecoveryHint(
+        "fix_input",
+        "Validate the request against the tool's input schema (format, required "
+        "fields), then re-issue.",
+    ),
+    "OPP_MISSING_KEY": RecoveryHint(
+        "fix_input",
+        "Add the missing required field from the tool's input schema, then re-issue.",
+    ),
+    "OPP_TIMEOUT": RecoveryHint(
+        "retry",
+        "Retry with a smaller input, or raise OPP_MCP_TIMEOUT for large documents.",
+    ),
+    "OPP_NOT_IMPLEMENTED": RecoveryHint(
+        "abort",
+        "Do not retry; this code path is not implemented. File a feature request.",
+    ),
+    "OPP_PATH_DENIED": RecoveryHint(
+        "use_allowed_path",
+        "Use a path inside OPP_MCP_ALLOWED_DIRS (no '..', no escaping symlinks), "
+        "then re-issue.",
+    ),
+    "OPP_RESOURCE_EXHAUSTED": RecoveryHint(
+        "reduce_input",
+        "Split the batch into smaller chunks or compress images, then re-issue.",
+    ),
+    "OPP_INTERNAL_ERROR": RecoveryHint(
+        "report_bug",
+        "Do not retry blindly; check server logs for the traceback and file a bug report.",
+    ),
+    "OPP_UNKNOWN_TOOL": RecoveryHint(
+        "fix_input",
+        "Call one of the advertised OPP tools; check the tool name spelling.",
+    ),
+    "AUTH_FAILED": RecoveryHint(
+        "reissue_with_auth",
+        "Re-issue the call with the correct auth_token matching MCP_SHARED_SECRET.",
+    ),
+    "RATE_LIMITED": RecoveryHint(
+        "retry",
+        "Wait for the rate-limit window to reset, then retry with lower concurrency.",
+    ),
+}
+
+#: Every error code this module can emit — including AUTH_FAILED /
+#: RATE_LIMITED / OPP_UNKNOWN_TOOL, which are raised by the server's
+#: auth, rate-limit, and dispatch paths rather than by ``_ERROR_CODE_MAP``.
+DECLARED_ERROR_CODES: frozenset[str] = (
+    frozenset(_ERROR_CODE_MAP.values())
+    | {"OPP_INTERNAL_ERROR", "OPP_UNKNOWN_TOOL", "AUTH_FAILED", "RATE_LIMITED"}
+)
+
+_FALLBACK_RECOVERY = RecoveryHint(
+    "report_bug",
+    "Unknown error code; inspect server logs for the traceback and file a bug report.",
+)
+
+
+def recovery_for(code: str) -> dict[str, str]:
+    """Return the ``{strategy, hint}`` recovery envelope for *code*.
+
+    Unknown codes receive a safe ``report_bug`` fallback, so every error
+    envelope always carries a recovery object.
+    """
+    rec = RECOVERY_HINTS.get(code, _FALLBACK_RECOVERY)
+    return {"strategy": rec.strategy, "hint": rec.hint}
+
+
 def _classify(exc: BaseException) -> str:
     for klass, code in _ERROR_CODE_MAP.items():
         if isinstance(exc, klass):
@@ -110,6 +202,7 @@ def _format_error_response(exc: Exception) -> dict:
             "error": {"code": code, "message": msg},
             "error_code": code,
             "message": msg,
+            "recovery": recovery_for(code),
         }
         resp.update(exc.extra)
         return resp
@@ -122,6 +215,7 @@ def _format_error_response(exc: Exception) -> dict:
         # Backward-compat flat fields (kept for 1 release)
         "error_code": code,
         "message": msg,
+        "recovery": recovery_for(code),
     }
 
 

@@ -209,9 +209,18 @@ async def extract_document(
                         xliff_content.count("<trans-unit") if xliff_content else 0
                     )
             except ValueError as e:
-                response["success"] = False
-                response["error"] = str(e)
-                response["xliff_error"] = str(e)
+                # T-07: never reflect raw exception text to the client.
+                # Log the detail server-side; raise the typed error so the
+                # boundary returns the standard {success: false, error} envelope.
+                logger.warning(
+                    "XLIFF generation rejected for %s: %s", file_path, e
+                )
+                message = "XLIFF output is not supported for this input format."
+                raise McpError(
+                    code="OPP_XLIFF_UNSUPPORTED",
+                    message=message,
+                    xliff_error=message,
+                ) from e
             except Exception as e:
                 logger.debug("XLIFF generation failed: %s", e)
                 response.setdefault("warnings", []).append(
@@ -259,4 +268,8 @@ async def extract_document(
             steps.append("xliff_generation")
         response["processing_steps"] = steps
 
-    return response
+    if response.get("success") is False:
+        return response
+
+    response.pop("success", None)
+    return {"success": True, "content": response}

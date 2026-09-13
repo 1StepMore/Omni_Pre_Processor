@@ -1,6 +1,7 @@
 """Serialization utilities for OPP MCP interface."""
 
 import base64
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,13 @@ from opp.utils.dataclasses import (
     TextBlockData,
     SlideData,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def _error_object(code: str, message: str) -> dict[str, str]:
+    """Build the standard ``{code, message}`` error object (T-07)."""
+    return {"code": code, "message": message}
 
 
 def _serialize_paragraph(paragraph: ParagraphData) -> dict[str, Any]:
@@ -131,9 +139,12 @@ class ExtractionResultSerializer:
         resource_dir: Path | None = None,
     ) -> dict[str, Any]:
         if result is None:
+            message = "No result provided."
             return {
                 "success": False,
-                "error": "No result provided",
+                "error": _error_object("OPP_NO_RESULT", message),
+                "error_code": "OPP_NO_RESULT",
+                "message": message,
             }
 
         try:
@@ -161,9 +172,14 @@ class ExtractionResultSerializer:
             }
 
         except Exception as e:  # expected — serialization failure returns error dict
+            # T-07: raw detail is logged server-side only.
+            logger.warning("Serialization failed: %s", e)
+            message = "Serialization failed."
             return {
                 "success": False,
-                "error": str(e),
+                "error": _error_object("OPP_SERIALIZATION_FAILED", message),
+                "error_code": "OPP_SERIALIZATION_FAILED",
+                "message": message,
             }
 
     def serialize_batch(
