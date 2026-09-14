@@ -4,7 +4,7 @@ import os
 import re
 from typing import Any
 
-import fitz
+import pymupdf as fitz
 
 from opp.extractors.base import ExtractorBase
 from opp.utils.dataclasses import (

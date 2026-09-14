@@ -159,7 +159,7 @@ class PDF2HTMLExtractor(ExtractorBase):
             raise FileNotFoundError(f"PDF not found: {input_path}")
 
         try:
-            import fitz
+            import pymupdf as fitz
         except ImportError:
             raise RuntimeError(
                 "PyMuPDF (fitz) is not installed. Install with: pip install pymupdf"
