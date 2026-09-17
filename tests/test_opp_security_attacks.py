@@ -20,6 +20,28 @@ if str(_OPP_SRC) not in sys.path:
     sys.path.insert(0, str(_OPP_SRC))
 
 
+def _symlink_or_skip(link: Path, target: str | Path) -> None:
+    """创建符号链接；当前平台/权限不允许时跳过该用例。
+
+    2026-09-17（报告风险 #5 Windows 开发入口）：Windows 未开启开发者模式或进程缺少
+    ``SeCreateSymbolicLinkPrivilege`` 时 ``Path.symlink_to`` 抛
+    ``OSError: [WinError 1314] 客户端没有所需的特权``。这是**环境**限制，不是策略
+    缺陷 —— 用例在 Linux/CI 与开启开发者模式的 Windows 上仍然生效，所以只做条件
+    跳过，不做平台整体跳过，也不伪装成通过。
+
+    Args:
+        link: 待创建的链接路径。
+        target: 链接指向的目标。
+
+    Raises:
+        pytest.skip.Exception: 平台不允许创建符号链接时。
+    """
+    try:
+        link.symlink_to(target)
+    except (OSError, NotImplementedError) as exc:
+        pytest.skip(f"当前环境无法创建符号链接（{exc}）")
+
+
 @pytest.fixture
 def mcp_server(tmp_path):
     from opp.mcp.config import MCPConfig
@@ -190,7 +212,7 @@ class TestOPPSymlinkProtection:
         secret.write_bytes(b"fake-docx")
 
         symlink = tmp_path / "link.docx"
-        symlink.symlink_to(secret)
+        _symlink_or_skip(symlink, secret)
 
         from opp.mcp.config import MCPConfig
         from opp.mcp.server import _init_server

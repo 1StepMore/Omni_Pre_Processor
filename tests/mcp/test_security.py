@@ -1,7 +1,6 @@
 """Tests for security.PathValidator."""
 
 import os
-import sys
 from pathlib import Path
 import pytest
 import importlib.util
@@ -59,12 +58,29 @@ class TestPathValidator:
         ("/System", "system directory"),
         ("/Library", "system directory"),
     ])
-    @pytest.mark.xfail(os.name != "nt", reason="Windows-specific paths only on Windows", strict=False)
+    @pytest.mark.skipif(
+        os.name == "nt",
+        reason=(
+            "POSIX 系统目录在 Windows 上被解析成 <cwd-drive>:\\etc 之类，本来就不在 "
+            "SYSTEM_DIRS 的命中范围内；Windows 盘符形式由紧随其后的 "
+            "test_windows_paths_on_unix 覆盖"
+        ),
+    )
     def test_system_dirs_blocked(self, validator: PathValidator, system_dir: str, expected_error_fragment: str):
-        test_path = f"{system_dir}/some/file.txt"
+        """POSIX 系统目录必须命中 system-directory 拦截（非"不在白名单"）。
+
+        2026-09-17: 这里原本是 ``xfail(os.name != "nt", ...)`` —— 方向写反了。
+        参数全是 POSIX 目录（``/etc``/``/usr``/``/var``/``/System``/``/Library``），
+        它们在 POSIX 上**能**命中拦截、在 Windows 上不能，于是这个 marker 让该断言
+        在两边都不生效：POSIX 上被标成 XPASS（strict=False 不计失败），Windows 上
+        直接红。改为平台反向跳过 + 另一条 Windows 用例补位。
+        """
         with pytest.raises(PathValidationError) as e:
-            validator.validate_path(test_path)
-        assert expected_error_fragment in str(e.value).lower() or "not allowed" in str(e.value).lower()
+            validator.validate_path(f"{system_dir}/some/file.txt")
+        assert (
+            expected_error_fragment in str(e.value).lower()
+            or "not allowed" in str(e.value).lower()
+        )
 
     @pytest.mark.parametrize("system_dir", [
         "C:\\Windows",

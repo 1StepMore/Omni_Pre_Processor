@@ -190,5 +190,11 @@ def test_opp_cache_directory_created_with_correct_permissions(fake_cache_dir, sa
     opp_cache = cache_root / "opp"
     assert opp_cache.exists(), f"expected cache dir at {opp_cache}"
     assert opp_cache.is_dir()
+    if os.name == "nt":
+        # 2026-09-17: Windows 文件系统没有 POSIX mode 位 —— chmod(0o700) 对目录是
+        # no-op，stat().st_mode 恒为 0o777（drwxrwxrwx）。该断言在 Windows 上不可
+        # 判定，故条件跳过（上面的存在性 / is_dir 断言已执行，不是空跑）；
+        # Linux/CI 上的 mode 断言保持不变。
+        pytest.skip("Windows 无 POSIX mode 位，chmod 0o700 不可判定")
     mode = opp_cache.stat().st_mode & 0o777
     assert mode == 0o700, f"expected mode 0o700, got {oct(mode)}"

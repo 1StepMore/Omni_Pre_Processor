@@ -26,6 +26,19 @@ import pytest
 
 pytest.importorskip("ol_mcp", reason="ol_mcp not installed (cross-module contract tests)")
 
+# 2026-09-17: OL 的 MCP 表面是 fail-CLOSED 的 —— ol_mcp.security.get_default_validator()
+# 在 MCP_ALLOWED_DIRECTORIES / OL_MCP_ALLOWED_DIRS / OL_ALLOWED_DIRECTORIES 三者皆为空时
+# 抛 ValueError，MCP 层把它翻译成 OL_INVALID_INPUT。单独跑 OPP 测试时 OL 的 conftest
+# 不参与，于是本文件每个用例都停在这一步（表现为「OL failed」，不是契约破损）。
+# 这里补上所需的最小 allowlist：真实临时目录 + 三个子仓库根。
+if not os.environ.get("MCP_ALLOWED_DIRECTORIES"):
+    import tempfile
+
+    _SUITE_ROOT = Path(__file__).resolve().parents[2]
+    os.environ["MCP_ALLOWED_DIRECTORIES"] = os.pathsep.join(
+        [tempfile.gettempdir(), str(_SUITE_ROOT)]
+    )
+
 if os.environ.get("OMNI_SUITE_RUNNING_OPP_TESTS"):
     pytestmark = pytest.mark.xfail(
         reason="Cross-module OPP tests are run in standalone OPP CI",
@@ -239,7 +252,7 @@ class TestOPPtoOLContract:
         xliff_path = tmp_path / "opp_output.xlf"
         opp_pipeline.generate_xliff(result.extraction_result, xliff_path, "en", "zh")
 
-        with patch("ol_mcp.tools.ModelPool") as mock_pool_cls:
+        with patch("ol_mcp.translate_xliff.ModelPool") as mock_pool_cls:
             mock_instance = _AsyncMockPool()
             mock_pool_cls.get_instance.return_value = mock_instance
             mock_pool_cls.return_value = mock_instance
@@ -296,7 +309,7 @@ class TestOLtoORFContract:
 
         # Step 2: Real OL MCP → real translated XLIFF
         ol_xliff_path = tmp_path / "ol_output.xlf"
-        with patch("ol_mcp.tools.ModelPool") as mock_pool_cls:
+        with patch("ol_mcp.translate_xliff.ModelPool") as mock_pool_cls:
             mock_instance = _AsyncMockPool()
             mock_pool_cls.get_instance.return_value = mock_instance
             mock_pool_cls.return_value = mock_instance
@@ -377,7 +390,7 @@ class TestFullPipelineContracts:
 
         # Step 3: Real OL MCP with comprehensive mock (verifies text changed)
         ol_xliff_path = tmp_path / "step2_ol_output.xlf"
-        with patch("ol_mcp.tools.ModelPool") as mock_pool_cls:
+        with patch("ol_mcp.translate_xliff.ModelPool") as mock_pool_cls:
             mock_instance = _AsyncMockPool()
             mock_pool_cls.get_instance.return_value = mock_instance
             mock_pool_cls.return_value = mock_instance

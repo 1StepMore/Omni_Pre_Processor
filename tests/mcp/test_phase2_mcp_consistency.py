@@ -33,7 +33,9 @@ def test_p2_t1_mcp_allowed_directories_is_primary():
         env=env,
         cwd=str(Path(__file__).resolve().parents[2]),  # OPP root
     )
-    assert "/tmp/unified" in result.stdout, (
+    # 2026-09-17: 断言必须用平台解析后的字符串。Windows 上 Path("/tmp/unified")
+    # 会渲染成 "\tmp\unified"，原来的字面量断言在 Windows 必然失败。
+    assert str(Path("/tmp/unified")) in result.stdout, (
         f"MCP_ALLOWED_DIRECTORIES not read as primary: "
         f"stdout={result.stdout!r} stderr={result.stderr!r}"
     )
@@ -53,7 +55,8 @@ def test_p2_t1_opp_fallback_still_works():
         env=env,
         cwd=str(Path(__file__).resolve().parents[2]),
     )
-    assert "/tmp/legacy" in result.stdout, (
+    # 2026-09-17: 同 test_p2_t1_mcp_allowed_directories_is_primary，用平台解析后的字符串。
+    assert str(Path("/tmp/legacy")) in result.stdout, (
         f"OPP_MCP_ALLOWED_DIRS fallback broken: "
         f"stdout={result.stdout!r} stderr={result.stderr!r}"
     )
@@ -132,7 +135,11 @@ def test_p2_t4_mcp_allowed_extensions_env_var():
         pptx_path = f.name
     try:
         os.environ["MCP_ALLOWED_EXTENSIONS"] = ".md,.docx,.custom"
-        validator = PathValidator(allowed_directories=[Path("/tmp")])
+        # 2026-09-17: 允许目录必须是临时文件真实所在目录。字面量 Path("/tmp") 在
+        # Windows 上解析成 <cwd-drive>:\tmp（本项目是 D:\tmp），而 NamedTemporaryFile
+        # 落在 C:\Users\...\Temp，于是 .custom 被 PATH_NOT_ALLOWED 拒绝、
+        # 断言失败。tempfile.gettempdir() 在 POSIX 上就是 "/tmp"，语义不变。
+        validator = PathValidator(allowed_directories=[Path(tempfile.gettempdir())])
         result = validator.validate_path(custom_path)
         assert result.success, (
             f"Custom extension .custom from MCP_ALLOWED_EXTENSIONS not accepted: {result.error}"

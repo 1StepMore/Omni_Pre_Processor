@@ -9,14 +9,12 @@ import argparse
 import json
 import os
 import sys
-import time
-from datetime import datetime
+import tempfile
 from pathlib import Path
 
-from opp.detector import FormatType, detect_format
-from opp.error_handler import ErrorHandler, ErrorContext
+from opp.error_handler import ErrorHandler
 from opp.logger import setup_logger, get_logger
-from opp.pipeline import OPPPipeline, ProcessingResult
+from opp.pipeline import OPPPipeline
 
 # ── Backward-compatibility re-exports ──────────────────────────────────
 # These are imported from the split modules so that existing tests and
@@ -362,13 +360,29 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     # B1: Restrict --resource-dir to prevent path traversal.
-    # Allowlist: project root, /tmp, and OPP_ALLOWED_DIRECTORIES env var.
+    # Allowlist: project root, the platform temp dir, and OPP_ALLOWED_DIRECTORIES.
+    #
+    # 2026-09-17 (ADR 0007, same defect family as _parse_allowed_dirs): the temp
+    # dir used to be the hardcoded literal ``Path("/tmp")``. On Windows ``/tmp``
+    # resolves to ``<current drive>:\tmp`` (``D:\tmp`` here), which has nothing to
+    # do with ``tempfile.gettempdir()`` (``C:\Users\...\AppData\Local\Temp``) — so
+    # the allowlist line above was untrue on Windows and every real temp-dir
+    # ``--resource-dir`` was rejected. ``tempfile.gettempdir()`` IS ``/tmp`` on
+    # POSIX, so Linux/CI behaviour is unchanged verbatim.
+    #
+    # NOTE: this file is scanned by tests/test_phase5_opp_hardening.py (P5-T1),
+    # which fails on ANY CJK character in cli.py — keep comments here in English.
     if args.resource_dir:
+        # 2026-09-17: reuse the MCP-side parser so comma-separated values keep
+        # working on Linux/CI while Windows `;` (os.pathsep) also splits correctly.
+        from opp.mcp.config import _parse_allowed_dirs
+
         resolved = args.resource_dir.resolve()
-        allowed_dirs = [Path.cwd().resolve(), Path("/tmp").resolve()]
-        env_allowed = os.environ.get("OPP_ALLOWED_DIRECTORIES", "")
-        if env_allowed.strip():
-            allowed_dirs.extend(Path(d).resolve() for d in env_allowed.split(",") if d.strip())
+        allowed_dirs = [Path.cwd().resolve(), Path(tempfile.gettempdir()).resolve()]
+        allowed_dirs.extend(
+            p.resolve()
+            for p in _parse_allowed_dirs(os.environ.get("OPP_ALLOWED_DIRECTORIES", ""))
+        )
         if not any(str(resolved).startswith(str(a)) for a in allowed_dirs):
             parser.error(
                 f"Error: --resource-dir '{resolved}' is not within allowed directories. "
@@ -376,10 +390,9 @@ def main(argv: list[str] | None = None) -> int:
             )
 
     if args.verbose:
-        logger.info(f"OPP CLI v0.1.0")
+        logger.info("OPP CLI v0.1.0")
         logger.info(f"Processing {len(args.files)} input(s)")
 
-    start_time = time.time()
     error_handler = ErrorHandler()
     stats = {
         "files_processed": 0,

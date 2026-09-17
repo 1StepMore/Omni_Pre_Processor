@@ -13,7 +13,11 @@ from pathlib import Path
 from opp.utils.security import (
     BLOCKED_EXTENSIONS,
     SYSTEM_DIRS,
-    PathValidationError,
+    # 2026-09-17: 本模块内部不使用该名字，但 MCP 表面需要再导出它
+    # （tests/security/*、tests/security/test_path_policy_parity.py 以及下游都以
+    # `from opp.mcp.security import PathValidationError` 取用）。写成 `X as X`
+    # 这一显式冗余别名，ruff 会识别为有意的再导出而非死导入（F401）。
+    PathValidationError as PathValidationError,
     validate_path as _shared_validate,
 )
 
@@ -39,6 +43,35 @@ class ValidationResult:
     success: bool
     error: str | None = None
     resolved_path: Path | None = None
+
+
+#: Environment variable that replaces the default extension whitelist
+#: (comma-separated, leading dots optional).
+_EXTENSIONS_ENV_VAR = "MCP_ALLOWED_EXTENSIONS"
+
+
+def resolve_allowed_extensions(default: set[str]) -> set[str]:
+    """解析 ``MCP_ALLOWED_EXTENSIONS`` 覆盖，未设置或为空时返回 *default*。
+
+    修复（2026-09-17，ADR 0007）：原先只有 ``__init__`` 读环境变量，legacy
+    ``validate()`` 直接读类常量 ``ALLOWED_EXTENSIONS``，于是
+    ``MCP_ALLOWED_EXTENSIONS`` 在 legacy 路径上静默失效 —— 同一个进程里两条入口
+    对同一个文件给出不同答案。抽成单一解析入口后两条路径共用同一份逻辑。
+
+    Args:
+        default: 环境变量缺省或为空白时使用的默认白名单。
+
+    Returns:
+        生效的扩展名集合，每项都带前导点。
+    """
+    raw = os.environ.get(_EXTENSIONS_ENV_VAR, "").strip()
+    if not raw:
+        return default
+    return {
+        ext if ext.startswith(".") else f".{ext}"
+        for ext in (part.strip() for part in raw.split(","))
+        if ext
+    }
 
 
 class PathValidator:
@@ -73,15 +106,7 @@ class PathValidator:
     ):
         self.allowed_directories = [Path(d).resolve() for d in allowed_directories]
         self.max_file_size_bytes = max_file_size_bytes
-        env_ext = os.environ.get("MCP_ALLOWED_EXTENSIONS")
-        if env_ext:
-            self._allowed_extensions = {
-                e.strip() if e.strip().startswith(".") else f".{e.strip()}"
-                for e in env_ext.split(",")
-                if e.strip()
-            }
-        else:
-            self._allowed_extensions = self.ALLOWED_EXTENSIONS
+        self._allowed_extensions = resolve_allowed_extensions(self.ALLOWED_EXTENSIONS)
 
     def validate_path(
         self, path: str, allow_missing: bool = False
@@ -154,7 +179,9 @@ class PathValidator:
         if ".." in path.parts:
             return False, "Path traversal not allowed"
 
-        if path.suffix.lower() not in PathValidator.ALLOWED_EXTENSIONS:
+        if path.suffix.lower() not in resolve_allowed_extensions(
+            PathValidator.ALLOWED_EXTENSIONS
+        ):
             return False, f"Extension '{path.suffix}' not in allowed set"
 
         if base_dir:

@@ -17,7 +17,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from opp.mcp.config import MCPConfig, load_config
+from opp.mcp.config import MCPConfig
 from opp.mcp.security import PathValidationError, PathValidator
 from opp.mcp.serializers import ExtractionResultSerializer
 from opp.pipeline import OPPPipeline
@@ -154,24 +154,34 @@ def _cleanup_resource_dir() -> int:
     resource_dir = _config.resource_storage_dir
     if not resource_dir.exists():
         return 0
-    resolved = str(resource_dir.resolve())
-    if resolved in ("/", str(Path.cwd().resolve())):
+    resolved = resource_dir.resolve()
+    # 2026-09-17（报告风险 #5 同族：POSIX 字面量 vs 平台语义）：原实现比较
+    # ``str(resolved) in ("/", str(Path.cwd().resolve()))``。Windows 上
+    # ``Path("/")`` 解析为 ``<当前盘符>:\\``（本项目 ``D:\\``），字面量 ``"/"``
+    # 永不命中 —— 这个「拒绝根路径」的保护在 Windows 上等于不存在，一旦配置
+    # ``resource_storage_dir="/"`` 就会从盘符根开始 rglob + rmtree。改用
+    # ``Path.anchor``：POSIX``/`` 与 Windows``D:\\`` 都是各自平台的 anchor，
+    # 判据与平台无关。
+    if resolved == Path(resolved.anchor) or resolved == Path.cwd().resolve():
         logger.error(
             f"OPP#10 cleanup refused: resource_storage_dir={resource_dir} "
             f"resolves to a system path, refusing to rmtree"
         )
         return 0
-    count = sum(1 for _ in resource_dir.rglob("*") if _.is_file())
     try:
+        count = sum(1 for _ in resource_dir.rglob("*") if _.is_file())
         shutil.rmtree(resource_dir)
-        logger.info(
-            f"OPP#10 cleanup: removed resource dir {resource_dir} "
-            f"({count} file(s))"
-        )
-        return count
     except OSError as e:
+        # 2026-09-17: 计数用的 rglob 原先在 try 之外 —— 遍历中任何 OSError
+        # （Windows 上典型是损坏/特权受限的符号链接，WinError 1920）都会逃出
+        # 清理路径，使 shutdown 钩子抛异常。清理本身仍是「失败即放弃」语义。
         logger.error(f"OPP#10 cleanup failed to rmtree {resource_dir}: {e}")
         return 0
+    logger.info(
+        f"OPP#10 cleanup: removed resource dir {resource_dir} "
+        f"({count} file(s))"
+    )
+    return count
 
 
 def _shutdown_cleanup() -> None:
