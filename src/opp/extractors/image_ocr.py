@@ -3,14 +3,13 @@ from pathlib import Path
 from PIL import Image
 
 from opp.extractors.base import ExtractorBase
+from opp.logger import logger
 from opp.utils.dataclasses import (
     DocumentMetadata,
     ExtractionResult,
     ParagraphData,
 )
 from opp.utils.exceptions import CorruptedFileError
-from opp.logger import logger
-
 
 TESSERACT_INSTALL_GUIDE = (
     "Tesseract OCR is not installed. "

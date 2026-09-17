@@ -1,11 +1,12 @@
-from pathlib import Path
 import re
+from pathlib import Path
 from typing import Any
 
 from bs4 import BeautifulSoup, NavigableString
 from ebooklib import epub
 
 from opp.extractors.base import ExtractorBase
+from opp.logger import logger
 from opp.utils.dataclasses import (
     DocumentMetadata,
     ExtractionResult,
@@ -14,7 +15,6 @@ from opp.utils.dataclasses import (
     RunData,
 )
 from opp.utils.exceptions import CorruptedFileError
-from opp.logger import logger
 
 
 class EPUBExtractor(ExtractorBase):
@@ -181,8 +181,8 @@ class EPUBExtractor(ExtractorBase):
         nav / non-spine XHTML like ``nav.xhtml``), and returns the modified
         ZIP bytes.
         """
-        import zipfile
         import io
+        import zipfile
 
         heading_tags = {'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}
         paragraph_tags = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']

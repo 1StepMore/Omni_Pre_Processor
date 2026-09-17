@@ -1,16 +1,16 @@
-from datetime import datetime, date
+from datetime import date, datetime
 from pathlib import Path
 
 import openpyxl
 
 from opp.extractors.base import ExtractorBase
+from opp.logger import logger
 from opp.utils.dataclasses import (
     ExtractionResult,
     ParagraphData,
     TableData,
 )
 from opp.utils.exceptions import ValidationError
-from opp.logger import logger
 
 
 class XLSXExtractor(ExtractorBase):
@@ -103,7 +103,7 @@ class XLSXExtractor(ExtractorBase):
                 warnings.append(f"工作表 '{sheet_name}' 超过 {self.MAX_ROWS_WARNING} 行")
 
             max_col = ws.max_column or 1
-            for row_idx, row in enumerate(ws.iter_rows(min_row=1, max_row=ws.max_row, max_col=max_col), start=1):
+            for row in ws.iter_rows(min_row=1, max_row=ws.max_row, max_col=max_col):
                 row_values = []
                 for cell in row:
                     val = cell.value

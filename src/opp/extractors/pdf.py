@@ -1,12 +1,13 @@
-from dataclasses import replace
-from pathlib import Path
 import os
 import re
+from dataclasses import replace
+from pathlib import Path
 from typing import Any
 
 import pymupdf as fitz
 
 from opp.extractors.base import ExtractorBase
+from opp.logger import logger
 from opp.utils.dataclasses import (
     ExtractionResult,
     ImageData,
@@ -15,7 +16,6 @@ from opp.utils.dataclasses import (
     TextBlockData,
 )
 from opp.utils.exceptions import CorruptedFileError, PasswordProtectedError
-from opp.logger import logger
 
 
 def _get_ocr_lang() -> str:
@@ -49,7 +49,7 @@ class PDFExtractor(ExtractorBase):
 
     # Level 1 patterns
     _LEVEL1_PATTERNS = [
-        re.compile(r"^[{}]+、".format(CHINESE_NUMERALS)),  # 一、二、三、
+        re.compile(rf"^[{CHINESE_NUMERALS}]+、"),  # 一、二、三、
         re.compile(r"^第[{}{}\d]+章".format(CHINESE_NUMERALS, "\\d")),  # 第一章, 第1章
         re.compile(r"^\d+\.$"),  # 1. 2. 3.
     ]
@@ -301,8 +301,9 @@ class PDFExtractor(ExtractorBase):
             return []
 
         try:
-            from PIL import Image
             import io
+
+            from PIL import Image
             img = Image.open(io.BytesIO(pix.tobytes("png")))
         except ImportError:
             logger.debug("PIL not available for full-page OCR fallback")
@@ -395,7 +396,7 @@ class PDFExtractor(ExtractorBase):
             else:
                 # Find the chapter this paragraph belongs to
                 chapter = None
-                for i, ch in enumerate(chapter_entries):
+                for ch in chapter_entries:
                     if p.page < ch.page:
                         # Paragraph is before this chapter
                         break

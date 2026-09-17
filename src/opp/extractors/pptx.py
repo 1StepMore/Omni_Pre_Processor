@@ -1,12 +1,13 @@
+import zipfile
 from dataclasses import replace
 from pathlib import Path
-import zipfile
 from typing import Any
 
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE, PP_PLACEHOLDER
 
 from opp.extractors.base import ExtractorBase
+from opp.logger import logger
 from opp.utils.dataclasses import (
     ExtractionResult,
     ImageData,
@@ -15,7 +16,6 @@ from opp.utils.dataclasses import (
     SlideData,
 )
 from opp.utils.exceptions import CorruptedFileError, UnsupportedFormatError
-from opp.logger import logger
 
 
 class PPTXExtractor(ExtractorBase):

@@ -2,9 +2,9 @@ import logging
 import re
 from pathlib import Path
 
+from opp.error_handler import ExtractionError
 from opp.extractors.base import ExtractorBase
 from opp.utils.dataclasses import DocumentMetadata, ExtractionResult, ParagraphData
-from opp.error_handler import ExtractionError
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ def _is_valid_youtube_url(url: str) -> bool:
 
 
 def _extract_url_from_file(path: Path) -> str:
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         content = f.read()
     for line in content.splitlines():
         if line.startswith("URL="):

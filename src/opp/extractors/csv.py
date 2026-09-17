@@ -4,13 +4,13 @@ import chardet
 import pandas as pd
 
 from opp.extractors.base import ExtractorBase
+from opp.logger import logger
 from opp.utils.dataclasses import (
     ExtractionResult,
     ParagraphData,
     TableData,
 )
 from opp.utils.exceptions import CorruptedFileError
-from opp.logger import logger
 
 
 class CSVExtractor(ExtractorBase):

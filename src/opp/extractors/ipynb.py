@@ -27,7 +27,7 @@ class IPYNBExtractor(ExtractorBase):
             )
 
         try:
-            with open(input_path, "r", encoding="utf-8") as f:
+            with open(input_path, encoding="utf-8") as f:
                 notebook = nbformat.read(f, as_version=4)
         except Exception:
             logger.debug("Cannot parse notebook file: %s", input_path)

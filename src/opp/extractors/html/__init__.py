@@ -20,8 +20,6 @@ from bs4 import BeautifulSoup, NavigableString
 from opp.extractors.base import ExtractorBase
 from opp.extractors.html.markdown_converter import (
     DOCLING_AVAILABLE,
-    MARKDOWNIFY_AVAILABLE,
-    READABILITY_AVAILABLE,
     check_quality,
     extract_text_from_tree,
     extract_with_docling,
@@ -29,6 +27,15 @@ from opp.extractors.html.markdown_converter import (
     html_to_markdown,
     resolve_relative_paths,
     strip_scripts_and_styles,
+)
+from opp.extractors.html.markdown_converter import (
+    # 冗余别名：这两个可用性开关同时是**再导出契约**（tests/test_html_extractor_split.py
+    # 用 hasattr(html_mod, ...) 断言它们可从本包拿到），显式别名让再导出意图对
+    # ruff(F401) 与读者都成立，避免被误当作死导入删掉。
+    MARKDOWNIFY_AVAILABLE as MARKDOWNIFY_AVAILABLE,
+)
+from opp.extractors.html.markdown_converter import (
+    READABILITY_AVAILABLE as READABILITY_AVAILABLE,
 )
 from opp.extractors.html.spa_detector import detect_js_heavy
 from opp.extractors.html.table_extractor import _check_table_broken, fix_tables

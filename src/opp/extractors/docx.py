@@ -1,16 +1,14 @@
-from dataclasses import replace
-from pathlib import Path
-
 import logging
 import re
 import zipfile
+from dataclasses import replace
+from pathlib import Path
 from typing import Any
-
-from lxml import etree
 
 import docx
 from docx.document import Document as DocxDocument
 from docx.table import Table as DocxTable
+from lxml import etree
 
 from opp.extractors.base import ExtractorBase
 from opp.utils.dataclasses import (
@@ -46,7 +44,7 @@ def _parse_position_value(pos_elem: Any) -> int:
     """
     if pos_elem is None:
         return 0
-    offset = pos_elem.find(f'{{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}}posOffset')
+    offset = pos_elem.find('{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}posOffset')
     if offset is not None and offset.text:
         try:
             return int(offset.text.strip())
@@ -55,16 +53,16 @@ def _parse_position_value(pos_elem: Any) -> int:
     return 0
 
 
-def _extract_anchor_offsets(drawing: Any, WP_NS: str, ns_map: dict) -> tuple[int, int]:
+def _extract_anchor_offsets(drawing: Any, wp_ns: str, ns_map: dict) -> tuple[int, int]:
     """Extract (horizontal, vertical) EMU offsets from a wp:anchor.
 
     Returns (0, 0) for inline drawings or when positionH/positionV is absent.
     """
-    anchor = drawing.find(f'.//{WP_NS}anchor', ns_map)
+    anchor = drawing.find(f'.//{wp_ns}anchor', ns_map)
     if anchor is None:
         return (0, 0)
-    pos_h = anchor.find(f'{WP_NS}positionH')
-    pos_v = anchor.find(f'{WP_NS}positionV')
+    pos_h = anchor.find(f'{wp_ns}positionH')
+    pos_v = anchor.find(f'{wp_ns}positionV')
     return (_parse_position_value(pos_h), _parse_position_value(pos_v))
 
 
@@ -85,7 +83,7 @@ class DOCXExtractor(ExtractorBase):
                 raise PasswordProtectedError(f"文件受密码保护: {input_path}")
             raise CorruptedFileError(f"文件损坏或无法解析: {input_path}")
 
-        W_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+        w_ns = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
         # Build element → python-docx object lookups for fast access
         doc_para_lookup = {}
@@ -106,7 +104,7 @@ class DOCXExtractor(ExtractorBase):
         p_body_index = 0  # sequential counter for w:p elements among body children
 
         for child in body_children:
-            if child.tag == f"{W_NS}p":
+            if child.tag == f"{w_ns}p":
                 para = doc_para_lookup.get(child)
                 if para is None:
                     p_body_index += 1
@@ -114,8 +112,8 @@ class DOCXExtractor(ExtractorBase):
 
                 full_text = "".join(
                     t.text or ""
-                    for t in child.iter(f"{W_NS}t")
-                    if not any(anc.tag == f"{W_NS}txbxContent" for anc in t.iterancestors())
+                    for t in child.iter(f"{w_ns}t")
+                    if not any(anc.tag == f"{w_ns}txbxContent" for anc in t.iterancestors())
                 ).strip()
                 if not full_text:
                     p_body_index += 1
@@ -152,7 +150,7 @@ class DOCXExtractor(ExtractorBase):
                 ))
                 position += 1
 
-            elif child.tag == f"{W_NS}tbl":
+            elif child.tag == f"{w_ns}tbl":
                 tbl = doc_tbl_lookup.get(child)
                 if tbl is None:
                     continue
@@ -162,7 +160,7 @@ class DOCXExtractor(ExtractorBase):
                     position += 1
 
         # Append text box paragraphs (tagged with [TextBox] style)
-        for p_elem, text in self._walk_textbox_paragraphs(doc.element.body, W_NS):
+        for _p_elem, text in self._walk_textbox_paragraphs(doc.element.body, w_ns):
             paragraphs.append(ParagraphData(
                 text=text,
                 runs=[],
@@ -212,7 +210,7 @@ class DOCXExtractor(ExtractorBase):
     def extract_paragraphs(self, doc: DocxDocument) -> list[ParagraphData]:
         result: list[ParagraphData] = []
         position = 0
-        W_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+        w_ns = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
         body_children = list(doc.element.body)
         for para in doc.paragraphs:
             # E2E-66 fix: python-docx para.text truncates long paragraphs (only reads
@@ -223,8 +221,8 @@ class DOCXExtractor(ExtractorBase):
             # otherwise contaminate the body paragraph's text.
             full_text = "".join(
                 t.text or ""
-                for t in para._element.iter(f"{W_NS}t")
-                if not any(anc.tag == f"{W_NS}txbxContent" for anc in t.iterancestors())
+                for t in para._element.iter(f"{w_ns}t")
+                if not any(anc.tag == f"{w_ns}txbxContent" for anc in t.iterancestors())
             ).strip()
             if not full_text:
                 continue
@@ -252,7 +250,7 @@ class DOCXExtractor(ExtractorBase):
             runs = self.extract_runs(para)
 
             try:
-                p_elements = [c for c in body_children if c.tag == f"{{{W_NS}}}p"]
+                p_elements = [c for c in body_children if c.tag == f"{{{w_ns}}}p"]
                 para_idx_in_body = p_elements.index(para._element)
             except ValueError:
                 para_idx_in_body = None
@@ -267,7 +265,7 @@ class DOCXExtractor(ExtractorBase):
             ))
             position += 1
 
-        for p_elem, text in self._walk_textbox_paragraphs(doc.element.body, W_NS):
+        for _p_elem, text in self._walk_textbox_paragraphs(doc.element.body, w_ns):
             result.append(ParagraphData(
                 text=text,
                 runs=[],
@@ -277,7 +275,7 @@ class DOCXExtractor(ExtractorBase):
             position += 1
         return result
 
-    def _walk_textbox_paragraphs(self, body_elem: Any, W_NS: str) -> Any:
+    def _walk_textbox_paragraphs(self, body_elem: Any, w_ns: str) -> Any:
         """Yield (w:p element, text) for each non-empty w:p inside w:txbxContent.
 
         Body-level doc.paragraphs excludes textbox paragraphs (which live in
@@ -285,9 +283,9 @@ class DOCXExtractor(ExtractorBase):
         content because mc:AlternateContent often holds the same textbox in
         both mc:Choice and mc:Fallback.
         """
-        txbx_tag = f"{W_NS}txbxContent"
-        p_tag = f"{W_NS}p"
-        t_tag = f"{W_NS}t"
+        txbx_tag = f"{w_ns}txbxContent"
+        p_tag = f"{w_ns}p"
+        t_tag = f"{w_ns}t"
         seen: set[str] = set()
         for txbx in body_elem.iter(txbx_tag):
             for p_elem in txbx.iter(p_tag):
@@ -359,15 +357,15 @@ class DOCXExtractor(ExtractorBase):
         """
         result: list[ImageData] = []
 
-        W_NS = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
-        A_NS = '{http://schemas.openxmlformats.org/drawingml/2006/main}'
-        R_NS = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'
-        WP_NS = '{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}'
-        ns_map = {'w': W_NS, 'wp': WP_NS}
-        body_tag = f'{W_NS}body'
-        p_tag = f'{W_NS}p'
-        drawing_tag = f'{W_NS}drawing'
-        t_tag = f'{W_NS}t'
+        w_ns = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
+        a_ns = '{http://schemas.openxmlformats.org/drawingml/2006/main}'
+        r_ns = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'
+        wp_ns = '{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}'
+        ns_map = {'w': w_ns, 'wp': wp_ns}
+        body_tag = f'{w_ns}body'
+        p_tag = f'{w_ns}p'
+        drawing_tag = f'{w_ns}drawing'
+        t_tag = f'{w_ns}t'
 
         try:
             with zipfile.ZipFile(input_path, 'r') as zf:
@@ -410,8 +408,8 @@ class DOCXExtractor(ExtractorBase):
         # inside text boxes or table cells need a unique identifier too.
         # `getpath()` returns an XPath like "/w:document/w:body/w:p[7]" which
         # is unique across the entire document and stable across lxml proxies.
-        MC_NS = '{http://schemas.openxmlformats.org/markup-compatibility/2006}'
-        alt_content_tag = f'{MC_NS}AlternateContent'
+        mc_ns = '{http://schemas.openxmlformats.org/markup-compatibility/2006}'
+        alt_content_tag = f'{mc_ns}AlternateContent'
         et_element_tree = etree.ElementTree(tree)
         seen_r_ids: set[tuple[str, str]] = set()
 
@@ -454,20 +452,20 @@ class DOCXExtractor(ExtractorBase):
                 except ValueError:
                     pass
 
-            is_floating = drawing_elem.find(f'.//{WP_NS}anchor', ns_map) is not None
+            is_floating = drawing_elem.find(f'.//{wp_ns}anchor', ns_map) is not None
             assigned_index = None if is_floating else para_idx
-            anchor_h, anchor_v = _extract_anchor_offsets(drawing_elem, WP_NS, ns_map)
+            anchor_h, anchor_v = _extract_anchor_offsets(drawing_elem, wp_ns, ns_map)
 
             # Extract wp:extent cx/cy (already in EMU) for width/height.
             # Both wp:inline and wp:anchor drawings carry <wp:extent cx cy/>.
-            extent = drawing_elem.find(f'.//{WP_NS}extent', ns_map)
+            extent = drawing_elem.find(f'.//{wp_ns}extent', ns_map)
             cx = extent.get('cx') if extent is not None else None
             cy = extent.get('cy') if extent is not None else None
             img_width = int(cx) if cx is not None else None
             img_height = int(cy) if cy is not None else None
 
-            for blip in drawing_elem.iter(f'{A_NS}blip'):
-                embed_attr = blip.get(f'{R_NS}embed')
+            for blip in drawing_elem.iter(f'{a_ns}blip'):
+                embed_attr = blip.get(f'{r_ns}embed')
                 if not embed_attr:
                     continue
 
@@ -571,13 +569,13 @@ class DOCXExtractor(ExtractorBase):
         Returns:
             List of RunData with text and formatting
         """
-        W_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+        w_ns = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
         runs = []
         for run in para.runs:
             # E2E-66 fix: use findall to read ALL w:t elements in this run,
             # not just run.text which truncates at ~35 w:r elements.
             # For runs in paragraphs with 100+ w:t nodes, run.text is incomplete.
-            run_text = "".join(t.text or "" for t in run._element.findall(f".//{W_NS}t"))
+            run_text = "".join(t.text or "" for t in run._element.findall(f".//{w_ns}t"))
             if not run_text or not run_text.strip():
                 continue
             text = run_text

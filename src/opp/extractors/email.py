@@ -1,12 +1,13 @@
+import logging
+import re
 from email import policy
 from email.parser import BytesParser
 from os.path import basename
 from pathlib import Path
 from typing import TYPE_CHECKING
-import logging
-import re
 
 from opp.extractors.base import ExtractorBase
+from opp.logger import logger
 from opp.utils.dataclasses import (
     AttachmentData,
     DocumentMetadata,
@@ -14,11 +15,9 @@ from opp.utils.dataclasses import (
     ParagraphData,
 )
 from opp.utils.exceptions import CorruptedFileError, PasswordProtectedError
-from opp.logger import logger
 
 if TYPE_CHECKING:
-    from opp.pipeline import OPPPipeline
-    from opp.pipeline import ProcessingResult
+    from opp.pipeline import OPPPipeline, ProcessingResult
 
 
 class EmailExtractor(ExtractorBase):
@@ -223,8 +222,8 @@ class AttachmentHandler:
                 "%s -> %s", original_filename, safe_filename
             )
 
-        import tempfile
         import os as _os
+        import tempfile
         fd, temp_path_str = tempfile.mkstemp(suffix=_os.path.splitext(safe_filename)[1], prefix="opp_email_")
         _os.close(fd)
         temp_path = Path(temp_path_str)
