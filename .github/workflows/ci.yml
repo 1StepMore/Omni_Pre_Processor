@@ -67,12 +67,11 @@ jobs:
       #     fix pre-existing debt wholesale, so it is out of scope here (recorded
       #     in the suite's health report §21);
       #   * a whole-src run under the suite's full rule set (E,F,I,B,UP,N) still
-      #     reports 253 findings after this F cleanup (265 before it, measured
-      #     in-place under the suite root config with ruff 0.15.21 — the pinned
-      #     0.15.11 is not installable behind the index 403; see the suite health
-      #     report §21), so the full set would be red on day one. `src/` under
-      #     F-class is green after the same-day cleanup — a gate that starts green
-      #     is a gate that stays honest.
+      #     reports 253 findings after this F cleanup (265 before it; both measured
+      #     with the pinned 0.15.11 under the suite root config — see the suite
+      #     health report §21), so the full set would be red on day one. `src/`
+      #     under F-class is green after the same-day cleanup — a gate that starts
+      #     green is a gate that stays honest.
       #
       # Version is pinned to the same ruff the suite's pre-commit + CI use, so a
       # green here cannot disagree with a green there.
