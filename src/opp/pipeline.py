@@ -6,7 +6,7 @@ import logging
 
 from opp.detector import detect_format, FormatType
 from opp.error_handler import ErrorHandler, ErrorContext
-from opp.extractors import DOCXExtractor, PDFExtractor, PPTXExtractor, XLSXExtractor, CSVExtractor, JSONExtractor, XMLExtractor, HTMLExtractor, EPUBExtractor, EmailExtractor, ImageOCRExtractor, AudioExtractor, VideoExtractor, IPYNBExtractor, YouTubeExtractor
+from opp.extractors import DOCXExtractor, PPTXExtractor, XLSXExtractor, CSVExtractor, JSONExtractor, XMLExtractor, HTMLExtractor, EPUBExtractor, EmailExtractor, ImageOCRExtractor, AudioExtractor, VideoExtractor, IPYNBExtractor, YouTubeExtractor
 from opp.extractors.pdf2html import PDF2HTMLExtractor
 from opp.extractors.base import ExtractorBase
 from opp.extractors.email import AttachmentHandler

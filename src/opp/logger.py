@@ -196,7 +196,9 @@ def setup_logger(verbose: bool = False) -> logging.Logger:
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:-3]
     log_file = _LOG_DIR / f"opp_{timestamp}.log"
 
-    json_mode = _is_json_mode()
+    # 注：此处曾有 `json_mode = _is_json_mode()`，但该值从未被使用；`_is_json_mode()`
+    # 是纯读取（只查 OMNI_LOG_FORMAT），删除不改变行为。日志格式由
+    # `_ensure_structlog_configured` 内部自行读取环境变量。
     _ensure_structlog_configured(level, file=open(log_file, "a", encoding="utf-8"))
 
     stdlib_logger = logging.getLogger("opp")

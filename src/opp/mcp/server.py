@@ -25,7 +25,6 @@ Re-exports (backward compat for ``from opp.mcp.server import ...``):
 from __future__ import annotations
 
 import json
-import logging
 import os
 import signal as _signal
 from typing import Any
@@ -37,7 +36,7 @@ import mcp.types as types
 
 from opp.mcp import common as _common
 from opp.mcp.common import (_init_server, _signal_handler, logger)
-from opp.mcp.config import MCPConfig, load_config
+from opp.mcp.config import load_config
 from opp.mcp.health import start_health_server as _health_start
 from opp.mcp.metrics import (
     STATUS_AUTH_FAILED as _STATUS_AUTH_FAILED,

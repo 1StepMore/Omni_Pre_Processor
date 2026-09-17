@@ -5,7 +5,6 @@ can do. This is the "self-description" feature requested by agents.
 """
 from __future__ import annotations
 
-import json
 from typing import Optional
 
 from opp.mcp._errors import McpError, mcp_error_boundary

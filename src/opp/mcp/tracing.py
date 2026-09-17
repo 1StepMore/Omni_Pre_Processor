@@ -27,7 +27,6 @@ import json
 import logging
 import os
 import threading
-import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator

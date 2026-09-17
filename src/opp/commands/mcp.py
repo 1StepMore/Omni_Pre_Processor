@@ -11,7 +11,6 @@ without duplicating the server start logic.
 
 from __future__ import annotations
 
-import sys
 
 
 def start_mcp(argv: list[str] | None = None) -> None:

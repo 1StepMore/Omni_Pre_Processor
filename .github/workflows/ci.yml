@@ -55,6 +55,33 @@ jobs:
           .venv/bin/python -c "import sys; print(f'Python {sys.version}')"
           .venv/bin/python -c "import opp; print(f'opp OK ({opp.__version__})')"
 
+      # Lint gate (added 2026-09-18). This repo previously had NO lint step in
+      # CI and no local lint hook — which is how src/opp/extractors/ accumulated
+      # 34 latent findings that only surfaced if someone happened to edit a file
+      # (the suite-side gate only ever sees changed files).
+      #
+      # Scope is deliberately `src/` + F-class only:
+      #   * F (pyflakes) is the project's chosen bug-indicative bar — the suite
+      #     pins the same rule set for its own changed-file gate;
+      #   * `tests/` carries 132 pre-existing F findings and the policy is not to
+      #     fix pre-existing debt wholesale, so it is out of scope here (recorded
+      #     in the suite's health report §21);
+      #   * a whole-src run under the suite's full rule set (E,F,I,B,UP,N) still
+      #     reports 253 findings after this F cleanup (265 before it, measured
+      #     in-place under the suite root config with ruff 0.15.21 — the pinned
+      #     0.15.11 is not installable behind the index 403; see the suite health
+      #     report §21), so the full set would be red on day one. `src/` under
+      #     F-class is green after the same-day cleanup — a gate that starts green
+      #     is a gate that stays honest.
+      #
+      # Version is pinned to the same ruff the suite's pre-commit + CI use, so a
+      # green here cannot disagree with a green there.
+      - name: Install ruff (pinned)
+        run: uv pip install --python .venv/bin/python "ruff==0.15.11"
+
+      - name: Lint with ruff (F-class, pinned 0.15.11)
+        run: .venv/bin/python -m ruff check --select F src/
+
       - name: Run tests
         env:
           PYTHONPATH: ${{ github.workspace }}/src

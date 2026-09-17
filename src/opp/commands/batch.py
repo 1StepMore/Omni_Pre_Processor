@@ -13,11 +13,8 @@ from pathlib import Path
 
 from opp.detector import FormatType, detect_format
 from opp.error_handler import ErrorContext
-from opp.logger import get_logger
 from opp.pipeline import PDF_XLIFF_UNSUPPORTED_MSG
 from opp.cliutils import (
-    expand_directories,
-    get_supported_extensions,
     _check_cache,
     _write_cache,
 )
@@ -108,10 +105,8 @@ def batch_process(
         if args.verbose:
             logger.info(f"[{i}/{len(all_files)}] Processing: {file_path}")
 
-        detected_format = None
         if args.detect_format:
             fmt, confidence = detect_format(file_path)
-            detected_format = fmt.value
             if args.verbose:
                 logger.info(f"  Detected: {fmt.value} (confidence: {confidence})")
 
