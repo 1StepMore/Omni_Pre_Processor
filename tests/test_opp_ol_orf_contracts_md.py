@@ -38,7 +38,10 @@ if not os.environ.get("MCP_ALLOWED_DIRECTORIES"):
     )
 
 if os.environ.get("OMNI_SUITE_RUNNING_OPP_TESTS"):
-    pytest.skip("Cross-module OPP tests are run in standalone OPP CI")
+    pytest.skip(
+        "Cross-module OPP tests are run in standalone OPP CI",
+        allow_module_level=True,
+    )
 # Cross-repo path setup: OL and ORF live in sibling repos under Omni_Suite
 _OL_SRC = Path(__file__).resolve().parents[2] / "Omni_Localizer" / "src"
 _ORF_SRC = Path(__file__).resolve().parents[2] / "Omni_Re_Formatter" / "src"
