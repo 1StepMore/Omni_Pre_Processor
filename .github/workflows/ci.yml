@@ -151,7 +151,14 @@ jobs:
         run: |
           rm -rf Omni_Pre_Processor
           cp -r ../opp-src Omni_Pre_Processor
-          uv pip install --python .venv/bin/python -e ./Omni_Pre_Processor
+          # markdownify + readability-lxml are the runtime pieces of OPP's
+          # `[web]` extra: the HTML extractor's markdown converter needs them
+          # (`[project.optional-dependencies].web`), and the editable core
+          # install above does NOT pull them. Without markdownify,
+          # `html_to_markdown()` returns raw HTML and opp-html-extract fails
+          # its heading/list step (issue #66). Only the two light packages —
+          # NOT the whole `[web]` extra, which drags in docling + torch.
+          uv pip install --python .venv/bin/python -e ./Omni_Pre_Processor markdownify readability-lxml
 
       - name: Run OPP validation scenarios (tier 1, hermetic)
         working-directory: suite
@@ -160,4 +167,4 @@ jobs:
           OPP_MCP_ALLOWED_DIRS: /tmp
           OMNI_RATE_LIMIT_RPM: "0"
         run: |
-          .venv/bin/python scripts/validation/run_validation.py --module opp --tier 1
+          .venv/bin/python scripts/validation/run_validation.py --module opp --tier 1 --verbose
