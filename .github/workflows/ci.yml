@@ -110,6 +110,8 @@ jobs:
     needs: test
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: opp-src
 
       - name: Clone Omni Suite (engine + scenarios + fixtures)
         uses: actions/checkout@v4
@@ -148,7 +150,7 @@ jobs:
         working-directory: suite
         run: |
           rm -rf Omni_Pre_Processor
-          cp -r ${{ github.workspace }} Omni_Pre_Processor
+          cp -r ../opp-src Omni_Pre_Processor
           uv pip install --python .venv/bin/python -e ./Omni_Pre_Processor
 
       - name: Run OPP validation scenarios (tier 1, hermetic)
