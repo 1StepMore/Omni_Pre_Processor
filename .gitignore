@@ -29,6 +29,10 @@ DD\ Vibe.txt
 batch_files/
 batch_files_converted/
 
+# MCP extraction artifact generated next to the tracked fixture
+# (pre-existing evidence; hidden, not deleted).
+batch_test/phase0_office/normal.skeleton.zip
+
 # Individual problem files
 OPP-改进计划-Manifest+Skeleton.md
 SSID-*.pdf
