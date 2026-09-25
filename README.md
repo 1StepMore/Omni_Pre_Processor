@@ -322,7 +322,7 @@ OPP outputs standardized artifacts for downstream processing:
 | `{name}_manifest.json` | Metadata: source info, output paths, resources | ORF (manifest parser) |
 | `{name}.skeleton.zip` | Original DOCX/PPTX ZIP structure | ORF (XLIFF→DOCX backfill) |
 
-**MCP Tools Available:** `extract_document`, `batch_extract`, `detect_format_tool`, `generate_markdown`, `generate_xliff`, `save_skeleton`, `ping`
+**MCP Tools Available:** `extract_document`, `batch_extract`, `detect_format_tool`, `generate_markdown`, `generate_xliff`, `save_skeleton`, `validate_xliff`, `get_capabilities`, `ping`
 
 ### Floating Image Metadata
 
@@ -336,7 +336,7 @@ The OPP MCP server provides document extraction capabilities to AI agents via th
 
 - **Agent integration** - Connect OPP to any MCP-compatible AI assistant
 - **stdio transport** - Communication over standard input/output for security
-- **7 extraction tools** - Cover all major document formats
+- **9 extraction tools** - Cover all major document formats, plus XLIFF validation and runtime capability discovery
 - **Path security** - Directory allowlist prevents unauthorized file access
 
 ### Installation
@@ -384,12 +384,14 @@ agents:
 
 | Tool | Description |
 |------|-------------|
-| `extract_document` | Extract content from a single document file. Supports DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPUB, EML, MSG, and images. Returns markdown or structured content. |
+| `extract_document` | Extract content from a single document file. Supports DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPUB, EML, MSG, and images. Returns markdown and/or XLIFF. |
 | `batch_extract` | Process multiple files in one request. Takes an array of file paths and processes them sequentially. Returns extraction results for each file. |
-| `detect_format` | Identify the file format of a document using magic bytes detection. Works regardless of file extension. Returns format name and confidence score. |
+| `detect_format_tool` | Identify the file format of a document using magic bytes detection. Works regardless of file extension. Returns format name and confidence score. |
 | `generate_markdown` | Convert a document to markdown format. Specify source and target languages for proper text processing. |
 | `generate_xliff` | Convert a document to XLIFF format for translation workflows. Requires source-lang and target-lang parameters. |
 | `save_skeleton` | Save the skeleton ZIP for an extracted document, preserving original OOXML structure (required by ORF `apply-xliff`). |
+| `validate_xliff` | Validate an XLIFF 1.2 document against the OASIS XSD schema and trans-unit content rules (inline `xliff_content` or a `file_path`). |
+| `get_capabilities` | Return OPP module capabilities: supported input formats, output formats, and the runtime list of MCP tools. |
 | `ping` | Health check endpoint. Returns server version and status. |
 
 ### Security
