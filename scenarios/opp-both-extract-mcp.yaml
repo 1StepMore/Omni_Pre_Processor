@@ -2,8 +2,9 @@ name: opp-both-extract-mcp
 description: >
   OPP MCP `extract_document` with output_formats both returns both the
   Markdown and the XLIFF in one call: success payload carrying md_content
-  and xliff_content, a positive trans-unit count, and the zh target
-  language declared in the returned XLIFF. The scenario drives the REAL
+  and xliff_content under the uniform `content` envelope, a positive
+  trans-unit count, and the zh target language declared in the returned
+  XLIFF. The scenario drives the REAL
   in-process tool function after the same `_init_server(load_config())`
   the `opp mcp` server performs. Hermetic (tier 1): JSON input, no
   pandoc/OCR/LLM/network.
@@ -38,12 +39,13 @@ steps:
       r = asyncio.run(extract_document(
           file_path=os.path.join(os.getcwd(), "Omni_Pre_Processor", "scenarios", "_fixtures", "product_catalog.json"),
           output_formats="both", source_lang="en", target_lang="zh"))
+      payload = r.get("content") or {}
       print("success=" + str(r.get("success") is True))
-      print("md-channel=" + str("md_content" in r))
-      print("xlf-channel=" + str("xliff_content" in r))
-      print("units=" + str(r.get("xliff_units_count")))
-      print("catalog=" + str("Omni Hardware Catalog" in (r.get("md_content") or r.get("content") or "")))
-      print("target-zh=" + str('target-language="zh"' in (r.get("xliff_content") or "")))
+      print("md-channel=" + str("md_content" in payload))
+      print("xlf-channel=" + str("xliff_content" in payload))
+      print("units=" + str(payload.get("xliff_units_count")))
+      print("catalog=" + str("Omni Hardware Catalog" in (payload.get("md_content") or "")))
+      print("target-zh=" + str('target-language="zh"' in (payload.get("xliff_content") or "")))
     timeout_seconds: 120
     expect:
       exit_code: 0
@@ -56,10 +58,11 @@ steps:
     standard: STANDARDS.md#tool-contract
     instructions: |
       What to check: the real extract_document tool returns success with
-      both output channels in the payload — md_content/xliff_content keys
-      present, the markdown carrying the fixture's catalog name, and the
-      XLIFF declaring target-language="zh". A missing channel means the
-      'both' path is broken (tool-contract standard). The step parses the
+      both output channels under the uniform `content` envelope —
+      `content.md_content`/`content.xliff_content` keys present, the
+      markdown carrying the fixture's catalog name, and the XLIFF
+      declaring target-language="zh". A missing channel means the 'both'
+      path is broken (tool-contract standard). The step parses the
       payload and prints boolean markers so no JSON string escaping can
       false-negative the assertions.
 cleanup_steps:

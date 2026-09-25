@@ -18,7 +18,7 @@ _INPUT_FORMATS = [
     "epub", "eml", "msg", "image", "audio", "video", "youtube", "ipynb",
 ]
 
-# 8 MCP tools (this one included)
+# 9 MCP tools (this one included)
 _TOOLS = [
     "extract_document", "batch_extract", "detect_format_tool",
     "generate_markdown", "generate_xliff", "save_skeleton",
@@ -39,8 +39,8 @@ async def get_capabilities(
         content.module (str): "opp"
         content.version (str | None): OPP version (best-effort)
         content.input_formats (list[str]): 16 input file formats
-        content.output_formats (list[str]): ["md", "xliff", "both"]
-        content.tools (list[str]): 8+ available MCP tool names
+        content.output_formats (list[str]): ["md", "xliff"]
+        content.tools (list[str]): 9 available MCP tool names
     """
     rate_ok, rate_err = check_rate_limit()
     if not rate_ok:
