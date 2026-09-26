@@ -10,7 +10,7 @@ tests such as ``opp.mcp.server.extract_document(...)`` keep working)
 and provides the MCP transport layer (Server, stdio, tool registration,
 dispatch).
 
-Security layers preserved on all seven tool functions:
+Security layers preserved on all nine tool functions:
 - ``@mcp_error_boundary`` decorator
 - ``check_rate_limit()`` (token bucket)
 - ``check_auth(auth_token)`` (shared-secret)
@@ -19,7 +19,8 @@ Security layers preserved on all seven tool functions:
 
 Re-exports (backward compat for ``from opp.mcp.server import ...``):
   ping, detect_format_tool, save_skeleton, generate_markdown,
-  generate_xliff, extract_document, batch_extract, _init_server
+  generate_xliff, extract_document, batch_extract, validate_xliff,
+  get_capabilities, _init_server
 """
 
 from __future__ import annotations

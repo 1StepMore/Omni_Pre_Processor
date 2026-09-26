@@ -91,11 +91,33 @@ opp --clear-cache
 
 ## MCP tools reference
 
-The MCP server is `opp.mcp.server` (entry point: `opp-mcp-server`). It uses `mcp.server.Server` + `mcp.server.stdio.stdio_server` (stdin/stdout transport). All 9 tool functions are also importable as module-level async functions for direct in-process tests. The complete list is enumerated in `AGENTS.md` (see "MCP tools (9 total)") and readable at runtime via the `get_capabilities` tool; the sections below document the pipeline-critical subset.
+The MCP server is `opp.mcp.server` (entry point: `opp-mcp-server`). It uses `mcp.server.Server` + `mcp.server.stdio.stdio_server` (stdin/stdout transport). All 9 tool functions are also importable as module-level async functions for direct in-process tests. The source-of-truth registry is `_TOOL_SCHEMAS` / `_TOOL_DISPATCH` in `src/opp/mcp/server.py`; the same nine tools are enumerated in `AGENTS.md` ("MCP tools (9 total)") and readable at runtime via the `get_capabilities` tool. Every one of the nine is documented below.
 
-Security layers: token-bucket rate limiter, optional `MCP_SHARED_SECRET` auth, `PathValidator` (allowlist + extension whitelist + size + symlink checks).
+Security layers (applied per tool): token-bucket rate limiter, optional `MCP_SHARED_SECRET` auth, `PathValidator` (allowlist + extension whitelist + size + symlink checks).
 
-All tool responses are JSON-encoded `dict`s returned as a single `TextContent` block.
+All tool responses are JSON-encoded `dict`s returned as a single `TextContent` block. Every tool — including `ping` — returns the uniform envelope below.
+
+**Success envelope**
+
+```json
+{ "success": true, "content": { ... } }
+```
+
+**Error envelope** (from `@mcp_error_boundary`; the flat `error_code`/`message` and `error` aliases are kept for backward compatibility)
+
+```json
+{
+  "success": false,
+  "error": { "code": "OPP_PATH_DENIED", "message": "Access to the requested path was denied." },
+  "error_code": "OPP_PATH_DENIED",
+  "message": "Access to the requested path was denied.",
+  "recovery": { "strategy": "use_allowed_path", "hint": "Use a path inside OPP_MCP_ALLOWED_DIRS ..." }
+}
+```
+
+`content` is present only on success. The per-tool payload keys below all live under `content`.
+
+The `traceparent` request parameter is currently advertised only on `extract_document`; the dispatcher consumes it to parent the call's span and, when tracing is active, echoes the propagated value back under `content.traceparent`.
 
 ### 1. `extract_document`
 
@@ -110,23 +132,45 @@ Extract content from a single document. Returns Markdown and/or XLIFF as text in
 | `source_lang` | string | no | `zh` | Source language code. |
 | `target_lang` | string | no | `en` | Target language code. |
 | `resource_dir` | string | no | (none) | Directory for extracted resources. Must be inside an allowed directory. |
+| `verbose` | bool | no | `false` | Include extra metadata (`detected_format`, `confidence`, `processing_steps`) under `content`. |
+| `ocr_lang` | string | no | `"eng"` | OCR language code (e.g. `chi_sim`, `jpn`, `fra`). |
+| `traceparent` | string | no | (none) | Optional W3C Trace Context header. The dispatcher makes this call's span a child of the upstream trace and echoes the propagated value under `content.traceparent`. |
 | `auth_token` | string | no | (none) | Shared secret (only required if `MCP_SHARED_SECRET` is set). |
 
-**Output schema (success)**
+**Output schema (success)** — payload under `content`:
 
 ```json
 {
   "success": true,
-  "format": "docx",
-  "extraction": { "paragraphs": 150, "tables": 3, "images": 5, "warnings": [] },
-  "md_content": "---\nsource_lang: zh\ntarget_lang: en\n---\n\n# Title\n...",
-  "xliff_content": "<?xml version=\"1.0\"?>\n<xliff ...>...</xliff>",
-  "xliff_units_count": 42,
-  "images_dir": "/path/to/document_images",
-  "request_id": "uuid",
-  "warnings": []
+  "content": {
+    "content": "# Raw extracted text ...",
+    "format_type": "docx",
+    "images_stored": 5,
+    "duration_ms": 412.7,
+    "errors": [],
+    "warnings": [],
+    "extraction_result": {
+      "paragraphs": [{ "text": "...", "style": "Normal", "level": 0, "chapter": null, "page": null }],
+      "tables": [{ "headers": ["A", "B"], "rows": [["1", "2"]] }],
+      "images": [{ "mime_type": "image/png", "width": 800, "height": 600, "data_base64": "..." }],
+      "attachments": [],
+      "metadata": { "page_count": 3, "file_size": 45824, "format_type": "docx" },
+      "warnings": [],
+      "is_transcription": false
+    },
+    "suggested_pipeline": "md",
+    "md_content": "---\nsource_lang: zh\ntarget_lang: en\n---\n\n# Title\n...",
+    "images_dir": "/path/to/document_images",
+    "images_json_path": "/path/to/document.images.json",
+    "xliff_content": "<?xml version=\"1.0\"?>\n<xliff ...>...</xliff>",
+    "xliff_units_count": 42,
+    "skeleton_path": "/path/to/document.skeleton.zip",
+    "traceparent": "00-4bf92f...-00f067...-01"
+  }
 }
 ```
+
+Only the keys relevant to the request are present: `md_content`/`images_dir` for `md`/`both`; `xliff_content`/`xliff_units_count` for `xlf`/`both`; `images_json_path` when images exist; `skeleton_path` for DOCX/PPTX/EPUB inputs; `detected_format`/`confidence`/`processing_steps` only when `verbose=true`; `traceparent` only when tracing is active. A rejected XLIFF generation surfaces `error_code: OPP_XLIFF_UNSUPPORTED` (e.g. PDF input).
 
 **Example call**
 
@@ -165,23 +209,31 @@ Process multiple files in one request. Each file is validated and processed sequ
 ```json
 {
   "success": true,
-  "results": [
-    {
-      "file_path": "/data/a.docx",
-      "success": true,
-      "format": "docx",
-      "md_content": "...",
-      "xliff_content": "...",
-      "xliff_units_count": 23
-    }
-  ],
-  "successful": 1,
-  "failed": 0,
-  "total_duration_ms": 1234.5
+  "content": {
+    "results": [
+      {
+        "file_path": "/data/a.docx",
+        "success": true,
+        "content": "# Raw extracted text ...",
+        "format_type": "docx",
+        "images_stored": 0,
+        "duration_ms": 210.4,
+        "errors": [],
+        "warnings": [],
+        "extraction_result": { "...": "..." },
+        "md_content": "...",
+        "xliff_content": "...",
+        "xliff_units_count": 23
+      }
+    ],
+    "successful": 1,
+    "failed": 0,
+    "total_duration_ms": 1234.5
+  }
 }
 ```
 
-If any file fails path validation up-front, the whole call returns `success: false` with a `validation_errors` array and `results: []`. Per-file failures during processing populate individual error entries but the call still returns `success: true` overall.
+If any file fails path validation up-front, the whole call returns an error envelope (`success: false`, `error_code: OPP_PATH_DENIED`) with a top-level `validation_errors` array and no `content` key. Per-file failures during processing populate an individual `{success: false, error_code: OPP_EXTRACTION_FAILED}` entry but the call still returns `success: true` overall.
 
 ---
 
@@ -199,7 +251,7 @@ Magic-bytes file format detection (extension-agnostic).
 **Output**
 
 ```json
-{ "success": true, "format": "docx", "confidence": 1.0 }
+{ "success": true, "content": { "format": "docx", "confidence": 1.0 } }
 ```
 
 `format` is one of: `docx`, `pptx`, `pdf`, `xlsx`, `csv`, `json`, `xml`, `html`, `epub`, `email`, `image`, `audio`, `video`, `ipynb`, `youtube`, `unknown`.
@@ -225,14 +277,15 @@ Extract to XLIFF only. Returns the XLIFF text and writes to `output_path` (defau
 ```json
 {
   "success": true,
-  "xliff_content": "<?xml ...",
-  "output_path": "/data/lease_generated.xlf",
-  "units_count": 42,
-  "error": null
+  "content": {
+    "xliff_content": "<?xml ...",
+    "output_path": "/data/lease_generated.xlf",
+    "units_count": 42
+  }
 }
 ```
 
-PDF inputs to XLIFF are blocked by design (unsupported by downstream tools) and return a `ValueError`-derived error.
+PDF inputs to XLIFF are blocked by design (unsupported by downstream tools) and return an error envelope with `error_code: OPP_INVALID_INPUT`.
 
 ---
 
@@ -255,10 +308,12 @@ Extract to Markdown only. Returns MD text and writes to `output_path` (default: 
 ```json
 {
   "success": true,
-  "markdown_content": "# Title\n...",
-  "output_path": "/data/lease_generated.md",
-  "images_dir": "/data/lease_generated_images",
-  "images_count": 5
+  "content": {
+    "markdown_content": "# Title\n...",
+    "output_path": "/data/lease_generated.md",
+    "images_dir": "/data/lease_generated/lease_generated_images",
+    "images_count": 5
+  }
 }
 ```
 
@@ -282,8 +337,9 @@ Save the original DOCX/PPTX ZIP skeleton (required by ORF `apply_xliff` for XLIF
 ```json
 {
   "success": true,
-  "skeleton_path": "/data/document.skeleton.zip",
-  "error": null
+  "content": {
+    "skeleton_path": "/data/document.skeleton.zip"
+  }
 }
 ```
 
@@ -295,7 +351,7 @@ Key files preserved in the skeleton:
 
 ### 7. `ping`
 
-Health check. Unauthenticated (no `@mcp_error_boundary`), but still subject to the rate limiter and shared-secret check.
+Health check. Like every tool it passes through `@mcp_error_boundary` and is subject to the rate limiter and shared-secret check.
 
 **Input schema**
 
@@ -306,7 +362,70 @@ Health check. Unauthenticated (no `@mcp_error_boundary`), but still subject to t
 **Output**
 
 ```json
-{ "success": true }
+{ "success": true, "content": { "version": "0.9.1", "status": "ok" } }
+```
+
+`content.version` is `opp.__version__` (best-effort; falls back to the installed distribution version).
+
+---
+
+### 8. `validate_xliff`
+
+Validate an XLIFF 1.2 document against the OASIS XSD schema and the trans-unit content rules (non-empty source, unique IDs, valid language codes). Pass either inline `xliff_content` (preferred for agent workflows) or `file_path`; if both are supplied, `xliff_content` wins. The result is a successful call even when the XLIFF is invalid — inspect `content.is_valid`.
+
+**Input schema**
+
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| `xliff_content` | string | no | Inline XLIFF XML. Takes precedence over `file_path` if both are provided. |
+| `file_path` | string | no | Path to a `.xlf`/`.xliff` file, used only when `xliff_content` is absent. Must pass `PathValidator`. |
+| `auth_token` | string | no | Shared secret (only required if `MCP_SHARED_SECRET` is set). |
+
+At least one of `xliff_content` / `file_path` is required; otherwise the call returns `error_code: OPP_INVALID_INPUT`.
+
+**Output schema (success)**
+
+```json
+{
+  "success": true,
+  "content": {
+    "is_valid": false,
+    "schema_valid": true,
+    "trans_units_valid": false,
+    "schema_errors": [],
+    "trans_unit_errors": ["trans-unit id='2': source is empty"],
+    "trans_unit_warnings": [],
+    "error_count": 1,
+    "warning_count": 0
+  }
+}
+```
+
+---
+
+### 9. `get_capabilities`
+
+Self-description tool. Returns the module's static capabilities, including the runtime tool list, so an agent can discover what the server exposes without hardcoding it.
+
+**Input schema**
+
+| Param | Type | Required |
+|-------|------|----------|
+| `auth_token` | string | no |
+
+**Output schema (success)** — `content.input_formats` currently lists 16 values (`docx`, `pptx`, `pdf`, `xlsx`, `csv`, `json`, `xml`, `html`, `epub`, `eml`, `msg`, `image`, `audio`, `video`, `youtube`, `ipynb`); `content.tools` lists all nine MCP tools.
+
+```json
+{
+  "success": true,
+  "content": {
+    "module": "opp",
+    "version": "0.9.1",
+    "input_formats": ["docx", "pptx", "pdf", "xlsx", "csv", "json", "xml", "html", "epub", "eml", "msg", "image", "audio", "video", "youtube", "ipynb"],
+    "output_formats": ["md", "xliff"],
+    "tools": ["extract_document", "batch_extract", "detect_format_tool", "generate_markdown", "generate_xliff", "save_skeleton", "ping", "validate_xliff", "get_capabilities"]
+  }
+}
 ```
 
 ---
@@ -315,9 +434,10 @@ Health check. Unauthenticated (no `@mcp_error_boundary`), but still subject to t
 
 | Variable | Applies to | Purpose | Default |
 |----------|-----------|---------|---------|
-| `OPP_MCP_ALLOWED_DIRS` | MCP | Colon/semicolon-separated allowlist of directories the MCP can read. | (none — no dirs allowed) |
+| `OPP_MCP_ALLOWED_DIRS` | MCP | Colon/semicolon-separated allowlist of directories the MCP can read. Fallback when the unified `MCP_ALLOWED_DIRECTORIES` is unset. | (none — no dirs allowed) |
+| `MCP_ALLOWED_DIRECTORIES` | MCP | Unified cross-module allowlist; takes precedence over `OPP_MCP_ALLOWED_DIRS` when set. | (none) |
 | `OPP_MCP_MAX_FILE_SIZE` | MCP | Max input file size in bytes. | `100_000_000` (100MB) |
-| `OPP_MCP_TIMEOUT` | MCP | Per-tool request timeout in seconds. | `60` |
+| `OPP_MCP_TIMEOUT` | MCP | Per-tool request timeout in seconds (`MCP_TOOL_TIMEOUT` takes precedence). | `120` |
 | `OPP_MCP_HOST` | MCP | Bind host (informational, stdio transport). | `127.0.0.1` |
 | `OPP_MCP_PORT` | MCP | Bind port (informational, stdio transport). | `8766` |
 | `OPP_ALLOWED_DIRECTORIES` | CLI | Comma-separated allowlist for `--resource-dir`. | (CWD + /tmp) |

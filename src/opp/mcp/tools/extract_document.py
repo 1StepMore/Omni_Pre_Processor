@@ -29,6 +29,7 @@ async def extract_document(
     resource_dir: str | None = None,
     verbose: bool = False,
     ocr_lang: str | None = None,
+    traceparent: str | None = None,
     auth_token: str | None = None,
 ) -> dict:
     """Extract content from a single document file.
@@ -45,6 +46,10 @@ async def extract_document(
         resource_dir: Optional directory for extracted resources.
         verbose: Include extra metadata in the response.
         ocr_lang: OCR language code (e.g. ``"chi_sim"``).
+        traceparent: Optional W3C Trace Context ``traceparent`` header. The
+            dispatcher consumes it to parent this call's span; the tool
+            accepts it so the advertised schema round-trips (it is not
+            otherwise used inside extraction).
         auth_token: Shared-secret auth token.
 
     Returns:
