@@ -556,3 +556,89 @@ def test_fix_image_positions_still_corrects_on_happy_path(tmp_path: Path):
         assert 'src="data:image/' in out, "rebuilt tag must inline the image bytes"
     finally:
         doc.close()
+
+
+# ---------------------------------------------------------------------------
+# PDF image page provenance — contracts/images.py: "PDF -> page_number"
+# ---------------------------------------------------------------------------
+
+
+def _pdf_two_pages_two_and_one_images(tmp_path: Path) -> Path:
+    """Page 1 carries two images, page 2 carries one."""
+    import fitz
+
+    doc = fitz.open()
+    p1 = doc.new_page(width=595, height=842)
+    p1.insert_image(fitz.Rect(50, 50, 110, 110), stream=_MINIMAL_PNG)
+    p1.insert_image(fitz.Rect(200, 300, 260, 360), stream=_MINIMAL_PNG)
+    p2 = doc.new_page(width=595, height=842)
+    p2.insert_image(fitz.Rect(80, 80, 140, 140), stream=_MINIMAL_PNG)
+    pdf_path = tmp_path / "pages.pdf"
+    doc.save(str(pdf_path))
+    doc.close()
+    return pdf_path
+
+
+def test_pdf_images_carry_one_based_page_number(tmp_path: Path):
+    """The PDF->HTML hop must not erase the page provenance the contract promises."""
+    from opp.extractors.pdf2html import PDF2HTMLExtractor
+
+    result = PDF2HTMLExtractor().extract(_pdf_two_pages_two_and_one_images(tmp_path))
+    assert len(result.images) == 3, f"expected 3 images, got {len(result.images)}"
+    assert [im.page_number for im in result.images] == [1, 1, 2]
+
+
+def test_same_page_images_share_page_number(tmp_path: Path):
+    """Regression lock for the grouping semantics, not just the field.
+
+    ``MarkdownGenerator`` buckets images by paragraph_index -> page_number ->
+    slide_index -> element_index. While page_number was None the chain fell
+    through to element_index, which is unique per image, so every image became
+    its own group and same-page images could never be placed together. The two
+    images on page 1 must therefore report the SAME page_number.
+    """
+    from opp.extractors.pdf2html import PDF2HTMLExtractor
+
+    result = PDF2HTMLExtractor().extract(_pdf_two_pages_two_and_one_images(tmp_path))
+    by_page: dict[int, int] = {}
+    for im in result.images:
+        assert im.page_number is not None, "PDF images must carry a page number"
+        by_page[im.page_number] = by_page.get(im.page_number, 0) + 1
+    assert by_page == {1: 2, 2: 1}, f"images did not group by page: {by_page}"
+
+
+def test_non_pdf_html_keeps_page_number_none(tmp_path: Path):
+    """The page dimension is a PDF concept; other HTML must not acquire one.
+
+    ``MarkdownGenerator`` falls back paragraph_index -> page_number ->
+    slide_index -> element_index, so inventing a page number for ordinary HTML
+    would silently outrank the correct element_index for those documents.
+    """
+    from opp.extractors.html import HTMLExtractor
+
+    png = (
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+        "AAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    )
+    images = HTMLExtractor()._extract_images(
+        f'<html><body><p>hi</p><img src="{png}"></body></html>', tmp_path
+    )
+    assert len(images) == 1
+    assert images[0].page_number is None
+    assert images[0].element_index == 0, "element_index must stay the DOM order"
+
+
+def test_page_number_comes_from_the_div_page_wrapper(tmp_path: Path):
+    """The page number is read structurally, so no attribute is stamped on <img>."""
+    from opp.extractors.html import HTMLExtractor
+
+    png = (
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
+        "AAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    )
+    images = HTMLExtractor()._extract_images(
+        f'<html><body><div class="page"><img src="{png}"></div></body></html>',
+        tmp_path,
+    )
+    assert len(images) == 1
+    assert images[0].page_number == 1

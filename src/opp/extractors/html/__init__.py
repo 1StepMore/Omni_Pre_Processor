@@ -51,6 +51,25 @@ from opp.utils.exceptions import CorruptedFileError
 
 # ── Module-level regex patterns (used by methods in this module) ───
 
+
+def _page_number_for(img: Any, page_by_div: dict[Any, int]) -> int | None:
+    """1-based page number taken from the enclosing ``div.page`` ancestor.
+
+    ``PDF2HTMLExtractor`` already wraps each page's fragment in
+    ``<div class="page">`` before handing the document to this extractor, so the
+    page provenance survives the PDF->HTML hop without stamping anything onto
+    the ``<img>`` tags themselves. Only PDF-derived documents carry those
+    wrappers, so any other HTML input yields ``None`` -- which is what
+    ``MarkdownGenerator``'s position fallback chain expects.
+    """
+    node = img.parent
+    while node is not None:
+        page = page_by_div.get(node)
+        if page is not None:
+            return page
+        node = node.parent
+    return None
+
 _RE_DATA_URI = re.compile(r"data:([^;]+);base64,(.+)$")
 _RE_HEADING = re.compile(r"^(#{1,6})\s+(.*)")
 _RE_BULLET_LIST = re.compile(r"^[\-\*]\s+")
@@ -475,6 +494,11 @@ class HTMLExtractor(ExtractorBase):
             logger.warning(f"BeautifulSoup parsing failed: {e}")
             return result
 
+        page_by_div = {
+            div: number
+            for number, div in enumerate(soup.find_all("div", class_="page"), start=1)
+        }
+
         for element_idx, img in enumerate(soup.find_all("img")):
             src = str(img.get("src", ""))
             if not src:
@@ -483,10 +507,13 @@ class HTMLExtractor(ExtractorBase):
             if src.startswith(("http://", "https://", "//")):
                 continue
 
+            page_number = _page_number_for(img, page_by_div)
+
             if src.startswith("data:"):
                 image_data = self._parse_data_uri(src)
                 if image_data:
                     image_data.element_index = element_idx
+                    image_data.page_number = page_number
                     # E2E-75: markdownify already writes ``![alt](src)``
                     # for every ``<img>``. The generator must NOT re-inject
                     # the ref nor append the image to the trailing block.
@@ -508,6 +535,7 @@ class HTMLExtractor(ExtractorBase):
                             data=data,
                             mime_type=mime_type,
                             element_index=element_idx,
+                            page_number=page_number,
                             is_inline_in_md=True,
                         )
                     )
