@@ -86,30 +86,58 @@ class PDF2HTMLExtractor(ExtractorBase):
             _logger.debug("_fix_image_positions: BeautifulSoup parsing failed, returning original HTML")
             return page_html
 
-        for img_tag in soup.find_all("img"):
-            img_tag.decompose()
-        text_html = str(soup)
+        original_imgs = [str(tag) for tag in soup.find_all("img")]
+        if not original_imgs:
+            return page_html
 
+        # Invariant: the <img> tags are decomposed only once their replacements
+        # exist, so every early return below hands back the untouched
+        # page_html and a failed fetch costs position accuracy, not images.
         try:
             img_infos = list(page.get_image_info())
             img_entries = list(page.get_images(full=True))
         except Exception as e:
-            _logger.warning("Failed to get image info for page: %s", e)
-            return text_html
+            _logger.warning(
+                "Failed to get image info for page: %s; keeping the original "
+                "<img> tags instead of dropping them", e,
+            )
+            return page_html
 
         if not img_infos or not img_entries:
-            return text_html
+            _logger.warning(
+                "page carries %d <img> tag(s) but PyMuPDF reported %d "
+                "image_info / %d image entries; keeping the original tags",
+                len(original_imgs), len(img_infos), len(img_entries),
+            )
+            return page_html
+
+        if len(img_infos) != len(img_entries):
+            _logger.warning(
+                "image_info count (%d) != image entry count (%d); images "
+                "beyond the shorter list keep their original tag",
+                len(img_infos), len(img_entries),
+            )
+
+        def _fallback(idx: int) -> str:
+            return original_imgs[idx] if idx < len(original_imgs) else ""
 
         corrected_tags: list[str] = []
-        for idx in range(min(len(img_infos), len(img_entries))):
+        for idx in range(len(img_infos)):
             try:
                 img_info = img_infos[idx]
                 bbox = img_info["bbox"]
-                xref = img_entries[idx][0]
+                xref = img_entries[idx][0] if idx < len(img_entries) else None
+                if xref is None:
+                    corrected_tags.append(_fallback(idx))
+                    continue
 
                 base_image = doc.extract_image(xref)
                 img_bytes = base_image.get("image")
                 if not img_bytes:
+                    _logger.warning(
+                        "image %d yielded no bytes; keeping its original tag", idx,
+                    )
+                    corrected_tags.append(_fallback(idx))
                     continue
                 img_ext = base_image.get("ext", "png")
                 mime_type = f"image/{img_ext}"
@@ -146,12 +174,18 @@ class PDF2HTMLExtractor(ExtractorBase):
                 )
                 corrected_tags.append(img_tag)
             except Exception as e:
-                _logger.warning("Failed to correct image %d: %s", idx, e)
-                continue
+                _logger.warning(
+                    "Failed to correct image %d: %s; keeping its original tag", idx, e,
+                )
+                corrected_tags.append(_fallback(idx))
 
-        if corrected_tags:
-            return text_html + "\n" + "\n".join(corrected_tags)
-        return text_html
+        for tag in soup.find_all("img"):
+            tag.decompose()
+        text_html = str(soup)
+
+        if not corrected_tags:
+            return page_html
+        return text_html + "\n" + "\n".join(t for t in corrected_tags if t)
 
     def extract(self, input_path: Path, css: str | None = None) -> ExtractionResult:
         input_path = Path(input_path)
