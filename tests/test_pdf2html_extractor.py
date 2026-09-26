@@ -464,3 +464,95 @@ def test_pdf_e2e_pixel_level_image_match(tmp_path: Path):
     tolerance_pt = 5.0
     assert abs(actual_left_pt - 100) <= tolerance_pt, f"Left edge off: expected 100pt, got {actual_left_pt:.1f}pt"
     assert abs(actual_top_pt - 100) <= tolerance_pt, f"Top edge off: expected 100pt, got {actual_top_pt:.1f}pt"
+
+
+# ---------------------------------------------------------------------------
+# OPP#69 — a failed image lookup must degrade position accuracy, not drop images
+# ---------------------------------------------------------------------------
+
+
+def _pdf_with_one_image(tmp_path: Path) -> tuple[object, str]:
+    """Return an open one-page/one-image doc plus that page's raw HTML."""
+    import fitz
+
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+    page.insert_image(fitz.Rect(100, 100, 200, 200), stream=_MINIMAL_PNG)
+    pdf_path = tmp_path / "one_image.pdf"
+    doc.save(str(pdf_path))
+    doc.close()
+
+    opened = fitz.open(str(pdf_path))
+    return opened, opened[0].get_text("html")
+
+
+class _PageWithFailingLookup:
+    """Real page, but one accessor raises or lies — mirrors a corrupt image tree."""
+
+    def __init__(self, page, *, raise_on: str | None = None, empty_on: str | None = None):
+        self._page = page
+        self._raise_on = raise_on
+        self._empty_on = empty_on
+
+    def __getattr__(self, name):
+        attr = getattr(self._page, name)
+        if not callable(attr):
+            return attr
+        if name == self._raise_on:
+            def _boom(*a, **k):
+                raise RuntimeError("simulated unreadable image tree")
+            return _boom
+        if name == self._empty_on:
+            return lambda *a, **k: []
+        return attr
+
+
+def test_fix_image_positions_keeps_images_when_lookup_raises(tmp_path: Path):
+    """OPP#69: get_image_info() blowing up must not delete the page's images."""
+    from opp.extractors.pdf2html import PDF2HTMLExtractor
+
+    doc, raw = _pdf_with_one_image(tmp_path)
+    try:
+        assert raw.count("<img") == 1, "fixture should render one <img>"
+        out = PDF2HTMLExtractor._fix_image_positions(
+            raw, _PageWithFailingLookup(doc[0], raise_on="get_image_info"), doc,
+        )
+        assert out.count("<img") == 1, (
+            "the original <img> must survive a failed image lookup — "
+            f"got {out.count('<img')} img tag(s)"
+        )
+    finally:
+        doc.close()
+
+
+def test_fix_image_positions_keeps_images_when_lookup_returns_empty(tmp_path: Path):
+    """OPP#69: empty image_info/entries lists must not delete the page's images."""
+    from opp.extractors.pdf2html import PDF2HTMLExtractor
+
+    doc, raw = _pdf_with_one_image(tmp_path)
+    try:
+        out = PDF2HTMLExtractor._fix_image_positions(
+            raw, _PageWithFailingLookup(doc[0], empty_on="get_image_info"), doc,
+        )
+        assert out.count("<img") == 1, (
+            "empty image_info must fall back to the original <img>, not drop it"
+        )
+    finally:
+        doc.close()
+
+
+def test_fix_image_positions_still_corrects_on_happy_path(tmp_path: Path):
+    """Guards the OPP#69 fix against regressing the normal correction path."""
+    from opp.extractors.pdf2html import PDF2HTMLExtractor
+
+    doc, raw = _pdf_with_one_image(tmp_path)
+    try:
+        out = PDF2HTMLExtractor._fix_image_positions(raw, doc[0], doc)
+        assert out.count("<img") == 1
+        assert '<img style="position:absolute' in out, (
+            "the rebuilt tag must still carry the absolute positioning"
+        )
+        assert "left:100.0pt" in out and "top:100.0pt" in out
+        assert 'src="data:image/' in out, "rebuilt tag must inline the image bytes"
+    finally:
+        doc.close()
