@@ -36,8 +36,20 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install --python .venv pytest pytest-cov pytest-asyncio
-          uv pip install --python .venv mcp "fastmcp[cli]" beautifulsoup4 ebooklib python-docx python-pptx pymupdf lxml translate-toolkit openpyxl pandas chardet
+          # Install the project from its metadata (same pattern as ci.yml) so
+          # runtime dependencies can never drift behind pyproject.toml again.
+          # The previous hand-written list omitted structlog and other declared
+          # deps, which broke tag runs during pytest collection (issue #72).
+          # .[dev] = pytest, pytest-cov
+          # .[mcp] = mcp, fastmcp, pyyaml (needed by tests/mcp/test_server.py)
+          uv pip install --python .venv/bin/python -e ".[dev,mcp]"
+          # tests/mcp/test_server.py drives async MCP tools with
+          # @pytest.mark.asyncio; pytest-asyncio is not part of .[dev,mcp].
+          uv pip install --python .venv/bin/python pytest-asyncio
+
+      - name: Verify opp imports (fail loud on metadata drift)
+        run: |
+          .venv/bin/python -c "import opp; print(f'opp OK ({opp.__version__})')"
 
       - name: Run tests
         env:
