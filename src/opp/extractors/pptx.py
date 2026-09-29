@@ -1,10 +1,11 @@
 import zipfile
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE, PP_PLACEHOLDER
+from pptx.oxml.ns import qn
 
 from opp.extractors.base import ExtractorBase
 from opp.logger import logger
@@ -14,8 +15,29 @@ from opp.utils.dataclasses import (
     ParagraphData,
     RunData,
     SlideData,
+    TableCellData,
+    TableData,
 )
 from opp.utils.exceptions import CorruptedFileError, UnsupportedFormatError
+
+
+@dataclass
+class _ExtractionState:
+    """Deck-wide mutable state shared while walking a presentation's shapes.
+
+    ``position`` is ONE counter for the whole deck: it is bumped for every
+    emitted paragraph and every table so ``MarkdownGenerator`` can interleave
+    them in shape order (it sorts merged content by ``position``). If it reset
+    per slide, every table would sort after every paragraph.
+
+    ``table_index`` is the deck-wide table counter encoded in the
+    ``table_{t}_r{r}_c{c}`` resname and must never reset per slide either.
+    """
+
+    position: int = 0
+    table_index: int = 0
+    tables: list[TableData] = field(default_factory=list)
+    table_cells: list[TableCellData] = field(default_factory=list)
 
 
 class PPTXExtractor(ExtractorBase):
@@ -35,7 +57,8 @@ class PPTXExtractor(ExtractorBase):
                 raise UnsupportedFormatError(f"不支持的PPTX格式（宏已启用）: {input_path}")
             raise CorruptedFileError(f"文件损坏或无法解析: {input_path}")
 
-        slides = self.extract_slides(prs)
+        state = _ExtractionState()
+        slides = self.extract_slides(prs, state)
         images = self.extract_images(prs)
 
         skeleton_bytes: bytes | None = None
@@ -61,18 +84,21 @@ class PPTXExtractor(ExtractorBase):
 
         return ExtractionResult(
             paragraphs=all_paragraphs,
-            tables=[],
+            tables=state.tables,
             images=images,
             metadata=metadata,
             warnings=warnings,
             skeleton=skeleton_bytes,
             skeleton_files=skeleton_files,
+            table_cells=state.table_cells,
         )
 
-    def extract_slides(self, prs: Presentation) -> list[SlideData]:
+    def extract_slides(
+        self, prs: Presentation, state: _ExtractionState
+    ) -> list[SlideData]:
         result: list[SlideData] = []
         for i, slide in enumerate(prs.slides):
-            shapes = self.extract_shapes(slide)
+            shapes = self.extract_shapes(slide, state)
             notes = self.extract_notes(slide)
             result.append(SlideData(
                 index=i,
@@ -116,57 +142,111 @@ class PPTXExtractor(ExtractorBase):
                 runs.append(run_data)
         return runs
 
-    def extract_shapes(self, slide: Any) -> list[ParagraphData]:
+    def extract_shapes(
+        self, slide: Any, state: _ExtractionState
+    ) -> list[ParagraphData]:
         result: list[ParagraphData] = []
         for shape in slide.shapes:
             if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
-                result.extend(self._flatten_group(shape))
+                result.extend(self._flatten_group(shape, state))
+            elif shape.shape_type == MSO_SHAPE_TYPE.TABLE:
+                self._extract_table(shape, state)
             elif shape.has_text_frame:
                 text = shape.text_frame.text.strip()
                 if text:
-                    runs = self.extract_runs(shape)
-                    plain_text = ''.join(r.text for r in runs)
-                    if self._is_title_shape(shape):
-                        result.append(ParagraphData(
-                            text=plain_text,
-                            style="Heading 1",
-                            level=1,
-                            runs=runs,
-                        ))
-                    else:
-                        result.append(ParagraphData(
-                            text=plain_text,
-                            style=shape.shape_type.name if hasattr(shape.shape_type, 'name') else None,
-                            level=None,
-                            runs=runs,
-                        ))
+                    result.append(self._paragraph_from_shape(shape, state.position))
+                    state.position += 1
         return result
 
-    def _flatten_group(self, group: Any) -> list[ParagraphData]:
+    def _paragraph_from_shape(self, shape: Any, position: int) -> ParagraphData:
+        runs = self.extract_runs(shape)
+        plain_text = ''.join(r.text for r in runs)
+        if self._is_title_shape(shape):
+            return ParagraphData(
+                text=plain_text,
+                style="Heading 1",
+                level=1,
+                runs=runs,
+                position=position,
+            )
+        return ParagraphData(
+            text=plain_text,
+            style=shape.shape_type.name if hasattr(shape.shape_type, 'name') else None,
+            level=None,
+            runs=runs,
+            position=position,
+        )
+
+    def _flatten_group(
+        self, group: Any, state: _ExtractionState
+    ) -> list[ParagraphData]:
         result: list[ParagraphData] = []
         for shape in group.shapes:
             if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
-                result.extend(self._flatten_group(shape))
+                result.extend(self._flatten_group(shape, state))
             elif shape.has_text_frame:
+                # Tables nested in a GroupShape have no text frame and are
+                # intentionally skipped here, identically to ORF's writer,
+                # which only scans top-level p:spTree graphic frames.
                 text = shape.text_frame.text.strip()
                 if text:
-                    runs = self.extract_runs(shape)
-                    plain_text = ''.join(r.text for r in runs)
-                    if self._is_title_shape(shape):
-                        result.append(ParagraphData(
-                            text=plain_text,
-                            style="Heading 1",
-                            level=1,
-                            runs=runs,
-                        ))
-                    else:
-                        result.append(ParagraphData(
-                            text=plain_text,
-                            style=shape.shape_type.name if hasattr(shape.shape_type, 'name') else None,
-                            level=None,
-                            runs=runs,
-                        ))
+                    result.append(self._paragraph_from_shape(shape, state.position))
+                    state.position += 1
         return result
+
+    def _extract_table(self, shape: Any, state: _ExtractionState) -> None:
+        """Extract a top-level table GraphicFrame into ``state``.
+
+        Row/col indices come from the raw ``a:tr``/``a:tc`` direct children
+        (``findall`` semantics), NOT python-pptx's grid APIs. In a merged
+        region the origin ``a:tc`` stays at its raw position and its spanned
+        siblings remain in the raw row, so raw indices are exactly what ORF's
+        ``findall`` writer will use. Merged-cell grid expansion / de-dup is
+        deliberately not implemented here (issue #80): a spanned cell has
+        empty text and therefore contributes no trans-unit.
+        """
+        table = shape.table
+        trs = table._tbl.findall(qn("a:tr"))
+        if not trs:
+            return
+
+        all_rows: list[list[str]] = []
+        for row, tr in enumerate(trs):
+            tcs = tr.findall(qn("a:tc"))
+            values: list[str] = []
+            for col in range(len(tcs)):
+                text = self._cell_text(table.rows[row].cells[col])
+                values.append(text)
+                if text:
+                    state.table_cells.append(TableCellData(
+                        table_index=state.table_index,
+                        row=row,
+                        col=col,
+                        text=text,
+                    ))
+            all_rows.append(values)
+
+        headers, rows = all_rows[0], all_rows[1:]
+        if not headers and not rows:
+            return
+        state.tables.append(TableData(
+            headers=headers,
+            rows=rows,
+            position=state.position,
+        ))
+        state.table_index += 1
+        state.position += 1
+
+    def _cell_text(self, cell: Any) -> str:
+        """Cell text read paragraph-wise and joined with ``"\\n"``.
+
+        Joining runs instead would drop the paragraph boundary (a
+        two-paragraph cell must be ``'alpha\\nbeta'``, not ``'alphabeta'``).
+        Mirrors the DOCX ``_extract_table_cells`` contract: each paragraph is
+        stripped and empty paragraphs are skipped before the ``"\\n"`` join.
+        """
+        texts = (para.text.strip() for para in cell.text_frame.paragraphs)
+        return "\n".join(t for t in texts if t).strip()
 
     def extract_notes(self, slide: Any) -> str:
         notes_slide = slide.notes_slide
