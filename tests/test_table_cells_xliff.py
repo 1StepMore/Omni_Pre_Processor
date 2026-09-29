@@ -154,7 +154,7 @@ def test_non_body_resname_keeps_paragraph_index_when_table_rows_are_skipped(tmp_
     expected = {
         f"non_body_{i}": p.text
         for i, p in enumerate(result.paragraphs)
-        if not p.text.strip().startswith("|")
+        if i not in result.table_row_paragraph_indices
     }
     actual = {
         resname: source
@@ -170,3 +170,55 @@ def test_non_body_resname_keeps_paragraph_index_when_table_rows_are_skipped(tmp_
     )
     assert f"non_body_{after_index}" in actual
     assert actual[f"non_body_{after_index}"] == "After table."
+
+def test_pipe_prefixed_non_table_paragraph_survives_in_xliff(tmp_path: Path):
+    # Regression: suppressing the flattened markdown rows of a real table must be
+    # driven by what the extractor recorded, not by the paragraph starting with
+    # ``|``. A text check also dropped genuine ``|``-prefixed paragraphs (code
+    # blocks, ASCII art), which then never reached the translator and stayed in
+    # the source language after backfill.
+    #
+    # A 3-column table is markdownified into ``|`` rows (so the suppression path
+    # is genuinely exercised here); the ``<pre>`` line is not a table row.
+    html = (
+        "<p>Intro paragraph.</p>"
+        "<table><tr><th>Model</th><th>Ingress</th><th>Weight</th></tr>"
+        "<tr><td>X1</td><td>IP67</td><td>0.5 ms</td></tr>"
+        "<tr><td>X2</td><td>IP67</td><td>1.2 ms</td></tr></table>"
+        "<pre>| piped | literal line that is NOT a table |</pre>"
+        "<p>Outro paragraph.</p>"
+    )
+    html_path = tmp_path / "pipe_paragraph.html"
+    html_path.write_text(html, encoding="utf-8")
+
+    result = HTMLExtractor().extract(html_path)
+    assert result.table_row_paragraph_indices, (
+        "fixture no longer produces flattened markdown table rows - the "
+        "suppression path would be untested by this case"
+    )
+
+    xliff_bytes = _generate_xliff(result, tmp_path)
+    sources = _sources(xliff_bytes)
+
+    assert any("piped" in s for s in sources), (
+        f"non-table pipe-prefixed paragraph was dropped from the XLIFF: {sources}"
+    )
+
+    # The suppression still works: no markdown row rendering leaked through.
+    for source in sources:
+        assert not source.strip().startswith("| --- |"), (
+            f"flattened markdown delimiter row leaked into XLIFF: {source!r}"
+        )
+    for row in ("Model | Ingress | Weight", "X1 | IP67 | 0.5 ms"):
+        assert not any(row in s for s in sources), (
+            f"flattened markdown table row leaked into XLIFF: {row!r}"
+        )
+
+    # And every real cell is still emitted positionally.
+    resnames = _resnames(xliff_bytes)
+    for expected in (
+        "table_0_r0_c0", "table_0_r0_c1", "table_0_r0_c2",
+        "table_0_r1_c0", "table_0_r1_c1", "table_0_r1_c2",
+        "table_0_r2_c0", "table_0_r2_c1", "table_0_r2_c2",
+    ):
+        assert expected in resnames, f"missing resname {expected!r}: {resnames}"

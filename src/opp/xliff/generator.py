@@ -430,19 +430,20 @@ class XLIFFFileGenerator:
 
         table_cells = getattr(result, "table_cells", None) or []
         has_table_cells = len(table_cells) > 0
+        table_row_indices = (
+            getattr(result, "table_row_paragraph_indices", None) or frozenset()
+        )
 
         # ``id`` is only a unique, gapless key; it is NOT positional and may
         # skip along with filtered paragraphs. ``non_body_N`` IS positional
         # data and must come from the enumerate index below.
         unit_id = 0
         for idx, para in enumerate(result.paragraphs):
-            # HTML duplicate suppression: when the extractor emitted dedicated
-            # table cells, skip the flattened markdown table rows (``| a | b |``)
-            # the markdown conversion produced — they do not exist as DOM text
-            # nodes, so no translation could ever be written back into them.
-            # Only applied when table cells exist, preserving behaviour for
-            # table-free inputs.
-            if has_table_cells and para.text.strip().startswith("|"):
+            # Skip exactly the paragraphs the extractor recorded as a real
+            # table's markdown rendering: not DOM text nodes, so ORF can never
+            # write them back. Keyed on the recorded index, never on the text —
+            # a text check would also drop genuine ``|``-prefixed paragraphs.
+            if has_table_cells and idx in table_row_indices:
                 continue
 
             # Check if paragraph has run-level formatting

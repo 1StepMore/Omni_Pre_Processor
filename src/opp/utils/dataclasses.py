@@ -133,6 +133,12 @@ class ExtractionResult:
     # the XLIFF generator (resname ``table_{t}_r{r}_c{c}``). Markdown output
     # and skeletons are unaffected.
     table_cells: list[TableCellData] = field(default_factory=list)
+    # Indices into ``paragraphs`` of rows that are a real table's markdown
+    # rendering (HTML inputs only). ORF can never write those back (they are not
+    # DOM text nodes), so the XLIFF generator skips exactly these indices.
+    # Recorded by the extractor, not inferred from the text, so a genuine
+    # ``|``-prefixed paragraph (code block, ASCII art) is never dropped.
+    table_row_paragraph_indices: frozenset[int] = frozenset()
 
     def __post_init__(self):
         if self.metadata is None:
