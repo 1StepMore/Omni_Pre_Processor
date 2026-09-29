@@ -428,7 +428,24 @@ class XLIFFFileGenerator:
         )
         generator = cls(attributes)
 
+        table_cells = getattr(result, "table_cells", None) or []
+        has_table_cells = len(table_cells) > 0
+        table_row_indices = (
+            getattr(result, "table_row_paragraph_indices", None) or frozenset()
+        )
+
+        # ``id`` is only a unique, gapless key; it is NOT positional and may
+        # skip along with filtered paragraphs. ``non_body_N`` IS positional
+        # data and must come from the enumerate index below.
+        unit_id = 0
         for idx, para in enumerate(result.paragraphs):
+            # Skip exactly the paragraphs the extractor recorded as a real
+            # table's markdown rendering: not DOM text nodes, so ORF can never
+            # write them back. Keyed on the recorded index, never on the text —
+            # a text check would also drop genuine ``|``-prefixed paragraphs.
+            if has_table_cells and idx in table_row_indices:
+                continue
+
             # Check if paragraph has run-level formatting
             if hasattr(para, 'runs') and para.runs:
                 # Use inline element encoding
@@ -453,14 +470,33 @@ class XLIFFFileGenerator:
             if body_idx is not None:
                 resname = f"para_index_{body_idx}"
             else:
+                # non_body_N = the paragraph's index in
+                # ExtractionResult.paragraphs (ORF resolves all_paragraphs[N]);
+                # it must be derived from the enumerate index, never from a
+                # filtered counter.
                 resname = f"non_body_{idx}"
 
+            unit_id += 1
             unit = XLIFFTransUnit(
-                id=str(idx + 1),
+                id=str(unit_id),
                 source=source,
                 source_language=source_lang,
                 inline_elements=inline_elements,
                 resname=resname,
+            )
+            generator.add_unit(unit)
+
+        # Table cells become their own trans-units, continuing the paragraph
+        # ids (1-based, gapless). A cell whose source holds several paragraphs
+        # is collapsed by the extractor into ONE unit whose text is the
+        # paragraph texts joined with "\n".
+        for cell in table_cells:
+            unit_id += 1
+            unit = XLIFFTransUnit(
+                id=str(unit_id),
+                source=cell.text,
+                source_language=source_lang,
+                resname=f"table_{cell.table_index}_r{cell.row}_c{cell.col}",
             )
             generator.add_unit(unit)
 

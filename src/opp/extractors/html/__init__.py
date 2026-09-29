@@ -46,6 +46,7 @@ from opp.utils.dataclasses import (
     ImageData,
     ParagraphData,
     RunData,
+    TableCellData,
 )
 from opp.utils.exceptions import CorruptedFileError
 
@@ -74,6 +75,7 @@ _RE_DATA_URI = re.compile(r"data:([^;]+);base64,(.+)$")
 _RE_HEADING = re.compile(r"^(#{1,6})\s+(.*)")
 _RE_BULLET_LIST = re.compile(r"^[\-\*]\s+")
 _RE_ORDERED_LIST = re.compile(r"^\d+\.\s+")
+_RE_CODE_FENCE = re.compile(r"^(?:```|~~~)")
 
 
 # ── HTMLExtractor ──────────────────────────────────────────────────
@@ -184,9 +186,13 @@ class HTMLExtractor(ExtractorBase):
                         # Keep the readability result.
 
         md_content = self._html_to_markdown(extracted_text, input_path.parent)
-        paragraphs = self._md_to_paragraphs(md_content)
+        paragraphs, table_row_indices = self._md_to_paragraphs_and_table_rows(
+            md_content
+        )
 
         images = self._extract_images(content, input_path.parent)
+
+        table_cells = self._extract_table_cells(content)
 
         skeleton_html = self._generate_skeleton_html(content, paragraphs)
 
@@ -197,6 +203,8 @@ class HTMLExtractor(ExtractorBase):
             metadata=metadata,
             warnings=warnings,
             skeleton_html=skeleton_html,
+            table_cells=table_cells,
+            table_row_paragraph_indices=table_row_indices,
         )
 
     # ── Config / tool choice ─────────────────────────────────────
@@ -258,16 +266,46 @@ class HTMLExtractor(ExtractorBase):
         Parses heading levels, list styles, extract runs from inline
         HTML, and filters non-translatable content (base64 images).
         """
+        return self._md_to_paragraphs_and_table_rows(md_text)[0]
+
+    def _md_to_paragraphs_and_table_rows(
+        self, md_text: str
+    ) -> tuple[list[ParagraphData], frozenset[int]]:
+        """Same as :meth:`_md_to_paragraphs`, plus the table-row paragraph indices.
+
+        A markdown table is a contiguous run of ``|``-prefixed lines terminated by
+        any other line — the same block definition :func:`fix_tables` uses. Those
+        rows are the table's *rendering*, not DOM text, so ORF cannot write a
+        translation back into them; the caller records their indices for the XLIFF
+        generator to skip.
+        """
         if not md_text:
-            return []
+            return [], frozenset()
 
         paragraphs = []
+        table_row_indices: set[int] = set()
         lines = md_text.split("\n")
+        in_table = False
+        in_fence = False
 
         for line in lines:
             line = line.strip()
             if not line:
+                if not in_fence:
+                    in_table = False
                 continue
+
+            # A fenced block's content is verbatim: a ``|``-prefixed line inside
+            # one is code/ASCII art, never a table row.
+            if _RE_CODE_FENCE.match(line):
+                in_fence = not in_fence
+                in_table = False
+            elif in_fence:
+                in_table = False
+            elif line.startswith("|"):
+                in_table = True
+            else:
+                in_table = False
 
             level = None
             if line.startswith("#"):
@@ -291,6 +329,9 @@ class HTMLExtractor(ExtractorBase):
             if re.match(r"^\s*!\[.*?\]\(data:", plain_text):
                 continue
 
+            if in_table:
+                table_row_indices.add(len(paragraphs))
+
             paragraphs.append(
                 ParagraphData(
                     text=plain_text,
@@ -300,7 +341,44 @@ class HTMLExtractor(ExtractorBase):
                 )
             )
 
-        return paragraphs
+        return paragraphs, frozenset(table_row_indices)
+
+    # ── Table-cell extraction ───────────────────────────────────
+
+    def _extract_table_cells(self, html_content: str) -> list[TableCellData]:
+        """Return every non-empty ``<td>``/``<th>`` as a translatable cell.
+
+        Tables are indexed in document order over the original HTML, nested
+        tables included (``find_all("table")``). Rows/cells are the direct
+        children only, matching ORF's ``table_{t}_r{r}_c{c}`` resolution.
+        This is additive: the markdown output and skeleton are untouched.
+        """
+        # Cheap guard: most HTML inputs have no table, so avoid a second full
+        # BeautifulSoup parse of a potentially huge document.
+        if "<table" not in html_content.lower():
+            return []
+
+        try:
+            soup = BeautifulSoup(html_content, "html.parser")
+        except Exception as e:
+            logger.warning(f"BeautifulSoup parsing failed for table cells: {e}")
+            return []
+
+        cells: list[TableCellData] = []
+        for table_index, table in enumerate(soup.find_all("table")):
+            for row, tr in enumerate(table.find_all("tr", recursive=False)):
+                for col, cell in enumerate(
+                    tr.find_all(["td", "th"], recursive=False)
+                ):
+                    text = cell.get_text(" ", strip=True)
+                    if text:
+                        cells.append(TableCellData(
+                            table_index=table_index,
+                            row=row,
+                            col=col,
+                            text=text,
+                        ))
+        return cells
 
     # ── Skeleton HTML generation ─────────────────────────────────
 
