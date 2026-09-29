@@ -371,17 +371,18 @@ Health check. Like every tool it passes through `@mcp_error_boundary` and is sub
 
 ### 8. `validate_xliff`
 
-Validate an XLIFF 1.2 document against the OASIS XSD schema and the trans-unit content rules (non-empty source, unique IDs, valid language codes). Pass either inline `xliff_content` (preferred for agent workflows) or `file_path`; if both are supplied, `xliff_content` wins. The result is a successful call even when the XLIFF is invalid — inspect `content.is_valid`.
+Validate an XLIFF 1.2 document against the OASIS XSD schema and the trans-unit content rules (non-empty source, unique IDs, valid language codes). Pass either inline `xliff_content` (preferred for agent workflows), `file_path`, or its pipeline alias `xliff_path`; if `xliff_content` is supplied it wins. Providing both `file_path` and `xliff_path` is rejected as ambiguous. The result is a successful call even when the XLIFF is invalid — inspect `content.is_valid`.
 
 **Input schema**
 
 | Param | Type | Required | Description |
 |-------|------|----------|-------------|
-| `xliff_content` | string | no | Inline XLIFF XML. Takes precedence over `file_path` if both are provided. |
+| `xliff_content` | string | no | Inline XLIFF XML. Takes precedence over the path parameters if provided. |
 | `file_path` | string | no | Path to a `.xlf`/`.xliff` file, used only when `xliff_content` is absent. Must pass `PathValidator`. |
+| `xliff_path` | string | no | Accepted alias for `file_path` (the name ORF/`apply_xliff` and the PEMT runbook use). Same validation as `file_path`; provide only one of `file_path` / `xliff_path`. |
 | `auth_token` | string | no | Shared secret (only required if `MCP_SHARED_SECRET` is set). |
 
-At least one of `xliff_content` / `file_path` is required; otherwise the call returns `error_code: OPP_INVALID_INPUT`.
+At least one of `xliff_content` / `file_path` / `xliff_path` is required; otherwise the call returns `error_code: OPP_INVALID_INPUT`. Supplying both `file_path` and `xliff_path` also returns `error_code: OPP_INVALID_INPUT` with the message `Provide only one of file_path / xliff_path.`
 
 **Output schema (success)**
 
@@ -395,11 +396,16 @@ At least one of `xliff_content` / `file_path` is required; otherwise the call re
     "schema_errors": [],
     "trans_unit_errors": ["trans-unit id='2': source is empty"],
     "trans_unit_warnings": [],
+    "errors": [
+      {"code": "EMPTY_SOURCE", "message": "trans-unit id='2': <source> element is empty", "line": 5, "column": null}
+    ],
     "error_count": 1,
     "warning_count": 0
   }
 }
 ```
+
+`content.errors` is the structured form of the same failures, each entry carrying a stable `code` (`MALFORMED_XML`, `SCHEMA_ERROR`, `EMPTY_ID`, `DUPLICATE_ID`, `MISSING_SOURCE`, `EMPTY_SOURCE`) plus best-effort `line`/`column`. The `schema_errors` / `trans_unit_errors` string lists are kept unchanged for back-compat.
 
 ---
 
