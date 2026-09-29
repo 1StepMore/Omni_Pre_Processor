@@ -49,6 +49,20 @@ class TableData:
 
 
 @dataclass
+class TableCellData:
+    """A single table cell as a translatable unit.
+
+    ``table_index``/``row``/``col`` are raw node indices (no merged-cell/grid
+    expansion) shared with ORF so both sides resolve ``table_{t}_r{r}_c{c}``
+    resnames to the same cell.
+    """
+    table_index: int
+    row: int
+    col: int
+    text: str
+
+
+@dataclass
 class ImageData:
     data: bytes = b""
     mime_type: str = ""
@@ -115,6 +129,10 @@ class ExtractionResult:
     skeleton: bytes | None = None
     skeleton_files: list[str] | None = None
     skeleton_html: str | None = None
+    # Additive: table cells as dedicated translatable units consumed only by
+    # the XLIFF generator (resname ``table_{t}_r{r}_c{c}``). Markdown output
+    # and skeletons are unaffected.
+    table_cells: list[TableCellData] = field(default_factory=list)
 
     def __post_init__(self):
         if self.metadata is None:

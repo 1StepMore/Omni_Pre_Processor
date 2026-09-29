@@ -16,6 +16,7 @@ from opp.utils.dataclasses import (
     ImageData,
     ParagraphData,
     RunData,
+    TableCellData,
     TableData,
 )
 from opp.utils.exceptions import CorruptedFileError, PasswordProtectedError
@@ -173,6 +174,8 @@ class DOCXExtractor(ExtractorBase):
         para_index_map = self._build_paragraph_index_map(doc)
         images = self.extract_images(doc, input_path, para_index_map)
 
+        table_cells = self._extract_table_cells(doc.element.body, w_ns)
+
         skeleton_bytes: bytes | None = None
         skeleton_files: list[str] | None = None
         try:
@@ -205,6 +208,7 @@ class DOCXExtractor(ExtractorBase):
             warnings=warnings,
             skeleton=skeleton_bytes,
             skeleton_files=skeleton_files,
+            table_cells=table_cells,
         )
 
     def extract_paragraphs(self, doc: DocxDocument) -> list[ParagraphData]:
@@ -530,6 +534,51 @@ class DOCXExtractor(ExtractorBase):
                 rows.append([cell.text.strip() for cell in row.cells])
 
         return TableData(headers=headers, rows=rows, position=position)
+
+    def _extract_table_cells(self, body_elem: Any, w_ns: str) -> list[TableCellData]:
+        """Return every non-empty table cell as a translatable ``TableCellData``.
+
+        Tables are indexed in document order over the whole body, nested
+        tables included (``body_elem.iter`` is depth-first). Rows are the
+        direct ``w:tr`` children of a ``w:tbl``; cells are the direct
+        ``w:tc`` children of a ``w:tr``. A cell's text is the concatenation
+        of the ``w:t`` text under its direct ``w:p`` children only — text-box
+        content is skipped and a ``w:tbl`` nested inside the cell is not
+        descended into. Multiple cell paragraphs are joined with ``"\\n"``
+        (the XLIFF generator collapses them into one trans-unit).
+        """
+        tbl_tag = f"{w_ns}tbl"
+        tr_tag = f"{w_ns}tr"
+        tc_tag = f"{w_ns}tc"
+        p_tag = f"{w_ns}p"
+        t_tag = f"{w_ns}t"
+        txbx_tag = f"{w_ns}txbxContent"
+
+        cells: list[TableCellData] = []
+        for table_index, tbl in enumerate(body_elem.iter(tbl_tag)):
+            for row, tr in enumerate(tbl.findall(tr_tag)):
+                for col, tc in enumerate(tr.findall(tc_tag)):
+                    para_texts = []
+                    for p in tc.findall(p_tag):
+                        parts = [
+                            t.text or ""
+                            for t in p.iter(t_tag)
+                            if not any(
+                                anc.tag == txbx_tag for anc in t.iterancestors()
+                            )
+                        ]
+                        para_text = "".join(parts).strip()
+                        if para_text:
+                            para_texts.append(para_text)
+                    text = "\n".join(para_texts).strip()
+                    if text:
+                        cells.append(TableCellData(
+                            table_index=table_index,
+                            row=row,
+                            col=col,
+                            text=text,
+                        ))
+        return cells
 
     def _build_paragraph_index_map(self, doc: DocxDocument) -> dict:
         """Build a mapping from w:p element to paragraph index (0-based).

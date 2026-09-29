@@ -46,6 +46,7 @@ from opp.utils.dataclasses import (
     ImageData,
     ParagraphData,
     RunData,
+    TableCellData,
 )
 from opp.utils.exceptions import CorruptedFileError
 
@@ -188,6 +189,8 @@ class HTMLExtractor(ExtractorBase):
 
         images = self._extract_images(content, input_path.parent)
 
+        table_cells = self._extract_table_cells(content)
+
         skeleton_html = self._generate_skeleton_html(content, paragraphs)
 
         return ExtractionResult(
@@ -197,6 +200,7 @@ class HTMLExtractor(ExtractorBase):
             metadata=metadata,
             warnings=warnings,
             skeleton_html=skeleton_html,
+            table_cells=table_cells,
         )
 
     # ── Config / tool choice ─────────────────────────────────────
@@ -301,6 +305,43 @@ class HTMLExtractor(ExtractorBase):
             )
 
         return paragraphs
+
+    # ── Table-cell extraction ───────────────────────────────────
+
+    def _extract_table_cells(self, html_content: str) -> list[TableCellData]:
+        """Return every non-empty ``<td>``/``<th>`` as a translatable cell.
+
+        Tables are indexed in document order over the original HTML, nested
+        tables included (``find_all("table")``). Rows/cells are the direct
+        children only, matching ORF's ``table_{t}_r{r}_c{c}`` resolution.
+        This is additive: the markdown output and skeleton are untouched.
+        """
+        # Cheap guard: most HTML inputs have no table, so avoid a second full
+        # BeautifulSoup parse of a potentially huge document.
+        if "<table" not in html_content.lower():
+            return []
+
+        try:
+            soup = BeautifulSoup(html_content, "html.parser")
+        except Exception as e:
+            logger.warning(f"BeautifulSoup parsing failed for table cells: {e}")
+            return []
+
+        cells: list[TableCellData] = []
+        for table_index, table in enumerate(soup.find_all("table")):
+            for row, tr in enumerate(table.find_all("tr", recursive=False)):
+                for col, cell in enumerate(
+                    tr.find_all(["td", "th"], recursive=False)
+                ):
+                    text = cell.get_text(" ", strip=True)
+                    if text:
+                        cells.append(TableCellData(
+                            table_index=table_index,
+                            row=row,
+                            col=col,
+                            text=text,
+                        ))
+        return cells
 
     # ── Skeleton HTML generation ─────────────────────────────────
 
