@@ -25,6 +25,7 @@ Re-exports (backward compat for ``from opp.mcp.server import ...``):
 
 from __future__ import annotations
 
+import inspect
 import json
 import os
 import signal as _signal
@@ -36,6 +37,7 @@ from mcp.server.stdio import stdio_server
 import mcp.types as types
 
 from opp.mcp import common as _common
+from opp.mcp._errors import recovery_for as _recovery_for
 from opp.mcp.common import (_init_server, _signal_handler, logger)
 from opp.mcp.config import load_config
 from opp.mcp.health import start_health_server as _health_start
@@ -248,23 +250,27 @@ _TOOL_SCHEMAS: list[dict[str, Any]] = [
         "description": (
             "Validate an XLIFF 1.2 file against the OASIS XSD schema and the "
             "trans-unit content rules (non-empty source, unique IDs, valid lang codes). "
-            "Pass either xliff_content (inline string) or file_path."
+            "Pass xliff_content (inline string), file_path, or xliff_path."
         ),
         "inputSchema": {
             "type": "object",
             "properties": {
                 "xliff_content": {
                     "type": "string",
-                    "description": "Inline XLIFF XML. Takes precedence over file_path if both provided.",
+                    "description": "Inline XLIFF XML. Takes precedence over file_path/xliff_path if provided.",
                 },
                 "file_path": {
                     "type": "string",
-                     "description": "Path to .xlf/.xliff file. Used only if xliff_content is not provided.",
-                 },
-                 "auth_token": {"type": "string"},
-             },
-         },
-     },
+                    "description": "Path to .xlf/.xliff file. Used only if xliff_content is not provided.",
+                },
+                "xliff_path": {
+                    "type": "string",
+                    "description": "Alias for file_path (pipeline/ORF naming). Provide only one of file_path / xliff_path.",
+                },
+                "auth_token": {"type": "string"},
+            },
+        },
+    },
      {
          "name": "get_capabilities",
          "description": (
@@ -350,6 +356,37 @@ async def _handle_call_tool(
     timer = _metrics_timer()
     _traceparent_arg = (arguments or {}).get("traceparent")
     with _tracing_start_span(name, arguments, traceparent=_traceparent_arg) as _span:
+        binding_error = _bind_argument_error(fn, arguments)
+        if binding_error is not None:
+            duration = timer.seconds()
+            record_request_from_arguments(
+                name, arguments, _STATUS_ERROR, duration,
+            )
+            _tracing_set_status(
+                _span, "error",
+                error_code="OPP_INVALID_INPUT",
+                duration_ms=duration * 1000.0,
+            )
+            return [
+                types.TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {
+                            "success": False,
+                            "error": {
+                                "code": "OPP_INVALID_INPUT",
+                                "message": binding_error,
+                            },
+                            "error_code": "OPP_INVALID_INPUT",
+                            "message": binding_error,
+                            "recovery": _recovery_for("OPP_INVALID_INPUT"),
+                            "tool": name,
+                        },
+                        ensure_ascii=False,
+                    ),
+                )
+            ]
+
         try:
             result = await fn(**(arguments or {}))
         except Exception:
@@ -408,6 +445,65 @@ async def _handle_call_tool(
                 type="text", text=json.dumps(result, ensure_ascii=False)
             )
         ]
+
+
+def _bind_argument_error(
+    fn: Any, arguments: dict[str, Any] | None
+) -> str | None:
+    """Return an ``OPP_INVALID_INPUT`` message if *arguments* cannot bind to *fn*.
+
+    Detects unknown keys and missing required parameters *before* the call so a
+    caller-side naming mistake (e.g. ``xliff_path`` on a tool that only accepted
+    ``file_path``) is reported as ``OPP_INVALID_INPUT`` instead of being
+    swallowed by the error boundary as an opaque ``OPP_INTERNAL_ERROR``.
+
+    A ``TypeError`` raised *inside* a tool is a genuine bug and still maps to
+    ``OPP_INTERNAL_ERROR`` — this guard only inspects the signature.
+    """
+    try:
+        signature = inspect.signature(fn)
+    except (TypeError, ValueError):
+        return None
+
+    params = signature.parameters
+    provided = dict(arguments or {})
+
+    accepts_var_kwargs = any(
+        p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()
+    )
+    accepted = sorted(
+        name
+        for name, p in params.items()
+        if p.kind
+        in (
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            inspect.Parameter.KEYWORD_ONLY,
+        )
+    )
+
+    if not accepts_var_kwargs:
+        unknown = sorted(k for k in provided if k not in params)
+        if unknown:
+            return (
+                f"Unknown parameter(s): {', '.join(unknown)}. "
+                f"Accepted parameters: {', '.join(accepted)}."
+            )
+
+    missing = sorted(
+        name
+        for name, p in params.items()
+        if p.default is inspect.Parameter.empty
+        and p.kind
+        in (
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            inspect.Parameter.KEYWORD_ONLY,
+        )
+        and name not in provided
+    )
+    if missing:
+        return f"Missing required parameter(s): {', '.join(missing)}."
+
+    return None
 
 
 def _classify_status(result: dict[str, Any]) -> str:
