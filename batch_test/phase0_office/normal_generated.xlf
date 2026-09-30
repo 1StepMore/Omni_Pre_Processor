@@ -20,6 +20,33 @@
       <trans-unit xml:space="preserve" id="6" resname="para_index_5">
         <source xml:space="preserve">Content under section two.</source>
       </trans-unit>
+      <trans-unit xml:space="preserve" id="7" resname="table_0_r0_c0">
+        <source xml:space="preserve">Header A</source>
+      </trans-unit>
+      <trans-unit xml:space="preserve" id="8" resname="table_0_r0_c1">
+        <source xml:space="preserve">Header B</source>
+      </trans-unit>
+      <trans-unit xml:space="preserve" id="9" resname="table_0_r0_c2">
+        <source xml:space="preserve">Header C</source>
+      </trans-unit>
+      <trans-unit xml:space="preserve" id="10" resname="table_0_r1_c0">
+        <source xml:space="preserve">Row 1 Col A</source>
+      </trans-unit>
+      <trans-unit xml:space="preserve" id="11" resname="table_0_r1_c1">
+        <source xml:space="preserve">Row 1 Col B</source>
+      </trans-unit>
+      <trans-unit xml:space="preserve" id="12" resname="table_0_r1_c2">
+        <source xml:space="preserve">Row 1 Col C</source>
+      </trans-unit>
+      <trans-unit xml:space="preserve" id="13" resname="table_0_r2_c0">
+        <source xml:space="preserve">Row 2 Col A</source>
+      </trans-unit>
+      <trans-unit xml:space="preserve" id="14" resname="table_0_r2_c1">
+        <source xml:space="preserve">Row 2 Col B</source>
+      </trans-unit>
+      <trans-unit xml:space="preserve" id="15" resname="table_0_r2_c2">
+        <source xml:space="preserve">Row 2 Col C</source>
+      </trans-unit>
     </body>
   </file>
 </xliff>

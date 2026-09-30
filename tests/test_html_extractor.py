@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import pytest
@@ -77,9 +78,17 @@ class TestHTMLExtractor:
             assert len(result.paragraphs) > 0
 
     def test_large_file_performance(self, html_sample_files: Path):
-        """Test large file processing (slow, runs in seconds-to-minutes)."""
-        import os
+        """Large input must still clear a real throughput floor.
+
+        This used to assert only ``throughput_mbps > 0``, which is true for any
+        completed run, so it gated nothing while costing minutes of wall clock.
+        The floor below is what actually catches a regression: before the
+        ``_generate_skeleton_html`` text index fix, a DOM this size spent
+        ~80 min inside repeated ``soup.find_all`` calls, i.e. orders of
+        magnitude below the floor.
+        """
         import time
+
         if os.environ.get("CI"):
             pytest.skip("Large-file perf test is too slow for CI")
 
@@ -87,13 +96,15 @@ class TestHTMLExtractor:
 
         content_template = """<!DOCTYPE html><html><head><title>Large File Test</title></head><body><article>{}</article></body></html>"""
 
+        # 250 well-formed blocks: large enough to exercise the DOM walk, small
+        # enough to stay well inside the 120s budget CI uses (see ci.yml).
         paragraph = "<p>Content. " * 200 + "</p>\n"
-        repeated = paragraph * 2200
+        repeated = paragraph * 250
 
         large_file.write_text(content_template.format(repeated), encoding="utf-8")
 
         file_size = large_file.stat().st_size
-        assert file_size >= 5 * 1024 * 1024, f"File too small: {file_size / 1024 / 1024:.1f}MB"
+        assert file_size >= 512 * 1024, f"File too small: {file_size / 1024:.0f}KB"
 
         extractor = HTMLExtractor()
         start = time.time()
@@ -102,8 +113,12 @@ class TestHTMLExtractor:
 
         assert len(result.paragraphs) > 0, "No content extracted from large file"
 
-        throughput_mbps = (file_size / 1024 / 1024) / elapsed
-        assert throughput_mbps > 0, "Processing should complete"
+        mib = file_size / 1024 / 1024
+        throughput_mbps = mib / elapsed
+        assert throughput_mbps > 0.05, (
+            f"Throughput regression: {mib:.2f}MB in {elapsed:.1f}s "
+            f"= {throughput_mbps:.4f} MB/s (floor 0.05 MB/s)"
+        )
 
         large_file.unlink()
 
