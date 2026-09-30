@@ -76,6 +76,28 @@ _RE_HEADING = re.compile(r"^(#{1,6})\s+(.*)")
 _RE_BULLET_LIST = re.compile(r"^[\-\*]\s+")
 _RE_ORDERED_LIST = re.compile(r"^\d+\.\s+")
 _RE_CODE_FENCE = re.compile(r"^(?:```|~~~)")
+_BLOCK_TEXT_TAGS = frozenset(
+    {
+        "p",
+        "div",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "li",
+        "td",
+        "th",
+        "article",
+        "section",
+        "header",
+        "footer",
+        "aside",
+        "main",
+        "nav",
+    }
+)
 
 
 # ── HTMLExtractor ──────────────────────────────────────────────────
@@ -419,23 +441,86 @@ class HTMLExtractor(ExtractorBase):
             "nav",
         }
 
+        # Index block elements by their text without calling ``get_text()`` per
+        # element.  Per-element ``get_text`` is not viable: when a document
+        # nests same-tag elements (malformed markup such as repeated unclosed
+        # ``<p>``), element *k*'s subtree contains every later sibling, so each
+        # call re-walks a growing subtree and the index build goes cubic.
+        #
+        # Two linear passes instead:
+        #   1. every text node is attributed to its NEAREST block ancestor.  The
+        #      walk up stops at the first block tag, so it costs inline-tag
+        #      depth, not document depth.
+        #   2. a block's full text is its own parts plus its nearest block
+        #      children's full texts, folded deepest-first.  Parts are stripped
+        #      and CONCATENATED with no separator (bs4 inserts nothing between
+        #      them) and the result stripped again, which is exactly
+        #      ``get_text(strip=True)``.  Joining with a space would turn
+        #      "Hello <b>world</b>" into "Hello world" and stop matching the
+        #      paragraph text.
+        # ``block_tags`` is walked in its original order so the first matching
+        # tag still wins and each text keeps its FIRST element, matching the
+        # ``break``-on-first-hit behaviour of the original scan.
+        block_names = _BLOCK_TEXT_TAGS
+        blocks: dict[int, Any] = {}
+        for tag in block_tags:
+            for elem in soup.find_all(tag):
+                blocks.setdefault(id(elem), elem)
+
+        own_text: dict[int, list[str]] = {}
+        for node in soup.descendants:
+            parent = node.parent
+            while parent is not None and getattr(parent, "name", None) not in block_names:
+                parent = parent.parent
+            if parent is None:
+                continue
+            if isinstance(node, NavigableString):
+                text = str(node).strip()
+                if text:
+                    own_text.setdefault(id(parent), []).append(text)
+
+        depth: dict[int, int] = {}
+        for elem in blocks.values():
+            base = 0
+            cursor = elem.parent
+            while cursor is not None:
+                known = depth.get(id(cursor))
+                if known is not None:
+                    base = known
+                    break
+                cursor = cursor.parent
+            depth[id(elem)] = base + 1
+
+        full_text: dict[int, str] = {}
+        for elem in sorted(blocks.values(), key=lambda e: depth[id(e)], reverse=True):
+            parts = own_text.get(id(elem), [])
+            cursor = elem.parent
+            while cursor is not None and getattr(cursor, "name", None) not in block_names:
+                cursor = cursor.parent
+            if cursor is not None:
+                child = full_text.get(id(cursor))
+                if child:
+                    full_text[id(cursor)] = child + "".join(parts)
+                    continue
+            full_text[id(elem)] = "".join(parts)
+
+        elem_by_text: dict[str, Any] = {}
+        for tag in block_tags:
+            for elem in soup.find_all(tag):
+                elem_text = full_text.get(id(elem), "").strip()
+                if elem_text and elem_text not in elem_by_text:
+                    elem_by_text[elem_text] = elem
+
         matched = 0
         for idx, para in enumerate(paragraphs):
             para_text = para.text.strip()
             if not para_text:
                 continue
 
-            unit_id = f"para-{idx}"
-            for tag in block_tags:
-                for elem in soup.find_all(tag):
-                    elem_text = elem.get_text(strip=True)
-                    if elem_text == para_text:
-                        elem["data-trans-unit-id"] = unit_id
-                        matched += 1
-                        break
-                else:
-                    continue
-                break
+            elem = elem_by_text.get(para_text)
+            if elem is not None:
+                elem["data-trans-unit-id"] = f"para-{idx}"
+                matched += 1
 
         if matched == 0:
             return None
