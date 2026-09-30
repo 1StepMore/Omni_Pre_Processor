@@ -122,6 +122,11 @@ RECOVERY_HINTS: dict[str, RecoveryHint] = {
         "reduce_input",
         "Split the batch into smaller chunks or compress images, then re-issue.",
     ),
+    "OPP_NOT_INITIALIZED": RecoveryHint(
+        "configure_environment",
+        "Initialize the MCP server with a valid configuration (allowed "
+        "directories) before re-issuing the call.",
+    ),
     "OPP_INTERNAL_ERROR": RecoveryHint(
         "report_bug",
         "Do not retry blindly; check server logs for the traceback and file a bug report.",
@@ -145,7 +150,13 @@ RECOVERY_HINTS: dict[str, RecoveryHint] = {
 #: auth, rate-limit, and dispatch paths rather than by ``_ERROR_CODE_MAP``.
 DECLARED_ERROR_CODES: frozenset[str] = (
     frozenset(_ERROR_CODE_MAP.values())
-    | {"OPP_INTERNAL_ERROR", "OPP_UNKNOWN_TOOL", "AUTH_FAILED", "RATE_LIMITED"}
+    | {
+        "OPP_INTERNAL_ERROR",
+        "OPP_NOT_INITIALIZED",
+        "OPP_UNKNOWN_TOOL",
+        "AUTH_FAILED",
+        "RATE_LIMITED",
+    }
 )
 
 _FALLBACK_RECOVERY = RecoveryHint(
