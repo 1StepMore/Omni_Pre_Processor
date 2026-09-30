@@ -15,8 +15,9 @@ import re
 from pathlib import Path
 from typing import Any
 
-from bs4 import BeautifulSoup, NavigableString
+from bs4 import BeautifulSoup, NavigableString, Tag
 
+from opp.config import is_table_paragraph_units_enabled
 from opp.extractors.base import ExtractorBase
 from opp.extractors.html.markdown_converter import (
     DOCLING_AVAILABLE,
@@ -98,6 +99,132 @@ _BLOCK_TEXT_TAGS = frozenset(
         "nav",
     }
 )
+
+# OPP#80 Wave 2 — HTML table-cell block model.  Mirrors the ORF HTML writer's
+# ``_HTML_BLOCK_TAGS`` / ``_cell_paragraph_groups`` (xliff2html/writer.py) so
+# both sides number a cell's ``_para{p}`` groups identically: a direct-child
+# element whose tag is block-level is its own group; a maximal run of
+# consecutive non-block direct children (text / ``<br>`` / inline element) is
+# one inline group.  Whitespace-only runs still consume a group index so a
+# following non-empty group keeps the same ``{p}`` ORF will resolve.  Keep this
+# set in sync with ORF (a drift silently misplaces translations).
+_TABLE_CELL_BLOCK_TAGS = frozenset(
+    {
+        "p",
+        "div",
+        "section",
+        "article",
+        "li",
+        "blockquote",
+        "pre",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "ul",
+        "ol",
+        "table",
+        "figure",
+        "figcaption",
+        "address",
+        "dt",
+        "dd",
+        "hr",
+    }
+)
+
+_RE_WHITESPACE_RUN = re.compile(r"\s+")
+
+
+def _is_table_cell_block(node: Any) -> bool:
+    """True for a direct-child ``Tag`` whose tag name is in the block set."""
+    return (
+        isinstance(node, Tag)
+        and isinstance(node.name, str)
+        and node.name.lower() in _TABLE_CELL_BLOCK_TAGS
+    )
+
+
+def _table_cell_group_text(group: list[Any]) -> str:
+    """Concatenated descendant text of one group, whitespace-collapsed."""
+    parts = [
+        node.get_text(" ", strip=True) if isinstance(node, Tag) else str(node)
+        for node in group
+    ]
+    return _RE_WHITESPACE_RUN.sub(" ", " ".join(parts)).strip()
+
+
+def _table_cell_paragraph_groups(cell: Any) -> list[list[Any]]:
+    """Enumerate a cell's direct children as paragraph groups, as ORF does.
+
+    Walks the cell's direct children in document order; a block-level child is
+    its own group, every other child accumulates into the current inline run,
+    flushed when a block child appears and at the end.  Whitespace-only nodes
+    are kept, so every following group's index matches ORF's
+    ``_cell_paragraph_groups`` exactly.
+    """
+    groups: list[list[Any]] = []
+    inline_run: list[Any] = []
+    for child in cell.children:
+        if _is_table_cell_block(child):
+            if inline_run:
+                groups.append(inline_run)
+                inline_run = []
+            groups.append([child])
+        else:
+            inline_run.append(child)
+    if inline_run:
+        groups.append(inline_run)
+    return groups
+
+
+def _table_cell_units(
+    cell: Any, table_index: int, row: int, col: int
+) -> list[TableCellData]:
+    """Build the translatable units for one cell with the flag ON.
+
+    A cell becomes per-paragraph only when it has at least two direct
+    block-level children AND no inline group carries non-whitespace text.
+    Anything else (inline-only, or a stray ``intro<p>..</p>`` prefix) keeps the
+    legacy whole-cell unit.  A whitespace-only group emits no unit but still
+    consumes its group index, so a later group's ``para_index`` stays aligned
+    with ORF.
+    """
+    groups = _table_cell_paragraph_groups(cell)
+    block_children = sum(
+        1 for child in cell.children if _is_table_cell_block(child)
+    )
+    has_stray_inline = any(
+        _table_cell_group_text(group)
+        for group in groups
+        if not (len(group) == 1 and _is_table_cell_block(group[0]))
+    )
+
+    if block_children >= 2 and not has_stray_inline:
+        units: list[TableCellData] = []
+        for index, group in enumerate(groups):
+            text = _table_cell_group_text(group)
+            if text:
+                units.append(TableCellData(
+                    table_index=table_index,
+                    row=row,
+                    col=col,
+                    text=text,
+                    para_index=index,
+                ))
+        return units
+
+    text = cell.get_text(" ", strip=True)
+    if not text:
+        return []
+    return [TableCellData(
+        table_index=table_index,
+        row=row,
+        col=col,
+        text=text,
+    )]
 
 
 # ── HTMLExtractor ──────────────────────────────────────────────────
@@ -374,6 +501,12 @@ class HTMLExtractor(ExtractorBase):
         tables included (``find_all("table")``). Rows/cells are the direct
         children only, matching ORF's ``table_{t}_r{r}_c{c}`` resolution.
         This is additive: the markdown output and skeleton are untouched.
+
+        With ``OPP_TABLE_PARAGRAPH_UNITS`` OFF (the default) a non-empty cell is
+        one bare unit whose text is space-joined -- unchanged. With it ON, a
+        cell that has at least two direct block-level children and no stray
+        (non-whitespace) inline content emits one ``_para{p}`` unit per
+        non-empty block group instead; every other cell stays legacy.
         """
         # Cheap guard: most HTML inputs have no table, so avoid a second full
         # BeautifulSoup parse of a potentially huge document.
@@ -386,12 +519,19 @@ class HTMLExtractor(ExtractorBase):
             logger.warning(f"BeautifulSoup parsing failed for table cells: {e}")
             return []
 
+        per_paragraph = is_table_paragraph_units_enabled()
+
         cells: list[TableCellData] = []
         for table_index, table in enumerate(soup.find_all("table")):
             for row, tr in enumerate(table.find_all("tr", recursive=False)):
                 for col, cell in enumerate(
                     tr.find_all(["td", "th"], recursive=False)
                 ):
+                    if per_paragraph:
+                        cells.extend(
+                            _table_cell_units(cell, table_index, row, col)
+                        )
+                        continue
                     text = cell.get_text(" ", strip=True)
                     if text:
                         cells.append(TableCellData(
