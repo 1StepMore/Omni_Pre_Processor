@@ -492,11 +492,17 @@ class XLIFFFileGenerator:
         # paragraph texts joined with "\n".
         for cell in table_cells:
             unit_id += 1
+            # Appended only when the extractor set para_index; the generator
+            # must never read the env flag (policy lives in the extractor, and
+            # this resname is the OPP<->ORF coupling contract).
+            resname = f"table_{cell.table_index}_r{cell.row}_c{cell.col}"
+            if cell.para_index is not None:
+                resname = f"{resname}_para{cell.para_index}"
             unit = XLIFFTransUnit(
                 id=str(unit_id),
                 source=cell.text,
                 source_language=source_lang,
-                resname=f"table_{cell.table_index}_r{cell.row}_c{cell.col}",
+                resname=resname,
             )
             generator.add_unit(unit)
 
