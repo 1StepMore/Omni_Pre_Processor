@@ -118,3 +118,17 @@ def load_config(config_path: Path | None = None) -> OPPConfig:
 
 def get_config() -> OPPConfig:
     return OPPConfig.get_instance()
+
+
+def is_table_paragraph_units_enabled() -> bool:
+    """Return True if per-paragraph table units are enabled.
+
+    Reads the ``OPP_TABLE_PARAGRAPH_UNITS`` environment variable at CALL
+    time (never cached at import time) so tests can monkeypatch it. Truthy
+    values are exactly ``1``, ``true``, ``yes`` and ``on``, compared
+    case-insensitively after stripping surrounding whitespace. Unset, empty,
+    or unrecognized values are OFF (the default), which preserves the legacy
+    whole-cell ``table_{t}_r{r}_c{c}`` behavior byte-for-byte.
+    """
+    val = os.environ.get("OPP_TABLE_PARAGRAPH_UNITS", "").strip().lower()
+    return val in ("1", "true", "yes", "on")

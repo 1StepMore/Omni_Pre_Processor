@@ -10,6 +10,7 @@ from docx.document import Document as DocxDocument
 from docx.table import Table as DocxTable
 from lxml import etree
 
+from opp.config import is_table_paragraph_units_enabled
 from opp.extractors.base import ExtractorBase
 from opp.utils.dataclasses import (
     ExtractionResult,
@@ -544,8 +545,16 @@ class DOCXExtractor(ExtractorBase):
         ``w:tc`` children of a ``w:tr``. A cell's text is the concatenation
         of the ``w:t`` text under its direct ``w:p`` children only — text-box
         content is skipped and a ``w:tbl`` nested inside the cell is not
-        descended into. Multiple cell paragraphs are joined with ``"\\n"``
-        (the XLIFF generator collapses them into one trans-unit).
+        descended into.
+
+        ``OPP_TABLE_PARAGRAPH_UNITS`` (read once per call) changes the cell
+        granularity. OFF (default): the cell's paragraphs are joined with
+        ``"\\n"`` into ONE bare unit. ON: when a cell has >= 2 RAW direct-child
+        ``w:p`` (empty paragraphs included) each NON-EMPTY paragraph becomes
+        its own unit carrying ``para_index`` — the 0-based index into that raw
+        ``w:p`` list. An empty paragraph still consumes an index but emits no
+        unit, so ``[P0, "", P2]`` yields ``para_index`` 0 and 2. A single
+        paragraph (or an all-empty cell) keeps the legacy bare unit / no unit.
         """
         tbl_tag = f"{w_ns}tbl"
         tr_tag = f"{w_ns}tr"
@@ -554,12 +563,16 @@ class DOCXExtractor(ExtractorBase):
         t_tag = f"{w_ns}t"
         txbx_tag = f"{w_ns}txbxContent"
 
+        per_paragraph = is_table_paragraph_units_enabled()
         cells: list[TableCellData] = []
         for table_index, tbl in enumerate(body_elem.iter(tbl_tag)):
             for row, tr in enumerate(tbl.findall(tr_tag)):
                 for col, tc in enumerate(tr.findall(tc_tag)):
-                    para_texts = []
-                    for p in tc.findall(p_tag):
+                    # NOTE: this is the RAW direct-child list ORF enumerates
+                    # with tc.findall(w:p); empty paragraphs consume an index.
+                    paragraphs = tc.findall(p_tag)
+                    para_texts: list[tuple[int, str]] = []
+                    for raw_index, p in enumerate(paragraphs):
                         parts = [
                             t.text or ""
                             for t in p.iter(t_tag)
@@ -569,8 +582,20 @@ class DOCXExtractor(ExtractorBase):
                         ]
                         para_text = "".join(parts).strip()
                         if para_text:
-                            para_texts.append(para_text)
-                    text = "\n".join(para_texts).strip()
+                            para_texts.append((raw_index, para_text))
+
+                    if per_paragraph and len(paragraphs) >= 2:
+                        for raw_index, para_text in para_texts:
+                            cells.append(TableCellData(
+                                table_index=table_index,
+                                row=row,
+                                col=col,
+                                text=para_text,
+                                para_index=raw_index,
+                            ))
+                        continue
+
+                    text = "\n".join(t for _, t in para_texts).strip()
                     if text:
                         cells.append(TableCellData(
                             table_index=table_index,

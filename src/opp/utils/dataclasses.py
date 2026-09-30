@@ -55,11 +55,19 @@ class TableCellData:
     ``table_index``/``row``/``col`` are raw node indices (no merged-cell/grid
     expansion) shared with ORF so both sides resolve ``table_{t}_r{r}_c{c}``
     resnames to the same cell.
+
+    ``para_index`` (optional) selects ONE paragraph within the cell when the
+    cell is emitted as a per-paragraph unit. It is the 0-based index into the
+    cell's RAW direct-child paragraph list, INCLUDING empty paragraphs.
+    ``None`` (the default) means "whole cell": the legacy behavior where the
+    cell's several paragraphs are collapsed into one ``table_{t}_r{r}_c{c}``
+    unit. When set, the generator emits ``table_{t}_r{r}_c{c}_para{p}``.
     """
     table_index: int
     row: int
     col: int
     text: str
+    para_index: int | None = None
 
 
 @dataclass

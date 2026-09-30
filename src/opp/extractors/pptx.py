@@ -7,6 +7,7 @@ from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE, PP_PLACEHOLDER
 from pptx.oxml.ns import qn
 
+from opp.config import is_table_paragraph_units_enabled
 from opp.extractors.base import ExtractorBase
 from opp.logger import logger
 from opp.utils.dataclasses import (
@@ -204,11 +205,19 @@ class PPTXExtractor(ExtractorBase):
         ``findall`` writer will use. Merged-cell grid expansion / de-dup is
         deliberately not implemented here (issue #80): a spanned cell has
         empty text and therefore contributes no trans-unit.
+
+        The ``TableCellData`` list alone is flag-shaped: with
+        ``OPP_TABLE_PARAGRAPH_UNITS`` ON, ``_cell_paragraph_units`` re-walks
+        the raw ``a:tc`` and emits one unit per non-empty paragraph. The
+        legacy whole-cell emission, ``values``/``all_rows`` and ``TableData``
+        (the markdown table) stay byte-identical in both flag states.
         """
         table = shape.table
         trs = table._tbl.findall(qn("a:tr"))
         if not trs:
             return
+
+        per_paragraph = is_table_paragraph_units_enabled()
 
         all_rows: list[list[str]] = []
         for row, tr in enumerate(trs):
@@ -217,7 +226,13 @@ class PPTXExtractor(ExtractorBase):
             for col in range(len(tcs)):
                 text = self._cell_text(table.rows[row].cells[col])
                 values.append(text)
-                if text:
+                if not text:
+                    continue
+                if per_paragraph:
+                    state.table_cells.extend(self._cell_paragraph_units(
+                        tcs[col], state.table_index, row, col, text,
+                    ))
+                else:
                     state.table_cells.append(TableCellData(
                         table_index=state.table_index,
                         row=row,
@@ -236,6 +251,76 @@ class PPTXExtractor(ExtractorBase):
         ))
         state.table_index += 1
         state.position += 1
+
+    def _cell_paragraph_units(
+        self,
+        tc: Any,
+        table_index: int,
+        row: int,
+        col: int,
+        cell_text: str,
+    ) -> list[TableCellData]:
+        """Enumerate ONE raw ``a:tc`` into ``TableCellData`` (flag ON only).
+
+        Contract (CONTRACT.md §Table Cell Coordinates): ``para_index`` is the
+        0-based index into the cell's RAW paragraph list INCLUDING empty
+        paragraphs, computed with the SAME primitive ORF's writer uses —
+        ``tc.iter("a:p")`` on the raw ``a:tc`` — and NOT
+        ``text_frame.paragraphs``, whose grid API may expand merged cells and
+        desynchronise the indices. An empty paragraph consumes an index but
+        emits no unit.
+
+        - >= 2 raw ``a:p``: one unit per NON-EMPTY paragraph, every unit
+          carrying ``para_index`` — including 0. A bare ``_para``-less unit for
+          paragraph 0 would let a consumer write positionally and then clear
+          the remaining paragraphs' runs, destroying their text.
+        - 1 raw ``a:p``: one bare whole-cell unit (``cell_text``, taken from
+          the untouched ``_cell_text``) — never a ``_para0`` suffix.
+        - all paragraphs empty: no unit (same as flag OFF).
+
+        ``TableData``/markdown is built exclusively from ``_cell_text`` by the
+        caller, so this path cannot shift any markdown assertion.
+        """
+        paragraphs = list(tc.iter(qn("a:p")))
+        if len(paragraphs) < 2:
+            if not cell_text:
+                return []
+            return [TableCellData(
+                table_index=table_index,
+                row=row,
+                col=col,
+                text=cell_text,
+            )]
+        units: list[TableCellData] = []
+        for para_index, p_elem in enumerate(paragraphs):
+            para_text = self._paragraph_run_text(p_elem)
+            if not para_text:
+                continue
+            units.append(TableCellData(
+                table_index=table_index,
+                row=row,
+                col=col,
+                text=para_text,
+                para_index=para_index,
+            ))
+        return units
+
+    @staticmethod
+    def _paragraph_run_text(p_elem: Any) -> str:
+        """Text carried by ONE raw ``a:p``'s direct ``a:r``/``a:t`` runs.
+
+        Mirrors ORF's write target (``a:p`` -> direct ``a:r`` -> direct
+        ``a:t``, cf. ``_apply_para_unit_to_cell``) so a paragraph OPP calls
+        empty is exactly one ORF cannot backfill — an ``a:fld``-only paragraph
+        would otherwise become a dead unit ORF warns-and-skips. ``a:br`` and
+        ``a:fld`` contribute nothing here (``_cell_text``'s ``\\v`` soft-break
+        rendering is out of scope, OPP#80); runs are never split. Result is
+        stripped so emptiness matches the ``_cell_text`` join semantics.
+        """
+        parts: list[str] = []
+        for r_elem in p_elem.findall(qn("a:r")):
+            parts.extend(t.text or "" for t in r_elem.findall(qn("a:t")))
+        return "".join(parts).strip()
 
     def _cell_text(self, cell: Any) -> str:
         """Cell text read paragraph-wise and joined with ``"\\n"``.
