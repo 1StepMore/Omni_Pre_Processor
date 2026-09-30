@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import inspect
 import os
+import re
 from pathlib import Path
 
 import pytest
@@ -260,13 +261,39 @@ class TestCleanupOnShutdownDefault:
 
 
 class TestVersionBump:
-    """Version must be 0.9.1."""
+    """The version must agree across every place it is recorded.
 
-    def test_init_version_is_0_9_1(self):
-        from opp import __version__
-        assert __version__ == "0.9.1"
+    This used to assert the literal "0.9.1", which meant the test broke on
+    every release and had to be hand-edited each time — and during the 0.10.0
+    bump it caught a real miss: the hardcoded fallback in
+    ``src/opp/__init__.py`` was left behind. Asserting agreement between the
+    sources keeps catching that class of bug without needing an edit per
+    release.
+    """
 
-    def test_pyproject_version_is_0_9_1(self):
+    def _pyproject_version(self) -> str:
         pyproject = Path(__file__).parent.parent / "pyproject.toml"
-        content = pyproject.read_text()
-        assert 'version = "0.9.1"' in content
+        match = re.search(r'^version = "([^"]+)"', pyproject.read_text(), re.M)
+        assert match, "no version field in pyproject.toml"
+        return match.group(1)
+
+    def test_init_version_matches_pyproject(self):
+        from opp import __version__
+
+        assert __version__ == self._pyproject_version()
+
+    def test_init_fallback_matches_pyproject(self):
+        """The no-metadata fallback in __init__ must not drift from pyproject."""
+        source = (Path(__file__).parent.parent / "src" / "opp" / "__init__.py").read_text()
+        fallback = re.search(r'__version__ = "([^"]+)"', source)
+        assert fallback, "no hardcoded __version__ fallback found"
+        assert fallback.group(1) == self._pyproject_version()
+
+    def test_uv_lock_records_pyproject_version(self):
+        """CI runs `uv --no-config lock --check`; the lock records this version."""
+        lock = Path(__file__).parent.parent / "uv.lock"
+        match = re.search(
+            r'name = "omni-pre-processor"\nversion = "([^"]+)"', lock.read_text()
+        )
+        assert match, "no omni-pre-processor entry in uv.lock"
+        assert match.group(1) == self._pyproject_version()
