@@ -277,6 +277,21 @@ def _build_json_payload(stats: dict) -> dict:
     return payload
 
 
+def _error_payload(code: str, message: str) -> dict:
+    """Build the failure envelope emitted on stdout under ``--json``.
+
+    Single formatting site for every CLI error envelope so the shape
+    ``{success, error: {code, message}, warnings}`` is defined exactly once.
+    ``message`` must be a fixed, caller-safe string: it must never embed
+    ``str(exc)``, filesystem paths, or other implementation detail (issue #82).
+    """
+    return {
+        "success": False,
+        "error": {"code": code, "message": message},
+        "warnings": [],
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = create_parser()
     args = parser.parse_args(argv)
@@ -289,7 +304,7 @@ def main(argv: list[str] | None = None) -> int:
         msg = "--target-lang is required when --target-format is 'xlf' or 'both'"
         if args.json:
             print(json.dumps(
-                {"success": False, "error": {"code": "OPP_INVALID_ARGS", "message": msg}, "warnings": []},
+                _error_payload("OPP_INVALID_ARGS", msg),
                 ensure_ascii=False,
             ))
             return 2
@@ -410,7 +425,7 @@ def main(argv: list[str] | None = None) -> int:
         logger.warning("No supported files found")
         if args.json:
             print(json.dumps(
-                {"success": False, "error": {"code": "OPP_NO_INPUT", "message": "No supported files found"}, "warnings": []},
+                _error_payload("OPP_NO_INPUT", "No supported files found"),
                 ensure_ascii=False,
             ))
         return 1
@@ -435,15 +450,29 @@ def main(argv: list[str] | None = None) -> int:
     return 0 if stats["errors"] == 0 else 1
 
 
-if __name__ == "__main__":
+def _run_main_with_guard() -> int:
+    """Run ``main()`` and convert uncaught exceptions into a safe exit.
+
+    The full traceback is logged server-side via ``get_logger().exception``;
+    the ``--json`` envelope carries only a fixed, generic message - raw
+    exception text, internal paths, and implementation detail must never
+    reach the caller (issue #82, defect 1). The exit code stays 1: the
+    deliberate exit-code taxonomy is unchanged.
+    """
     try:
-        sys.exit(main())
-    except Exception as exc:
-        from opp.logger import get_logger
+        return main()
+    except Exception:
         get_logger().exception("Uncaught exception in main")
         if "--json" in sys.argv:
             print(json.dumps(
-                {"success": False, "error": {"code": "OPP_INTERNAL_ERROR", "message": str(exc)}, "warnings": []},
+                _error_payload(
+                    "OPP_INTERNAL_ERROR",
+                    "Internal error; see server logs for details.",
+                ),
                 ensure_ascii=False,
             ))
-        sys.exit(1)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(_run_main_with_guard())

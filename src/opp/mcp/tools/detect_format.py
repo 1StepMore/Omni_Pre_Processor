@@ -33,7 +33,10 @@ async def detect_format_tool(
             message="Authentication failed: auth_token is missing or incorrect.",
         )
     if _c._validator is None:
-        raise McpError(code="OPP_INTERNAL_ERROR", message="Server not initialized")
+        raise McpError(
+            code="OPP_NOT_INITIALIZED",
+            message="MCP server is not initialized; call the initialize/config path first",
+        )
 
     validation_result = _c._validator.validate_path(file_path)
     if not validation_result.success:

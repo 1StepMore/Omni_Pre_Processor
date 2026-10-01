@@ -80,7 +80,10 @@ async def batch_extract(
             )
 
     if _c._validator is None:
-        raise McpError(code="OPP_INTERNAL_ERROR", message="Server not initialized")
+        raise McpError(
+            code="OPP_NOT_INITIALIZED",
+            message="MCP server is not initialized; call the initialize/config path first",
+        )
 
     validate_file_paths(file_paths)
 
