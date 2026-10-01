@@ -92,11 +92,16 @@ class PathValidator:
         max_file_size_bytes: Maximum allowed file size in bytes (default: 100MB).
     """
 
-    # Document format extensions allowed through MCP
+    # Document format extensions allowed through MCP.
+    # OPP #88: .ipynb was extractor-supported but MCP-denied; .tsv/.msg
+    # (same text-class case) and .htm (alias of .html, same parser) fixed
+    # alongside. Media/network formats stay out intentionally (see
+    # tests/mcp/test_allowed_extensions_contract.py exemptions).
     ALLOWED_EXTENSIONS: set[str] = {
         ".md", ".docx", ".pptx", ".pdf", ".xliff", ".xlf", ".xml",
-        ".html", ".odt", ".epub", ".zip", ".txt",
-        ".xlsx", ".csv", ".json", ".eml",
+        ".html", ".htm", ".odt", ".epub", ".zip", ".txt",
+        ".xlsx", ".csv", ".tsv", ".json", ".eml", ".msg",
+        ".ipynb",
     }
 
     def __init__(
