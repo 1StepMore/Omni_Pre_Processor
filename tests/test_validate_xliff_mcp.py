@@ -17,8 +17,14 @@ import sys
 import pytest
 
 
-# Skip the entire module if opp is not available
-pytest.importorskip("opp")
+# Skip the entire module unless the OPP MCP tool surface is importable.
+# The guard must name the module this file actually imports: guarding bare
+# `opp` is vacuous (opp is this repo's own package) and turns a missing
+# optional `mcp` extra (mcp / fastmcp / pyyaml) into 7 hard failures.
+pytest.importorskip(
+    "opp.mcp.tools.validate_xliff",
+    reason="opp.mcp tools not available (needs the optional 'mcp' extra)",
+)
 
 
 # ---------------------------------------------------------------------------

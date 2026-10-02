@@ -19,7 +19,13 @@ import json
 
 import pytest
 
-pytest.importorskip("opp")
+# Guard the module this file actually imports (`opp.mcp.server` pulls in the
+# whole MCP surface): guarding bare `opp` is vacuous (opp is this repo's own
+# package) and turns a missing optional `mcp` extra into a collection ERROR.
+pytest.importorskip(
+    "opp.mcp.server",
+    reason="opp.mcp server not available (needs the optional 'mcp' extra)",
+)
 
 from opp.mcp import server as opp_server  # noqa: E402
 from opp.mcp.config import MCPConfig  # noqa: E402
