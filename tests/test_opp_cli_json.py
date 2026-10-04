@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -233,3 +234,61 @@ class TestJsonHelp:
         proc = run_opp("--help")
         assert proc.returncode == 0
         assert "--json" in proc.stdout
+
+
+def _make_html(path: Path) -> Path:
+    path.write_text(
+        "<!DOCTYPE html>\n"
+        "<html><head><meta charset='utf-8'><title>Sample</title></head>\n"
+        "<body><h1>Heading One</h1><p>Hello, world.</p>"
+        "<p>Second paragraph of body text.</p></body></html>",
+        encoding="utf-8",
+    )
+    return path
+
+
+class TestHtmlSkeletonZip:
+    """#92: an HTML input ships a skeleton.zip so ORF apply-xliff is reachable.
+
+    ORF's ``FormatDetector.detect_from_skeleton`` reports HTML only when the
+    archive holds a top-level ``.html``/``.htm`` entry, so the entry layout is
+    part of the contract, not an implementation detail.
+    """
+
+    def test_html_extraction_emits_skeleton_zip_and_standalone_html(self, tmp_path):
+        # Given: an HTML source
+        src = _make_html(tmp_path / "sample.html")
+        out = tmp_path / "out"
+
+        # When: the shipped CLI extracts to md + xliff + html
+        proc = run_opp(
+            str(src), "--target-format", "both",
+            "--source-lang", "en", "--target-lang", "zh",
+            "--output-dir", str(out), "--json",
+        )
+
+        # Then: exit 0 and the JSON envelope reports a real skeleton path
+        assert proc.returncode == 0, f"stderr={proc.stderr}"
+        payload = json.loads(proc.stdout)
+        skeleton = Path(payload["outputs"]["skeleton"])
+        assert skeleton.name == "sample.skeleton.zip"
+        assert skeleton.exists(), f"no skeleton at {skeleton}"
+
+        with zipfile.ZipFile(skeleton) as zf:
+            names = zf.namelist()
+            packed = zf.read(names[0]).decode("utf-8")
+        assert any(
+            n.lower().endswith((".html", ".htm")) and "/" not in n for n in names
+        ), f"ORF cannot detect HTML from {names}"
+        assert 'data-trans-unit-id="para-' in packed
+
+        # And: the pre-existing standalone .html output is unchanged
+        standalone = out / "sample.html"
+        assert standalone.exists()
+        assert standalone.read_text(encoding="utf-8").lstrip().lower().startswith(
+            ("<!doctype html", "<html")
+        )
+
+        # And: the manifest records the skeleton
+        manifest = json.loads((out / "sample_manifest.json").read_text(encoding="utf-8"))
+        assert manifest["skeleton"]["path"] == "sample.skeleton.zip"

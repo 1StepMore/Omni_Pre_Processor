@@ -1,8 +1,9 @@
+import logging
+import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
-import logging
 
 from opp.detector import detect_format, FormatType
 from opp.error_handler import ErrorHandler, ErrorContext
@@ -20,6 +21,11 @@ from opp.utils.images_json import generate_images_json
 # Pinned by the T2 regression scenario + OPP tests + suite W3.2; the CLI
 # surfaces it on stderr verbatim (STANDARDS.md#exit-codes). Do not reword.
 PDF_XLIFF_UNSUPPORTED_MSG = "XLIFF not supported for PDF format"
+
+# Cross-repo contract (issue #92): ORF's ``FormatDetector.detect_from_skeleton``
+# reports HTML only for a top-level ``.html``/``.htm`` entry (no ``/`` in the
+# name), so the packaged skeleton must sit at the archive root.
+HTML_SKELETON_ENTRY_NAME = "index.html"
 
 
 @dataclass
@@ -177,8 +183,13 @@ class OPPPipeline:
     ) -> Path | None:
         """Save skeleton ZIP file.
 
+        DOCX/PPTX/EPUB supply a rebuilt container in ``result.skeleton`` and are
+        written verbatim. HTML has no container to rewrite — its skeleton is
+        already a complete document in ``result.skeleton_html`` — so it is
+        packaged as a single top-level HTML entry (issue #92).
+
         Args:
-            result: ExtractionResult containing skeleton bytes
+            result: ExtractionResult containing skeleton bytes or skeleton HTML
             base_name: Output file base name
             output_dir: Output directory
 
@@ -187,14 +198,30 @@ class OPPPipeline:
         """
         # Issue #50: accept both str and Path (idempotent — Path() of Path is the same)
         output_dir = Path(output_dir)
-        if not result or not result.skeleton:
+
+        # PDF also fills skeleton_html (pandoc HTML) but keeps format_type="pdf"
+        # so the PDF→XLIFF guard still fires; it must not gain a skeleton ZIP.
+        is_html = (
+            result is not None
+            and result.metadata is not None
+            and result.metadata.format_type == "html"
+        )
+        skeleton_html = result.skeleton_html if is_html else None
+
+        if not result or (not result.skeleton and not skeleton_html):
             return None
 
         skeleton_path = output_dir / f"{base_name}.skeleton.zip"
 
         try:
-            with open(skeleton_path, "wb") as f:
-                f.write(result.skeleton)
+            if result.skeleton:
+                with open(skeleton_path, "wb") as f:
+                    f.write(result.skeleton)
+            elif skeleton_html is not None:
+                with zipfile.ZipFile(skeleton_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                    zf.writestr(
+                        HTML_SKELETON_ENTRY_NAME, skeleton_html.encode("utf-8")
+                    )
             self.logger.info(f"Skeleton saved: {skeleton_path}")
             return skeleton_path
         except IOError as e:
