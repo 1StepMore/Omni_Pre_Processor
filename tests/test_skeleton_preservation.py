@@ -7,8 +7,10 @@ from docx import Document
 from pptx import Presentation
 
 from opp.extractors.docx import DOCXExtractor
+from opp.extractors.html import HTMLExtractor
 from opp.extractors.pptx import PPTXExtractor
 from opp.pipeline import OPPPipeline
+from opp.utils.dataclasses import DocumentMetadata, ExtractionResult
 
 
 class TestSkeletonPreservation:
@@ -96,3 +98,106 @@ class TestSkeletonPreservation:
 
         saved_content = skeleton_path.read_bytes()
         assert saved_content == result.skeleton, "Saved skeleton should match original"
+
+
+HTML_SKELETON_ENTRY = "index.html"
+
+HTML_FIXTURE = """<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Skeleton</title></head>
+<body><h1>Main Title</h1><p>Hello World</p><p>Second paragraph</p></body></html>"""
+
+
+class TestHtmlSkeletonZip:
+    """HTML skeletons are packaged as a ZIP so the XLIFF channel stops skipping
+    HTML cells (1StepMore/Omni_Pre_Processor#92)."""
+
+    @staticmethod
+    def _extract_html(tmp_path: Path) -> ExtractionResult:
+        html_file = tmp_path / "test.html"
+        html_file.write_text(HTML_FIXTURE, encoding="utf-8")
+        result = HTMLExtractor().extract(html_file)
+        assert result.skeleton_html is not None
+        assert result.skeleton is None, "HTML has no container to rewrite"
+        return result
+
+    def test_html_writes_skeleton_zip_on_disk(self, tmp_path: Path):
+        result = self._extract_html(tmp_path)
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+
+        pipeline = OPPPipeline(resource_storage_dir=tmp_path / "resources")
+        skeleton_path = pipeline.save_skeleton(result, "test", output_dir)
+
+        assert skeleton_path is not None, "save_skeleton should return a path for HTML"
+        assert skeleton_path.name == "test.skeleton.zip"
+        assert skeleton_path.exists(), "Skeleton ZIP should exist on disk"
+        assert skeleton_path.stat().st_size > 0, "Skeleton ZIP should not be empty"
+
+        with zipfile.ZipFile(skeleton_path) as zf:
+            assert zf.testzip() is None, "Skeleton ZIP should be readable"
+            assert zf.namelist() == [HTML_SKELETON_ENTRY]
+            assert zf.read(HTML_SKELETON_ENTRY).decode("utf-8") == result.skeleton_html
+
+    def test_html_skeleton_entry_is_detectable_as_html(self, tmp_path: Path):
+        """ORF's FormatDetector.detect_from_skeleton reports HTML only for a
+        top-level .html/.htm entry (no "/" in the name)."""
+        result = self._extract_html(tmp_path)
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+
+        pipeline = OPPPipeline(resource_storage_dir=tmp_path / "resources")
+        skeleton_path = pipeline.save_skeleton(result, "test", output_dir)
+
+        with zipfile.ZipFile(skeleton_path) as zf:
+            names = zf.namelist()
+        assert any(
+            n.lower().endswith((".html", ".htm")) and "/" not in n for n in names
+        ), f"ORF cannot detect HTML from {names}"
+        assert "word/document.xml" not in names
+        assert "ppt/presentation.xml" not in names
+        assert "xl/workbook.xml" not in names
+
+    def test_html_skeleton_keeps_segment_ids(self, tmp_path: Path):
+        result = self._extract_html(tmp_path)
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+
+        pipeline = OPPPipeline(resource_storage_dir=tmp_path / "resources")
+        skeleton_path = pipeline.save_skeleton(result, "test", output_dir)
+
+        with zipfile.ZipFile(skeleton_path) as zf:
+            packed = zf.read(HTML_SKELETON_ENTRY).decode("utf-8")
+        assert 'data-trans-unit-id="para-' in packed
+
+    def test_non_html_skeleton_html_does_not_write_zip(self, tmp_path: Path):
+        """PDF sets skeleton_html too (pdf2html.py) but must stay skeleton-free."""
+        result = ExtractionResult(
+            paragraphs=[],
+            tables=[],
+            images=[],
+            metadata=DocumentMetadata(format_type="pdf"),
+            skeleton_html="<html><body><p>pdf</p></body></html>",
+        )
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+
+        pipeline = OPPPipeline(resource_storage_dir=tmp_path / "resources")
+        assert pipeline.save_skeleton(result, "test", output_dir) is None
+        assert not list(output_dir.glob("*.skeleton.zip"))
+
+    def test_html_without_skeleton_html_writes_nothing(self, tmp_path: Path):
+        """An HTML page with no matchable block yields skeleton_html=None."""
+        html_file = tmp_path / "empty.html"
+        html_file.write_text(
+            "<!DOCTYPE html><html><head><title>Empty</title></head><body></body></html>",
+            encoding="utf-8",
+        )
+        result = HTMLExtractor().extract(html_file)
+        assert result.skeleton_html is None
+
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+
+        pipeline = OPPPipeline(resource_storage_dir=tmp_path / "resources")
+        assert pipeline.save_skeleton(result, "empty", output_dir) is None
+        assert not list(output_dir.glob("*.skeleton.zip"))
