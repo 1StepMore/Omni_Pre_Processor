@@ -24,7 +24,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-pytest.importorskip("ol_mcp", reason="ol_mcp not installed (cross-module contract tests)")
+pytest.importorskip("ol_mcp.tools", reason="ol_mcp.tools not available (cross-module contract tests)")
 
 # 2026-09-17: OL 的 MCP 表面是 fail-CLOSED 的 —— ol_mcp.security.get_default_validator()
 # 在 MCP_ALLOWED_DIRECTORIES / OL_MCP_ALLOWED_DIRS / OL_ALLOWED_DIRECTORIES 三者皆为空时

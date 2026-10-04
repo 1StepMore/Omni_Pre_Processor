@@ -5,6 +5,12 @@ import pytest
 from opp.extractors.ipynb import IPYNBExtractor
 
 
+# nbformat 是 **可选依赖**（pyproject [project.optional-dependencies]），
+# 但这两个测试没有守卫 → 没装就**硬失败**（7 个假红）。本仓对同类可选依赖
+# （faster_whisper / torch / extract_msg）的既有惯例就是 importorskip（2026-10-02 修）。
+pytest.importorskip("nbformat", reason="nbformat is an optional extra (pip install '.[notebook]')")
+
+
 class TestIPYNBExtractor:
     def test_supported_extensions(self):
         extractor = IPYNBExtractor()
