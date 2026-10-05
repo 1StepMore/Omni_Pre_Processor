@@ -265,8 +265,23 @@ async def extract_document(
             )
             if sk_result:
                 response["skeleton_path"] = str(sk_result)
+            else:
+                # Distinguish "no skeleton for this format" (normal) from
+                # "save_skeleton tried and declined" (surprising). Without
+                # this the caller cannot tell a deliberate skip from a bug.
+                logger.debug(
+                    "save_skeleton returned None for format_type=%r "
+                    "(skeleton=%s, skeleton_html=%s) — no skeleton written",
+                    getattr(result.extraction_result.metadata, "format_type", None),
+                    result.extraction_result.skeleton is not None,
+                    result.extraction_result.skeleton_html is not None,
+                )
         except Exception as e:
-            logger.debug("Skeleton save note: %s", e)
+            # WARNING, not debug: a swallowed exception here makes the caller
+            # see a plain "missing skeleton_path", which is indistinguishable
+            # from "this format has no skeleton" and cost a full CI triage
+            # cycle (e2e-test-suite#150, job `MCP matrix XLIFF (html)`).
+            logger.warning("Skeleton save failed: %s: %s", type(e).__name__, e)
 
     # -- verbose metadata --------------------------------------------------
     if verbose:
