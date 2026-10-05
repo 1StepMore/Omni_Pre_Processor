@@ -243,7 +243,16 @@ async def extract_document(
     # XLIFF path via MCP is a single tool call (CLI parity: commands/extract.py:273-278).
     # The skeleton is persistent output (required by ORF apply-xliff) so it is NOT
     # added to the _tempfiles cleanup set.
-    if result.extraction_result and result.extraction_result.skeleton:
+    #
+    # The gate must not test `.skeleton` alone: HTML keeps its skeleton in
+    # `.skeleton_html` (OPPPipeline.save_skeleton packages that field into a
+    # zip), so gating on `.skeleton` made the MCP channel skip HTML entirely
+    # while the CLI path happily produced it. Defer the decision to
+    # save_skeleton, which is the single place that knows the per-format rules.
+    if result.extraction_result and (
+        result.extraction_result.skeleton
+        or result.extraction_result.skeleton_html
+    ):
         try:
             sk_output_dir = (
                 Path(_c._config.output_dir) if _c._config.output_dir
