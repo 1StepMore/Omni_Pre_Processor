@@ -334,6 +334,17 @@ class HTMLExtractor(ExtractorBase):
                         )
                         # Keep the readability result.
 
+        if not MARKDOWNIFY_AVAILABLE:
+            # Without markdownify, html_to_markdown() returns the raw HTML, which
+            # is then parsed as if it were Markdown — so paragraph text keeps its
+            # tags and every block collapses together. Say so, because the
+            # symptom downstream is a missing skeleton (text no longer matches the
+            # document DOM), which points nowhere near the absent package.
+            warnings.append(
+                "markdownify不可用，HTML→Markdown降级为原文透传，"
+                "段落边界可能丢失（pip install 'omni-pre-processor[web]' 可修复）"
+            )
+
         md_content = self._html_to_markdown(extracted_text, input_path.parent)
         paragraphs, table_row_indices = self._md_to_paragraphs_and_table_rows(
             md_content

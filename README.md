@@ -40,7 +40,7 @@ Document content extraction for DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPU
 - **CLI interface** - Full command-line with batch support
 - **Output formats** - Markdown and XLIFF 1.2/2.0
 - **Manifest metadata** - JSON manifest with source info, extraction stats, and image data
-- **Skeleton preservation** - Original DOCX/PPTX ZIP structure preserved for downstream XLIFF→DOCX/PPTX backfill
+- **Skeleton preservation** - Original ZIP structure preserved for downstream XLIFF backfill (DOCX/PPTX/EPUB; HTML and XLSX synthesise theirs — see [skeleton.zip](#skeletozip))
 
 ## Prerequisites
 
@@ -176,6 +176,8 @@ Records source file info, extraction outputs, and resources:
 #### skeleton.zip
 
 Preserves the original OOXML ZIP structure for DOCX/PPTX files. This enables downstream ORF tools to perform XLIFF→DOCX/PPTX backfill by replacing content in the preserved skeleton.
+
+EPUB keeps its original archive too. HTML and XLSX have no archive to keep, so they synthesise the skeleton instead: HTML emits a single `index.html` whose blocks carry `data-trans-unit-id`, and XLSX emits the original workbook bytes plus an `xliff_map.json` sidecar (SpreadsheetML rejects injected attributes). EML/MSG and the data formats emit no skeleton — there is no layout to preserve.
 
 | Format | Key Files Preserved |
 |--------|---------------------|
