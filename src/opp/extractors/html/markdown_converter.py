@@ -6,6 +6,7 @@ Used by HTMLExtractor for the ``extract()`` text processing steps.
 """
 
 import re
+from html import unescape
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +41,7 @@ except ImportError:
 # ── Module-level regex patterns ────────────────────────────────────
 
 _RE_MARKDOWN_IMAGE = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)({[^}]*})?")
+_RE_TAG = re.compile(r"<[^>]*>")
 _RE_SCRIPT_TAG = re.compile(r"<script[^>]*>.*?</script>", re.DOTALL | re.IGNORECASE)
 _RE_STYLE_TAG = re.compile(r"<style[^>]*>.*?</style>", re.DOTALL | re.IGNORECASE)
 _STRUCTURE_HTML_TAGS = re.compile(
@@ -94,21 +96,56 @@ else:
 
 # ── Content extraction functions ───────────────────────────────────
 
+def has_extractable_text(html_fragment: str) -> bool:
+    """True when the fragment carries any non-whitespace text.
+
+    Needed because an extractor can return markup that is non-empty as a
+    string while containing nothing to extract — readability's "not enough
+    content to be readable" verdict is ``<body id="readabilityBody"></body>``,
+    not ``""``.
+
+    Tags and entities are stripped rather than parsed: this runs on every
+    HTML extraction, so building a DOM here would double the parse cost of
+    the large-document path (and blow the throughput floor in
+    ``test_large_file_performance``). ``&nbsp;`` and friends unescape to
+    whitespace, which ``str.strip()`` removes.
+    """
+    if not html_fragment.strip():
+        return False
+    return bool(unescape(_RE_TAG.sub(" ", html_fragment)).strip())
+
+
 def extract_with_readability(html_content: str) -> str:
     """Extract readable content using the readability library.
 
     Falls back to ``strip_scripts_and_styles()`` if readability is
-    not installed or raises.
+    not installed, raises, or returns nothing to extract.
     """
     if not READABILITY_AVAILABLE:
         return strip_scripts_and_styles(html_content)
 
     try:
         doc = readability.Document(html_content)
-        return doc.summary()  # Return raw HTML for markdownify conversion
+        summary = doc.summary()  # Return raw HTML for markdownify conversion
     except Exception as e:
         logger.debug(f"Readability extraction failed: {e}")
         return strip_scripts_and_styles(html_content)
+
+    # readability scores the document and hands back an EMPTY <body> when it
+    # judges the content too thin to count as readable prose. That is not a
+    # failure, but it is also not the document: accepting it yields
+    # paragraphs=[] and content='' while the caller reports success, so the
+    # text is silently lost. Small-but-real inputs hit this constantly —
+    # PDF2HTMLExtractor routes every page through here, so a one-page PDF
+    # loses its entire body. Fall back to the raw document, which is the same
+    # contract the not-installed and raised branches above already honour.
+    if not has_extractable_text(summary):
+        logger.debug(
+            "readability returned no extractable text, using raw HTML instead"
+        )
+        return strip_scripts_and_styles(html_content)
+
+    return summary
 
 
 def extract_with_docling(html_content: str) -> str:
