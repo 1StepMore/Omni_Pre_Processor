@@ -41,6 +41,7 @@ from unittest.mock import patch
 import pytest
 from opp.extractors.html import HTMLExtractor
 from opp.extractors.html.markdown_converter import (
+    READABILITY_AVAILABLE,
     extract_with_readability,
     strip_scripts_and_styles,
 )
@@ -81,6 +82,17 @@ class TestHasExtractableText:
 
 
 class TestReadabilityEmptyVerdict:
+    # These two assert how OPP interacts with readability itself, so they need
+    # readability present — `markdown_converter` imports it at module scope and
+    # the name does not exist when the optional dep is absent. OPP's own CI
+    # installs it; the suite's CI installs OPP bare and does not, which is why
+    # this is a skip on the library's own availability flag rather than an
+    # assumption. The dep-free half of this fix (has_extractable_text) and both
+    # markdownify-reporting tests run everywhere.
+    @pytest.mark.skipif(
+        not READABILITY_AVAILABLE,
+        reason="readability-lxml not installed; its empty-verdict branch is unreachable",
+    )
     def test_empty_verdict_falls_back_to_raw_document(self):
         """readability returning an empty body must not yield empty content."""
         thin = "<html><body><p>Hi.</p></body></html>"
@@ -96,6 +108,10 @@ class TestReadabilityEmptyVerdict:
         assert result == strip_scripts_and_styles(thin)
         assert "Hi." in result, "text was lost instead of falling back"
 
+    @pytest.mark.skipif(
+        not READABILITY_AVAILABLE,
+        reason="readability-lxml not installed; nothing routes through it",
+    )
     def test_real_content_still_goes_through_readability(self):
         """The fallback must not fire when readability returns real content."""
         rich = "<html><body><h1>Test</h1><p>Hello, world.</p></body></html>"
