@@ -78,14 +78,24 @@ class TestHTMLExtractor:
             assert len(result.paragraphs) > 0
 
     def test_large_file_performance(self, html_sample_files: Path):
-        """Large input must still clear a real throughput floor.
+        """Large input must not be pathologically slow to extract.
 
-        This used to assert only ``throughput_mbps > 0``, which is true for any
-        completed run, so it gated nothing while costing minutes of wall clock.
-        The floor below is what actually catches a regression: before the
-        ``_generate_skeleton_html`` text index fix, a DOM this size spent
-        ~80 min inside repeated ``soup.find_all`` calls, i.e. orders of
-        magnitude below the floor.
+        This used to assert an absolute ``throughput_mbps > 0.05`` floor. That
+        gated almost nothing while being the single most fragile test in the
+        file: measured best-of-3 on an idle machine it scored 0.056 MB/s, so a
+        12% margin on a wall-clock number decided the outcome — it passed alone
+        and failed inside a full-suite run, on identical code. CI skips it
+        outright, so it never gated there either.
+
+        What it is actually guarding is algorithmic. Before the
+        ``_generate_skeleton_html`` text-index fix, a DOM this size spent
+        roughly 80 minutes inside repeated ``soup.find_all`` calls — orders of
+        magnitude, not a constant factor. So compare against work done on the
+        same document in the same process: one BeautifulSoup parse plus a single
+        ``find_all`` pass. The regression multiplied exactly that call, so the
+        ratio catches it, and because both sides are measured back to back on
+        the same machine at the same moment, machine speed and background load
+        cancel out instead of deciding the verdict.
         """
         import time
 
@@ -113,11 +123,20 @@ class TestHTMLExtractor:
 
         assert len(result.paragraphs) > 0, "No content extracted from large file"
 
-        mib = file_size / 1024 / 1024
-        throughput_mbps = mib / elapsed
-        assert throughput_mbps > 0.05, (
-            f"Throughput regression: {mib:.2f}MB in {elapsed:.1f}s "
-            f"= {throughput_mbps:.4f} MB/s (floor 0.05 MB/s)"
+        from bs4 import BeautifulSoup
+
+        raw = large_file.read_text(encoding="utf-8")
+        start = time.time()
+        BeautifulSoup(raw, "html.parser").find_all("p")
+        baseline = time.time() - start
+
+        # Generous: extraction does strictly more than one parse plus one walk
+        # (tables, images, skeleton matching, md conversion), so it should land
+        # in single digits. The regression this guards was ~100x.
+        assert elapsed < 30 * baseline, (
+            f"Pathological slowdown: {file_size / 1024 / 1024:.2f}MB took "
+            f"{elapsed:.1f}s versus {baseline:.2f}s for one DOM walk "
+            f"({elapsed / max(baseline, 1e-6):.0f}x)"
         )
 
         large_file.unlink()
