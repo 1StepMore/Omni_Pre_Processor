@@ -240,7 +240,18 @@ class PDF2HTMLExtractor(ExtractorBase):
             html_path.write_text(pandoc_html, encoding="utf-8")
 
             # Step 2: Parse the HTML via HTMLExtractor to get structured content
-            html_extractor = HTMLExtractor()
+            #
+            # use_readability=False: the HTML above is machine-generated, not an
+            # authored web page, and it wraps each page in <div class="page">.
+            # readability keeps exactly one such wrapper and discards the rest,
+            # so a multi-page document loses everything after the first page --
+            # measured retention is 1/page_count: 100% at one page, 50% at two,
+            # 33% at three, 20% at five. On a real three-page document it kept
+            # 39% of the text and dropped whole headings including
+            # "Technical Specification" and "Conclusion".
+            # Tables and images are unaffected either way: they are read from
+            # the original HTML, not from readability's output.
+            html_extractor = HTMLExtractor(use_readability=False)
             result = html_extractor.extract(html_path)
             result.skeleton_html = pandoc_html
             # Source is a PDF: keep metadata.format_type="pdf" so the

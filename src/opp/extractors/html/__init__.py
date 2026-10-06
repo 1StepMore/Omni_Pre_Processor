@@ -236,7 +236,15 @@ class HTMLExtractor(ExtractorBase):
     Supports ``.html`` and ``.htm`` files. Uses readability (or
     docling AI) for main content extraction, then converts to
     markdown and parses paragraphs, runs, images, and skeleton.
+
+    ``use_readability=False`` skips readability and passes the document
+    through unchanged. Set it when the HTML was machine-generated rather
+    than authored as a web page — see :class:`~opp.extractors.pdf2html.PDF2HTMLExtractor`,
+    which is the only in-tree caller that does.
     """
+
+    def __init__(self, *, use_readability: bool = True) -> None:
+        self._use_readability = use_readability
 
     # ── Public API ───────────────────────────────────────────────
 
@@ -297,8 +305,16 @@ class HTMLExtractor(ExtractorBase):
                     else:
                         warnings.append("使用docling(AI)提取HTML")
             else:
-                logger.warning("docling不可用，降级到readability")
-                warnings.append("docling不可用，降级到readability")
+                # The fallback name has to match what the fallback actually is:
+                # with use_readability=False there is no readability involved,
+                # and a warning naming it points debugging at an absent package
+                # instead of at the input. That misdirection is what made a
+                # missing dependency look like a missing capability.
+                fallback = (
+                    "readability" if self._use_readability else "原文透传"
+                )
+                logger.warning(f"docling不可用，降级到{fallback}")
+                warnings.append(f"docling不可用，降级到{fallback}")
                 extracted_text = self._extract_with_readability(content)
         else:
             extracted_text = self._extract_with_readability(content)
@@ -386,6 +402,12 @@ class HTMLExtractor(ExtractorBase):
         return detect_js_heavy(html_content)
 
     def _extract_with_readability(self, html_content: str) -> str:
+        # Every readability call site in extract() funnels through here, so this
+        # is the one place that has to honour use_readability. docling is left
+        # alone: it is an AI layout model, not a boilerplate stripper, so it has
+        # no reason to reject positioned markup the way readability does.
+        if not self._use_readability:
+            return strip_scripts_and_styles(html_content)
         return extract_with_readability(html_content)
 
     def _extract_with_docling(self, html_content: str) -> str:
