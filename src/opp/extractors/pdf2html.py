@@ -253,6 +253,14 @@ class PDF2HTMLExtractor(ExtractorBase):
             # the original HTML, not from readability's output.
             html_extractor = HTMLExtractor(use_readability=False)
             result = html_extractor.extract(html_path)
+            # Keep PyMuPDF's positioned markup rather than the data-trans-unit-id variant
+            # HTMLExtractor built. This field is what `commands/extract.py` writes
+            # out for `opp <pdf> --target-format html`, where absolute positioning
+            # and base64 images are the entire point; the annotated form is a
+            # translation-backfill artifact and is the wrong thing to display. It
+            # also cannot become a translation skeleton, because save_skeleton
+            # gates on is_html and format_type stays "pdf" (see below) — the two
+            # decisions are coupled, so changing either one needs the other rechecked.
             result.skeleton_html = pandoc_html
             # Source is a PDF: keep metadata.format_type="pdf" so the
             # PDF→XLIFF guard in pipeline.generate_xliff fires. Relabeling
