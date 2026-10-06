@@ -642,3 +642,77 @@ def test_page_number_comes_from_the_div_page_wrapper(tmp_path: Path):
     )
     assert len(images) == 1
     assert images[0].page_number == 1
+
+
+def _make_multi_block_pdf(tmp_path: Path) -> Path:
+    """A TWO-PAGE PDF with several text blocks per page.
+
+    Two pages is the smallest size that reproduces the defect: readability
+    keeps exactly one ``div.page`` and discards the rest, so retention is
+    1/page_count (1 page 100%, 2 pages 50%, 3 pages 33%). A single-page fixture
+    passes with or without the fix, which is why this is built the way it is.
+    """
+    fitz = pytest.importorskip("fitz")
+
+    doc = fitz.open()
+    for page_no in range(2):
+        page = doc.new_page()
+        y = 72
+        for i in range(4):
+            page.insert_text((72, y), f"Page {page_no} Section {i} Heading")
+            y += 20
+            page.insert_text(
+                (72, y), f"Page {page_no} body paragraph {i} argument text."
+            )
+            y += 30
+    pdf_path = tmp_path / "multi.pdf"
+    doc.save(str(pdf_path))
+    doc.close()
+    return pdf_path
+
+
+def test_pdf2html_keeps_every_block(tmp_path: Path):
+    """No block may be dropped by the HTML stage (OPP#97 follow-up).
+
+    PDF2HTMLExtractor wraps each page in ``<div class="page">`` and hands the
+    result to HTMLExtractor. readability keeps exactly one of those wrappers and
+    drops the others, so a multi-page document loses everything after page one —
+    measured retention 1/page_count, i.e. 50% at two pages and 20% at five. On a
+    real three-page document it kept 39% of the text and dropped whole headings.
+    It cannot tell machine-generated markup from a web page, so the caller opts
+    out instead.
+    """
+    from opp.extractors.pdf2html import PDF2HTMLExtractor
+
+    result = PDF2HTMLExtractor().extract(_make_multi_block_pdf(tmp_path))
+    content = result.content or ""
+
+    missing = [
+        f"Page {page_no} Section {i} Heading"
+        for page_no in range(2)
+        for i in range(4)
+        if f"Page {page_no} Section {i} Heading" not in content
+    ]
+    assert not missing, f"PDF2HTML dropped blocks: {missing}"
+
+    bodies = [
+        f"Page {page_no} body paragraph {i}"
+        for page_no in range(2)
+        for i in range(4)
+        if f"Page {page_no} body paragraph {i}" not in content
+    ]
+    assert not bodies, f"PDF2HTML dropped body text: {bodies}"
+
+
+def test_pdf2html_warning_names_the_fallback_it_actually_used(tmp_path: Path):
+    """A warning that names the wrong fallback sends debugging the wrong way.
+
+    The PDF path runs with readability opted out, so claiming it fell back to
+    readability is false — and that misdirection is what made a missing
+    dependency read as a missing capability in e2e-test-suite#148.
+    """
+    from opp.extractors.pdf2html import PDF2HTMLExtractor
+
+    result = PDF2HTMLExtractor().extract(_make_multi_block_pdf(tmp_path))
+
+    assert not any("readability" in w for w in result.warnings), result.warnings
