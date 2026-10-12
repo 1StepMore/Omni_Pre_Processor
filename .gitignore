@@ -53,3 +53,6 @@ test_artifacts/
 # secrets-guard
 gitleaks-report.json
 *.gitleaks-report*.txt
+
+# branch-cleanup scratch (git bundle + manifests, never source)
+.backup-bundles/
