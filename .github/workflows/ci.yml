@@ -67,11 +67,15 @@ jobs:
       #     fix pre-existing debt wholesale, so it is out of scope here (recorded
       #     in the suite's health report §21);
       #   * a whole-src run under the suite's full rule set (E,F,I,B,UP,N) still
-      #     reports 253 findings after this F cleanup (265 before it; both measured
-      #     with the pinned 0.17.1 under the suite root config — see the suite
-      #     health report §21), so the full set would be red on day one. `src/`
-      #     under F-class is green after the same-day cleanup — a gate that starts
-      #     green is a gate that stays honest.
+      #     reports a large pre-existing count: 246 as of 2026-10-20 — a snapshot,
+      #     reproducible with `ruff check --select E,F,I,B,UP,N src/`. It was 253
+      #     at this gate's introduction, 265 before the F cleanup — both from the
+      #     2026-09 record in the suite health report §21 (measured with the
+      #     then-available ruff 0.15.21, re-checked identical under the then-pinned
+      #     0.15.11; the count tracks the tree, not the ruff version), so the full
+      #     set would be red on day one. `src/` under F-class is green after the
+      #     same-day cleanup — a gate that starts green is a gate that stays
+      #     honest.
       #
       # Version is pinned to the same ruff the suite's pre-commit + CI use, so a
       # green here cannot disagree with a green there.
