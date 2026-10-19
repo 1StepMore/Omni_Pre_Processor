@@ -144,8 +144,11 @@ def test_pdf2html_multi_image_positions_all_correct(tmp_path: Path):
 
     doc = fitz.open()
     page = doc.new_page(width=595, height=842)
-    page.insert_image(fitz.Rect(100, 100, 200, 200), stream=_MINIMAL_PNG)
-    page.insert_image(fitz.Rect(300, 400, 450, 500), stream=_MINIMAL_PNG)
+    # keep_proportion=False pins the placement rect: PyMuPDF 2.0 honours
+    # keep_proportion=True (the default) strictly and centres the 1x1 PNG at
+    # intrinsic size inside a non-square rect instead of stretching it.
+    page.insert_image(fitz.Rect(100, 100, 200, 200), stream=_MINIMAL_PNG, keep_proportion=False)
+    page.insert_image(fitz.Rect(300, 400, 450, 500), stream=_MINIMAL_PNG, keep_proportion=False)
     pdf_path = tmp_path / "multi.pdf"
     doc.save(str(pdf_path))
     doc.close()
