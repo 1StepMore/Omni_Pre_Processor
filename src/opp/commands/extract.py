@@ -15,6 +15,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
+from opp.contracts import Manifest
 from opp.detector import FormatType
 from opp.error_handler import ErrorHandler
 from opp.logger import get_logger
@@ -295,6 +296,9 @@ def process_single_file(
                 "image_count": len(proc_result.extraction_result.images) if proc_result.extraction_result else 0,
             },
         }
+        # Enforce the OPP -> OL/ORF manifest contract (contracts/manifest.py).
+        Manifest.model_validate(manifest)
+
         manifest_path = output_dir / f"{base_name}_manifest.json"
         with open(manifest_path, "w", encoding="utf-8") as f:
             json.dump(manifest, f, indent=2, ensure_ascii=False)

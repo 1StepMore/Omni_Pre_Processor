@@ -120,6 +120,12 @@ class ExtractorBase:
 - `warnings: list[str]`
 - `skeleton: bytes | None` (the skeleton.zip for ORF)
 
+**Direct-use extractor note**: `PDFExtractor` (`src/opp/extractors/pdf.py`)
+is a supported direct-use API (TOC via `extract_toc`, OCR fallback) but is
+not in the pipeline registry: `OPPPipeline` routes `.pdf` to
+`PDF2HTMLExtractor` for image-preserving HTML output. Callers that need
+TOC/OCR instantiate `PDFExtractor` explicitly.
+
 **To add a new extractor**:
 
 1. Create `src/opp/extractors/<format>.py` with a class
