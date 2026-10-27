@@ -67,6 +67,7 @@ class TestEmailExtractor:
     def test_extract_eml_attachments(self, tmp_path: Path):
         from email.mime.multipart import MIMEMultipart
         from email.mime.nonmultipart import MIMENonMultipart
+        from email.mime.text import MIMEText
 
         eml_path = tmp_path / "eml_with_attachments.eml"
         msg = MIMEMultipart()
@@ -74,6 +75,7 @@ class TestEmailExtractor:
         msg["To"] = "recipient@example.com"
         msg["Subject"] = "EML Attachment Test"
         msg["Date"] = datetime.now().strftime("%a, %d %b %Y %H:%M:%S %z")
+        msg.attach(MIMEText("Body text", "plain"))
 
         attachment_data = b"Attachment file content"
         part = MIMENonMultipart("application", "octet-stream")
@@ -87,7 +89,8 @@ class TestEmailExtractor:
         extractor = EmailExtractor()
         result = extractor.extract(eml_path)
 
-        assert hasattr(result, "attachments") or hasattr(result, "images")
+        assert len(result.attachments) == 1
+        assert result.attachments[0].data == attachment_data
 
     def test_corrupted_msg(self, tmp_path: Path):
         corrupted_msg_path = tmp_path / "corrupted.msg"
