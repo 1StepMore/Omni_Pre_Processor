@@ -75,6 +75,12 @@ def detect_format(path: Path | str) -> tuple[FormatType, float]:
     except FileNotFoundError:
         return (FormatType.UNKNOWN, 0.0)
 
+    # Email containers are identified by extension: a multipart EML/MSG body
+    # can itself contain an HTML part, so content sniffing below must not win.
+    ext = path.suffix.lower()
+    if ext in (".eml", ".msg"):
+        return (FormatType.EMAIL, 1.0)
+
     if header.startswith(b"PK"):
         ext = path.suffix.lower()
         if ext == ".docx":
@@ -157,10 +163,6 @@ def detect_format(path: Path | str) -> tuple[FormatType, float]:
     ext = path.suffix.lower()
     if ext in (".html", ".htm"):
         return (FormatType.HTML, 0.5)
-
-    # Email format detection
-    if ext in (".eml", ".msg"):
-        return (FormatType.EMAIL, 1.0)
 
     # Image format detection
     if ext in (".png", ".jpg", ".jpeg", ".tiff", ".bmp"):

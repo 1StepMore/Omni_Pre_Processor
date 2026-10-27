@@ -6,6 +6,21 @@ from opp.detector import detect_format, FormatType
 
 
 class TestFormatDetector:
+    def test_eml_with_html_alternative_detected_as_email(self, tmp_path: Path):
+        """A multipart EML whose HTML part contains <html must be EMAIL, not HTML."""
+        eml = tmp_path / "with_html.eml"
+        eml.write_bytes(
+            b"From: a@example.com\r\nTo: b@example.com\r\n"
+            b"Subject: html alternative\r\nMIME-Version: 1.0\r\n"
+            b"Content-Type: multipart/alternative; boundary=xyz\r\n\r\n"
+            b"--xyz\r\nContent-Type: text/plain\r\n\r\nHello\r\n"
+            b"--xyz\r\nContent-Type: text/html\r\n\r\n"
+            b"<html><body><p>Hello</p></body></html>\r\n"
+            b"--xyz--\r\n"
+        )
+        result = detect_format(eml)
+        assert result[0] == FormatType.EMAIL
+        assert result[1] == 1.0
     def test_detect_docx_by_magic_bytes(self, sample_files_normal: Path):
         """DOCX files should be detected by PK magic bytes (ZIP header)."""
         result = detect_format(sample_files_normal / "normal.docx")
