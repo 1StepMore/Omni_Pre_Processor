@@ -94,6 +94,15 @@ class MarkdownGenerator:
                             output_lines.append("")
                         if para.style == "[TextBox]":
                             output_lines.append(f"> {para.text}")
+                        elif para.style == "Quote":
+                            # EML splitter keeps the source ``>`` prefixes, so
+                            # only add one to lines that do not already carry it.
+                            output_lines.append("\n".join(
+                                line
+                                if line.lstrip().startswith(">")
+                                else f"> {line}"
+                                for line in para.text.split("\n")
+                            ))
                         elif para.runs:
                             md_text = self._runs_to_markdown(para.runs)
                             output_lines.append(md_text)
