@@ -453,7 +453,7 @@ extraction:
 
 ## Validation Master Plan
 
-A comprehensive validation master plan for OPP is available in the Omni Suite docs at `../docs/OPP_VALIDATION_MASTER_PLAN.md`. It covers **17 user questions** across **80 executable scenarios**, organized in the AutoInfo-style format:
+A comprehensive validation master plan for OPP is available in the Omni Suite docs at `../docs/OPP_VALIDATION_MASTER_PLAN.md`. It covers **17 user questions** across **80 executable scenarios**, organized in the scenario-per-question format:
 
 | Part | Focus | Questions |
 |------|-------|-----------|
