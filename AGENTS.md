@@ -84,7 +84,7 @@ src/opp/
 
 | Tool | Purpose |
 |------|---------|
-| `extract_document` | Extract content from a single document file. Supports all 13 input formats. |
+| `extract_document` | Extract content from a single document file. Supports all 16 input formats. |
 | `batch_extract` | Process multiple files in one request. |
 | `detect_format_tool` | Identify file format using magic bytes. |
 | `generate_markdown` | Convert a document to Markdown (no XLIFF / skeleton). |

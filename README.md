@@ -28,7 +28,7 @@ Document content extraction for DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPU
 
 ## Features
 
-- **Multi-format extraction** - DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPUB, EML, MSG, Image, IPYNB, YouTube URL
+- **Multi-format extraction** - 16 input formats: DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPUB, EML, MSG, Image/OCR, Audio, Video, IPYNB, YouTube URL
 - **Inline formatting tracking** - Bold, italic, underline, strikethrough preserved in XLIFF as `<bx>`/`<ex>` tags for downstream formatting restoration
 - **Image OCR** - Tesseract and RapidOCR with graceful fallback
 - **Email extraction** - EML (RFC 822) and MSG (Outlook) with attachment recursion
@@ -252,7 +252,7 @@ this module".
 
 | Module | Tests |
 |--------|-------|
-| detector | 13 |
+| detector | 14 |
 | resource_manager | 18 |
 | error_handler | 18 |
 | integration | 25 |
@@ -451,24 +451,31 @@ extraction:
 
 ---
 
-## Validation Master Plan
+## Validation
 
-A comprehensive validation master plan for OPP is available in the Omni Suite docs at `../docs/OPP_VALIDATION_MASTER_PLAN.md`. It covers **17 user questions** across **80 executable scenarios**, organized in the scenario-per-question format:
+The prose OPP master plan was **archived on 2026-08-23** — superseded by the
+executable scenario library. It now lives at
+`../docs/archive/OPP_VALIDATION_MASTER_PLAN.md` (15 user questions, still
+useful as the rationale behind each scenario).
 
-| Part | Focus | Questions |
-|------|-------|-----------|
-| 1–2 | Core extraction & format support (13 formats) | Q1-OPP — Q8-OPP |
-| 3 | MCP Surface Mastery (9 MCP tools) | Q9-OPP |
-| 4 | Agent-as-User Workflows | Q10-OPP — Q11-OPP |
-| 5 | CLI Surface Mastery | Q12-OPP |
-| 6 | Error & Boundary Matrix | Q13-OPP — Q14-OPP |
-| 7 | Production Validation | Q15-OPP |
-| 8 | Real OCR & System Dependency Tests | Q16-OPP — Q17-OPP |
+What actually runs is `scenarios/opp/` in the suite repo: 16 scenarios
+covering 14 of the input formats (`docx, pptx, pdf, xlsx, csv, json, xml, html,
+epub, eml, msg, image/ocr, ipynb, youtube`) plus two DOCX edge cases
+(malformed, missing part). **Audio and video have no scenario yet** — they are
+advertised by `get_capabilities.py` but not covered here. Fifteen scenarios
+are tier 1 (hermetic); the YouTube one is tier 3 because it reaches the
+network. Each executes the real OPP CLI and cites its threshold in
+`scenarios/STANDARDS.md`.
 
-**How to use:**
-1. Open `../docs/OPP_VALIDATION_MASTER_PLAN.md` (from the Suite root)
-2. Pick a user question (e.g. "Can I extract a DOCX with images?")
-3. Execute the scenario as a CLI command or Python script
-4. Compare actual vs. expected result and mark the verdict
+```bash
+# from the suite root, with .venv_ol active
+python scripts/validation/run_validation.py --scenario opp-docx-extract --tier 1  # one format
+python scripts/validation/run_validation.py --repo opp --tier 1                   # OPP's own 6-scenario library
+```
 
-Each scenario includes prerequisites, expected output, and a `**PASS / FAIL:**` box for recording results. Run through all scenarios to validate production readiness.
+`--scenario` is a case-insensitive substring match on the file stem, so
+`--scenario opp --tier 1` selects 24: the 15 hermetic format scenarios plus the
+9 `tool-opp-*` agent-surface ones.
+
+For the per-repo entry point and tier semantics, see the suite `AGENTS.md` →
+"How to validate".
