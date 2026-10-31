@@ -11,6 +11,9 @@
 | /mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/docs/ARCHITECTURE.md | 266 |
 | /mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/docs/TROUBLESHOOTING.md | 282 |
 | /mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/docs/TUTORIAL.md | 326 |
+| /mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/docs/adr/0001-doc-inventory-gate.md | 49 |
+| /mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/docs/adr/README.md | 18 |
+| /mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/docs/adr/TEMPLATE.md | 29 |
 | /mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/docs/hermes-integration.md | 315 |
 | /mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/docs/hermes-plugin-installation.md | 263 |
 | /mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/docs/opencode-installation.md | 161 |
