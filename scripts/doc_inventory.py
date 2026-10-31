@@ -166,7 +166,10 @@ def _check_referential_paths(failures: list[str]) -> None:
         ROOT.parent / "Omni_Localizer",               # 兄弟子仓
         ROOT.parent / "Omni_Re_Formatter",
     ]
-    present_cross_roots = [r for r in _cross_roots if r.is_dir()]
+    # 「树存在」的判定不能是 is_dir()——CI 的 runner 工作目录永远存在。
+    # 要求出现 suite 树标记（pyproject.toml 或 docs/ 目录）。
+    present_cross_roots = [r for r in _cross_roots
+                           if (r / "pyproject.toml").is_file() or (r / "docs").is_dir()]
     skipped_cross = 0
     for rel in REFERENTIAL_SCOPE:
         path = ROOT / rel
@@ -197,13 +200,15 @@ def _check_referential_paths(failures: list[str]) -> None:
 
 
 def _doc_rows() -> list[tuple[str, int]]:
+    """行集键必须是 ROOT **相对**路径——绝对路径会让「新鲜度」比较在任何
+    不同 checkout 位置上必然失败（CI 的 /home/runner、sim 目录……）。"""
     rows = []
     docs = ROOT / "docs"
     for p in sorted(docs.rglob("*.md")):
         if "dev/doc-inventory" in p.as_posix():
             continue
         lines = len(p.read_text(encoding="utf-8", errors="replace").splitlines())
-        rows.append((p.as_posix(), lines))
+        rows.append((p.relative_to(ROOT).as_posix(), lines))
     for rel in ("README.md", "AGENTS.md"):
         p = ROOT / rel
         if p.is_file():

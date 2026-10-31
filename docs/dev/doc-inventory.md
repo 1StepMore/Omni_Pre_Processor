@@ -7,15 +7,15 @@
 
 | Document | Lines |
 |---|---:|
-| /mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/docs/API.md | 541 |
-| /mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/docs/ARCHITECTURE.md | 266 |
-| /mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/docs/TROUBLESHOOTING.md | 282 |
-| /mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/docs/TUTORIAL.md | 326 |
-| /mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/docs/adr/0001-doc-inventory-gate.md | 49 |
-| /mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/docs/adr/README.md | 18 |
-| /mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/docs/adr/TEMPLATE.md | 29 |
-| /mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/docs/hermes-integration.md | 315 |
-| /mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/docs/hermes-plugin-installation.md | 263 |
-| /mnt/d/贯维/Omni_Suite/Omni_Pre_Processor/docs/opencode-installation.md | 161 |
 | AGENTS.md | 367 |
 | README.md | 481 |
+| docs/API.md | 541 |
+| docs/ARCHITECTURE.md | 266 |
+| docs/TROUBLESHOOTING.md | 282 |
+| docs/TUTORIAL.md | 326 |
+| docs/adr/0001-doc-inventory-gate.md | 49 |
+| docs/adr/README.md | 18 |
+| docs/adr/TEMPLATE.md | 29 |
+| docs/hermes-integration.md | 315 |
+| docs/hermes-plugin-installation.md | 263 |
+| docs/opencode-installation.md | 161 |
