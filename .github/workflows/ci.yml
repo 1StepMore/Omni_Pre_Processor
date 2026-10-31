@@ -85,6 +85,13 @@ jobs:
       - name: Lint with ruff (F-class, pinned 0.17.1)
         run: .venv/bin/python -m ruff check --select F src/
 
+      # Doc-truth gate (OPP#111): README/AGENTS claims must match the values
+      # derived from source (tool count, input formats, scenarios, version),
+      # referenced paths must resolve, and docs/dev/doc-inventory.md must be
+      # regenerated. exit 1 = doc drift.
+      - name: Doc inventory (--check)
+        run: .venv/bin/python scripts/doc_inventory.py --check
+
       - name: Run tests
         env:
           PYTHONPATH: ${{ github.workspace }}/src

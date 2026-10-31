@@ -163,8 +163,8 @@ can rebuild `<wp:anchor>` blocks.
 `<it>`) for format preservation. ORF's `apply-xliff` reverses the
 process.
 
-`Pipeline.is_complete()` (in `src/ol_xliff/repair/pipeline.py` — OL
-side, not OPP) validates the XLIFF is fully translated.
+`Pipeline.is_complete()` (in OL's `src/ol_md/pipeline.py` — OL side,
+not OPP) validates the XLIFF is fully translated.
 
 ## env vars (MCP path)
 
@@ -291,7 +291,8 @@ Key test files:
 - `tests/test_e2e_81_csv_multiline.py` — multi-line CSV cells
 - `tests/test_e2e_82_docling_fallback.py` — docling fallback
 - `tests/test_resource_manager.py` — image MD5+UUID naming
-- `tests/test_pipeline.py` — end-to-end pipeline integration
+- `tests/test_pipeline_pdf2html_integration.py` — pipeline integration (PDF → HTML channel)
+- `tests/test_pipeline_pdf_xliff_guard.py` — pipeline integration guard (PDF → XLIFF refusal)
 
 ### --target-format Selection Guide
 
