@@ -16,6 +16,7 @@
 | docs/adr/0001-doc-inventory-gate.md | 49 |
 | docs/adr/README.md | 18 |
 | docs/adr/TEMPLATE.md | 29 |
+| docs/dev/production-matrix.md | 50 |
 | docs/hermes-integration.md | 315 |
 | docs/hermes-plugin-installation.md | 263 |
 | docs/opencode-installation.md | 161 |

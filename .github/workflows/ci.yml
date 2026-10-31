@@ -92,6 +92,11 @@ jobs:
       - name: Doc inventory (--check)
         run: .venv/bin/python scripts/doc_inventory.py --check
 
+      # Production matrix gate (OPP#112): docs/dev/production-matrix.md rows
+      # must stay in sync with the source-derived format/tool sets.
+      - name: Coverage matrix (--check)
+        run: .venv/bin/python scripts/coverage_matrix.py --check
+
       - name: Run tests
         env:
           PYTHONPATH: ${{ github.workspace }}/src
