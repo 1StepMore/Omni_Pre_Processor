@@ -80,8 +80,15 @@ class EPUBExtractor(ExtractorBase):
         # Get spine items in reading order
         spine_items = list(book.spine)
 
-        # Get all image items from manifest using proper type
-        image_items = list(book.get_items_of_type(ebooklib.ITEM_IMAGE))
+        # Get all image items from manifest using proper type, sorted by
+        # name for deterministic iteration order — same rationale as
+        # _extract_cover below: ebooklib's item order is non-deterministic,
+        # which made images.json / spine_index differ between runs
+        # (ACCEPTED_GAPS.md EPUB extraction row).
+        image_items = sorted(
+            book.get_items_of_type(ebooklib.ITEM_IMAGE),
+            key=lambda i: i.get_name() or "",
+        )
 
         return book, spine_items, image_items
 
