@@ -367,3 +367,49 @@ def test_epub_skeleton_multichapter(tmp_path: Path):
         # 1 + 2 + 1 = 4 elements total
         assert len(all_ids) == 4, f"Expected 4 segment IDs, got {len(all_ids)}"
         assert all_ids == ["1", "2", "3", "4"], f"IDs not 1-indexed sequential: {all_ids}"
+
+
+def test_image_extraction_order_is_deterministic(tmp_path: Path) -> None:
+    """P1-A 回归：image_items 必须按名称排序（_parse_epub）。
+
+    ebooklib 的 manifest 项顺序非确定（ACCEPTED_GAPS.md EPUB 抽取行），
+    未排序的 get_items_of_type 让 images.json / spine_index 逐次漂移。
+    加入名称乱序的多张图（内容各异），断言两次抽取顺序一致且等于
+    名称排序序（alpha, mid, zeta）。
+    """
+    from ebooklib import epub
+
+    img = create_minimal_png()
+    book = epub.EpubBook()
+    book.set_identifier('order-test')
+    book.set_title('Order')
+    book.set_language('en')
+    c = epub.EpubHtml(title='C1', file_name='chapter1.xhtml', lang='en')
+    c.content = '<html><body><p>hi</p></body></html>'
+    book.add_item(c)
+    book.spine = [c]
+    book.add_item(epub.EpubNav())
+    payloads = {}
+    for name in ['zeta.png', 'alpha.png', 'mid.png']:
+        data = img + name.encode()  # 每张图内容唯一（IEND 后挂名字字节）
+        payloads[name] = data
+        book.add_item(epub.EpubItem(
+            uid=name.replace('.', '_'),
+            file_name=f'images/{name}',
+            media_type='image/png',
+            content=data,
+        ))
+    path = tmp_path / 'order.epub'
+    epub.write_epub(str(path), book)
+
+    extractor = EPUBExtractor()
+    r1 = extractor.extract(path)
+    r2 = extractor.extract(path)
+
+    key = lambda r: [(i.spine_index, bytes(i.data)) for i in r.images]
+    assert key(r1) == key(r2), '两次抽取的图像顺序/spine_index 不一致'
+    order = [bytes(i.data) for i in r1.images]
+    assert order == [payloads[n] for n in sorted(payloads)], (
+        '图像未按名称排序（应 alpha, mid, zeta）；实际顺序：'
+        f'{[n for n, d in payloads.items() if d in order]}'
+    )
