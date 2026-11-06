@@ -189,3 +189,30 @@ class TestHelpOutput:
     def test_help_shows_output_dir(self):
         result = run_opp(["--help"])
         assert "--output-dir" in result.stdout
+    def test_resource_dir_rejects_prefix_sibling_escape(self, tmp_path, monkeypatch):
+        """ADR 0007 Phase 2B-lite regression: `startswith` containment used to
+        accept `<allow>-evil` as inside `<allow>`; component-wise containment
+        (Path.is_relative_to) must reject it. tempfile.gettempdir is pinned so
+        the /tmp fallback umbrella cannot mask the sibling case."""
+        import tempfile
+
+        test_file = tmp_path / "test.docx"
+        test_file.write_bytes(b"PK\x03\x04\x14\x00\x00\x00\x08\x00")
+        allow = tmp_path / "allow"
+        allow.mkdir()
+        evil = tmp_path / "allow-evil"
+        evil.mkdir()
+        # point the tempdir umbrella AWAY from the allow/allow-evil pair so
+        # gettempdir() cannot cover the sibling case
+        monkeypatch.setattr(
+            tempfile, "gettempdir", lambda: str(tmp_path / "othertmp")
+        )
+        monkeypatch.setenv("OPP_ALLOWED_DIRECTORIES", str(allow))
+        from opp.cli import main
+
+        with pytest.raises(SystemExit) as excinfo:
+            main(["--resource-dir", str(evil), str(test_file)])
+        assert excinfo.value.code == 2, (
+            "a prefix-sibling of an allowed dir must be rejected (component-wise "
+            "containment), not accepted by the string-prefix test"
+        )
