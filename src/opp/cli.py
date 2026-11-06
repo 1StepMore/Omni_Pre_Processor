@@ -398,7 +398,9 @@ def main(argv: list[str] | None = None) -> int:
             p.resolve()
             for p in _parse_allowed_dirs(os.environ.get("OPP_ALLOWED_DIRECTORIES", ""))
         )
-        if not any(str(resolved).startswith(str(a)) for a in allowed_dirs):
+        # 2026-11-06 (ADR 0007 Phase 2B-lite): component-wise containment —
+        # the string-prefix test accepted `<allow>-evil` as inside `<allow>`.
+        if not any(resolved.is_relative_to(a) for a in allowed_dirs):
             parser.error(
                 f"Error: --resource-dir '{resolved}' is not within allowed directories. "
                 f"Allowed: {', '.join(str(d) for d in allowed_dirs)}"

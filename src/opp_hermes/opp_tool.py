@@ -64,12 +64,20 @@ def opp_handler(
     if output_formats is None:
         output_formats = ["md"]
 
-    allowed_dirs = os.environ.get("OPP_MCP_ALLOWED_DIRS", "")
+    # 2026-11-06 (ADR 0007 Phase 2B-lite): resolve the allowlist with the
+    # same precedence as opp.mcp.config._load_from_env
+    # (MCP_ALLOWED_DIRECTORIES > OPP_MCP_ALLOWED_DIRS) so the Hermes entry
+    # no longer hard-requires the module-specific variable alone.
+    allowed_dirs = (
+        os.environ.get("MCP_ALLOWED_DIRECTORIES")
+        or os.environ.get("OPP_MCP_ALLOWED_DIRS")
+        or ""
+    )
     if not allowed_dirs:
         return {
             "success": False,
-            "error": "OPP_MCP_ALLOWED_DIRS environment variable not set. "
-                     "Please configure allowed directories for OPP extraction.",
+            "error": "No allowlist configured: set MCP_ALLOWED_DIRECTORIES "
+                     "(or OPP_MCP_ALLOWED_DIRS) before OPP extraction.",
         }
 
     try:
