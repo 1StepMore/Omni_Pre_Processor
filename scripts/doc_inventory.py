@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 import tomllib
@@ -136,41 +137,115 @@ _PATH_ANCHORS = (
 )
 
 
-def _looks_like_repo_path(token: str) -> bool:
-    """反引号 token 是否像仓库相对路径：以顶层锚点开头。
+# ── BEGIN SHARED CROSS-REPO RESOLUTION (e2e-test-suite#253) ──────────────────
+# Byte-identical in Omni_Localizer / Omni_Pre_Processor / Omni_Re_Formatter.
+# Edit all three together; tests/test_doc_inventory_copy_parity.py in the
+# suite repo fails when the copies drift.
+#
+# A backticked path with no repo prefix is a path in THIS repo and must
+# exist. A prefixed token -- ``suite:docs/dev/x.md``, ``ol:src/ol_md/y.py``,
+# ``opp:src/opp/z.py``, ``orf:tests/w.py`` -- names the owning repo. A
+# prefixed token is verifiable only when that checkout is present; without
+# it the reference is counted as skipped (never silently treated as valid)
+# and the final message says so.
 
-    API 文档里的类名、产物名（``index.html``、``xliff_map.json``）、
-    裸后缀（``.md``）都不满足，避免误报。
+_CROSS_REPO_MARKERS: dict[str, tuple[str, ...]] = {
+    "suite": ("omni_suite", "omni_mcp"),
+    "opp": ("src/opp",),
+    "ol": ("src/ol_md",),
+    "orf": ("src/orf",),
+}
+_CROSS_REPO_DIRNAMES: dict[str, tuple[str, ...]] = {
+    "suite": ("", "e2e-test-suite", "suite"),
+    "opp": ("Omni_Pre_Processor",),
+    "ol": ("Omni_Localizer",),
+    "orf": ("Omni_Re_Formatter",),
+}
+_CROSS_REPO_PREFIXES = tuple(sorted(_CROSS_REPO_MARKERS))
+_SKIP_PREFIXES = ("http://", "https://", "/", "~", "pip ", "python ", "uv ")
+
+
+def _split_repo_prefix(token: str) -> tuple[str | None, str]:
+    """``suite:docs/x.md`` -> ``("suite", "docs/x.md")``; unprefixed is local."""
+    for repo in _CROSS_REPO_PREFIXES:
+        head = repo + ":"
+        if token.startswith(head):
+            return repo, token[len(head):]
+    return None, token
+
+
+def _looks_like_repo_path(token: str) -> bool:
+    """反引号 token 是否像仓库相对路径（可有跨仓前缀，以顶层锚点开头）。
+
+    类名、产物名（zip 内部文件 / OOXML 布局）、裸后缀（``.md``）都不满足，
+    避免误报。
     """
-    if not token.startswith(_PATH_ANCHORS):
+    _, path = _split_repo_prefix(token)
+    if not path.startswith(_PATH_ANCHORS):
         return False
-    token = token.split(":", 1)[0]  # ``path.py:62`` / ``path.py:Symbol`` 行/符号引用
-    base = token.rsplit("/", 1)[-1]
+    base = path.rsplit("/", 1)[-1]
     if not base.split(".")[0]:
         return False  # 裸后缀：最后一个点前没有 stem，不是路径
-    return not any(c in token for c in '*{}<> "\\')
+    return not any(c in path for c in '*{}<> "\\')
 
 
-def _check_referential_paths(failures: list[str]) -> None:
-    """反引号路径检查，两档：
+def _env_cross_roots(root: Path) -> list[Path]:
+    """Candidate checkouts, highest priority first.
 
-    - **本仓路径**：总是强制（CI 单仓 checkout 也成立）。
-    - **跨仓路径**（suite 父仓 docs、兄弟子仓 src）：仅在对应树存在时
-      强制——本地 workspace checkout 上是强门禁；CI 只检出本仓时跳过
-      并打印说明（那些文件属于别的仓，由那边的门禁管）。
+    ``DOC_CROSS_ROOT`` (``os.pathsep``-separated) wins so CI can point at the
+    sibling checkout explicitly; then the conventional layouts -- a sibling of
+    this repo, ``../e2e-test-suite``, ``../suite``.
     """
-    _skip_prefixes = ("http://", "https://", "/", "~", "pip ", "python ", "uv ")
-    # 跨仓根：存在才参与解析（CI 单仓 checkout 时这些目录不存在）。
-    _cross_roots = [
-        ROOT.parent,                                  # suite 父仓
-        ROOT.parent / "Omni_Localizer",               # 兄弟子仓
-        ROOT.parent / "Omni_Re_Formatter",
-    ]
-    # 「树存在」的判定不能是 is_dir()——CI 的 runner 工作目录永远存在。
-    # 要求出现 suite 树标记（pyproject.toml 或 docs/ 目录）。
-    present_cross_roots = [r for r in _cross_roots
-                           if (r / "pyproject.toml").is_file() or (r / "docs").is_dir()]
-    skipped_cross = 0
+    bases: list[Path] = []
+    for part in os.environ.get("DOC_CROSS_ROOT", "").split(os.pathsep):
+        part = part.strip()
+        if part and Path(part) not in bases:
+            bases.append(Path(part))
+    for base in (root.parent, root.parent / "e2e-test-suite", root.parent / "suite"):
+        if base not in bases:
+            bases.append(base)
+    return bases
+
+
+def _is_checkout(repo: str, path: Path) -> bool:
+    return path.is_dir() and any((path / marker).exists()
+                                 for marker in _CROSS_REPO_MARKERS[repo])
+
+
+def _resolve_cross_roots(root: Path) -> dict[str, Path]:
+    """Resolve every known repo to a real checkout, including this one.
+
+    Absent repos are left out of the mapping -- a single-repo CI checkout
+    legitimately cannot verify them, so their references are reported as
+    skipped rather than passed or failed.
+    """
+    resolved: dict[str, Path] = {}
+    for repo, markers in _CROSS_REPO_MARKERS.items():
+        if any((root / marker).exists() for marker in markers):
+            resolved[repo] = root
+            break
+    for repo, dirnames in _CROSS_REPO_DIRNAMES.items():
+        if repo in resolved:
+            continue
+        for base in _env_cross_roots(root):
+            for dirname in dirnames:
+                cand = base / dirname if dirname else base
+                if _is_checkout(repo, cand):
+                    resolved[repo] = cand
+                    break
+            if repo in resolved:
+                break
+    return resolved
+
+
+def _check_referential_paths(failures: list[str]) -> dict[str, int]:
+    """Backticked paths: local ones must exist; prefixed ones need their repo.
+
+    Returns the per-repo count of prefixed references that could not be
+    verified because that checkout is absent (``{"ol": 2}`` etc.).
+    """
+    roots = _resolve_cross_roots(ROOT)
+    skipped: dict[str, int] = {}
     for rel in REFERENTIAL_SCOPE:
         path = ROOT / rel
         if not path.is_file():
@@ -178,22 +253,48 @@ def _check_referential_paths(failures: list[str]) -> None:
         text = path.read_text(encoding="utf-8", errors="replace")
         for m in _PATH_TOKEN_RE.finditer(text):
             token = m.group(1).strip()
+            if not token or token.startswith(_SKIP_PREFIXES):
+                continue
+            repo, raw_path = _split_repo_prefix(token)
             if not _looks_like_repo_path(token):
                 continue
-            if any(token.startswith(p) for p in _skip_prefixes):
+            target = raw_path.split(":", 1)[0]  # ``path.py:62`` / ``path.py::test``
+            if not target:
                 continue
-            token = token.split(":", 1)[0]  # ``path.py:62`` 行/符号引用
-            if (ROOT / token).exists():
+            if repo is None:
+                if not (ROOT / target).exists():
+                    failures.append(
+                        f"{rel}: backticked path does not exist: {token!r} "
+                        "(this repo)"
+                    )
                 continue
-            if any((base / token).exists() for base in present_cross_roots):
+            base = roots.get(repo)
+            if base is None:
+                skipped[repo] = skipped.get(repo, 0) + 1
                 continue
-            if not present_cross_roots:
-                skipped_cross += 1
-                continue  # CI 单仓 checkout：跨仓树不存在，跳过（见 docstring）
-            failures.append(f"{rel}: backticked path does not exist: {token!r}")
-    if _cross_roots and not present_cross_roots and skipped_cross:
-        print(f"  note: {skipped_cross} cross-repo reference(s) skipped — "
-              "suite/sibling checkouts not present in this environment")
+            if not (base / target).exists():
+                failures.append(
+                    f"{rel}: backticked path does not exist: {token!r} "
+                    f"(repo {repo!r} resolved at {base})"
+                )
+    return skipped
+# ── END SHARED CROSS-REPO RESOLUTION (e2e-test-suite#253) ────────────────────
+
+
+def _check_claims(failures: list[str]) -> None:
+    for rel, pattern, group, derive in _CLAIM_SITES:
+        path = ROOT / rel
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        expected = derive()  # type: ignore[operator]
+        for m in pattern.finditer(text):
+            claimed = int(m.group(group))
+            if claimed != expected:
+                failures.append(
+                    f"{rel}: claims {m.group(0)!r} but the source derives "
+                    f"{expected} — update the doc when the surface changes"
+                )
 
 
 # ── 行集生成 ────────────────────────────────────────────────────────────────
@@ -229,7 +330,7 @@ def generate() -> str:
         "",
         "# OPP doc inventory",
         "",
-        f"- Generated by `scripts/doc_inventory.py`; verify with `--check`.",
+        "- Generated by `scripts/doc_inventory.py`; verify with `--check`.",
         f"- Source-derived: version **{version}** · MCP tools **{tools}** "
         f"({', '.join(tool_names)}) · input formats **{fmts}** · "
         f"extractor classes **{extractors}** · scenarios **{scenarios}** "
@@ -246,7 +347,7 @@ def generate() -> str:
 def check() -> int:
     failures: list[str] = []
     _check_claims(failures)
-    _check_referential_paths(failures)
+    skipped = _check_referential_paths(failures)
 
     # 行集新鲜度：重新生成必须与在盘文件逐字节一致
     if INVENTORY_PATH.is_file():
@@ -264,6 +365,16 @@ def check() -> int:
         for f in failures:
             print(f"  - {f}")
         return 1
+    if skipped:
+        detail = ", ".join(f"{repo}: {n}" for repo, n in sorted(skipped.items()))
+        total = sum(skipped.values())
+        print(
+            "check passed: claims match source-derived values, local paths "
+            f"resolve, inventory fresh; {total} cross-repo reference(s) NOT "
+            f"verified ({detail}) — no checkout for those repos. "
+            "Set DOC_CROSS_ROOT to verify them."
+        )
+        return 0
     print("check passed: claims match source-derived values, paths resolve, inventory fresh.")
     return 0
 

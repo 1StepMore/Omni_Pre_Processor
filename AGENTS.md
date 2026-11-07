@@ -95,3 +95,13 @@ covers server/tool inventory and namespacing.
 - OPP's own per-Agent skill files: `src/opp_agent/SKILL.md`
   (OpenCode) and `src/opp_hermes/SKILL.md` (Hermes) — supplementary
   tool-level references.
+
+## Issue conventions
+
+- **`pinned` = 常开索引件, not a to-do.** A pinned issue stays open as a
+  roadmap pointer; do not close it, and do not consume it as a work item.
+- **Cross-repo reference check.** `scripts/doc_inventory.py` verifies
+  backticked paths in `README.md` / `AGENTS.md`. Write another repo's path
+  with a `suite:` / `opp:` / `ol:` / `orf:` prefix; an unprefixed path must
+  exist in this repo. The checker's shared block is byte-identical across the
+  three module repos — change rule: `suite:docs/dev/doc-inventory-copies.md`.
