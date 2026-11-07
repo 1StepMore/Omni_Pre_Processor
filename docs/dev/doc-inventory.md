@@ -7,7 +7,7 @@
 
 | Document | Lines |
 |---|---:|
-| AGENTS.md | 367 |
+| AGENTS.md | 107 |
 | README.md | 481 |
 | docs/API.md | 541 |
 | docs/ARCHITECTURE.md | 266 |
@@ -16,7 +16,19 @@
 | docs/adr/0001-doc-inventory-gate.md | 49 |
 | docs/adr/README.md | 18 |
 | docs/adr/TEMPLATE.md | 29 |
+| docs/dev/cli-reference.md | 12 |
+| docs/dev/extractors.md | 38 |
+| docs/dev/gotchas.md | 22 |
+| docs/dev/image-pipeline.md | 18 |
+| docs/dev/mcp-tools.md | 19 |
+| docs/dev/path-config.md | 55 |
 | docs/dev/production-matrix.md | 50 |
+| docs/dev/skeleton.md | 21 |
+| docs/dev/source-layout.md | 37 |
+| docs/dev/target-format.md | 25 |
+| docs/dev/tests.md | 20 |
+| docs/dev/validation.md | 35 |
+| docs/dev/xliff-schema.md | 19 |
 | docs/hermes-integration.md | 315 |
 | docs/hermes-plugin-installation.md | 263 |
 | docs/opencode-installation.md | 161 |
