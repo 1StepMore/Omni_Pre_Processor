@@ -46,7 +46,7 @@ def _derive() -> dict:
 _COVERAGE_MARKS = ("✅", "⚠️", "❌")
 
 #: 行格式：| `<format>` | <extractor 标注> | <mcp 标注> | <notes> |
-_ROW_RE = re.compile(r"^\|\s*`([a-z0-9]+)`\s*\|(.+)\|\s*$")
+_ROW_RE = re.compile(r"^\|\s*`([a-z0-9_-]+)`\s*\|(.+)\|\s*$")
 
 
 def _parse_matrix_rows() -> list[tuple[str, str]]:
