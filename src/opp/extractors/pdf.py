@@ -6,6 +6,7 @@ from typing import Any
 
 import pymupdf as fitz
 
+from opp.extractors import rapidocr_adapter
 from opp.extractors.base import ExtractorBase
 from opp.logger import logger
 from opp.utils.dataclasses import (
@@ -137,12 +138,10 @@ class PDFExtractor(ExtractorBase):
 
     def _init_rapidocr(self):
         """Initialize RapidOCR engine once for reuse."""
-        try:
-            from rapidocr_onnxruntime import RapidOCRSentenceExtractor
-            return RapidOCRSentenceExtractor()
-        except ImportError:
+        engine = rapidocr_adapter.load_engine()
+        if engine is None:
             logger.warning("_init_rapidocr: rapidocr_onnxruntime not installed, OCR fallback unavailable")
-            return None
+        return engine
 
     def _ocr_tesseract(self, img: Any, lang: str) -> str | None:
         try:
@@ -161,10 +160,8 @@ class PDFExtractor(ExtractorBase):
 
     def _ocr_rapidocr(self, img: Any, engine: Any) -> str | None:
         if engine is None:
-            try:
-                from rapidocr_onnxruntime import RapidOCRSentenceExtractor
-                engine = RapidOCRSentenceExtractor()
-            except ImportError:
+            engine = rapidocr_adapter.load_engine()
+            if engine is None:
                 logger.warning("_ocr_rapidocr: rapidocr_onnxruntime not installed, OCR fallback unavailable")
                 return None
 
@@ -175,18 +172,11 @@ class PDFExtractor(ExtractorBase):
                 tmp_path = tmp.name
 
             try:
-                result = engine(tmp_path)
-                if result:
-                    text_parts = []
-                    for item in result:
-                        if len(item) >= 2:
-                            text_parts.append(item[1])
-                    if not text_parts:
-                        logger.debug("_ocr_rapidocr: RapidOCR returned no text parts")
-                        return None
-                    return "\n".join(text_parts)
-                logger.debug("_ocr_rapidocr: RapidOCR returned no result")
-                return None
+                rows = rapidocr_adapter.recognize(engine, tmp_path)
+                if not rows:
+                    logger.debug("_ocr_rapidocr: RapidOCR returned no text")
+                    return None
+                return "\n".join(text for text, _ in rows)
             finally:
                 Path(tmp_path).unlink(missing_ok=True)
         except Exception as e:
@@ -255,7 +245,7 @@ class PDFExtractor(ExtractorBase):
                             words_in_block,
                         )
 
-                page_text_chars += len(text)
+                page_text_chars += len("".join(text.split()))
                 page_blocks.append(TextBlockData(
                     text=text,
                     bbox=(x0, y0, x1, y1),
@@ -271,7 +261,12 @@ class PDFExtractor(ExtractorBase):
             # extraction path, no new deps).
             if page_text_chars < self.OCR_FALLBACK_TEXT_THRESHOLD:
                 ocr_blocks = self._ocr_page(page, page_num)
-                if ocr_blocks:
+                # OCR must clearly win (2x the layer's real text); a sparse
+                # but exact text layer must survive OCR noise.
+                ocr_chars = sum(
+                    len("".join(block.text.split())) for block in ocr_blocks
+                )
+                if ocr_blocks and ocr_chars > 2 * page_text_chars:
                     result.extend(ocr_blocks)
                     continue
                 # OCR unavailable or found no text — fall through to

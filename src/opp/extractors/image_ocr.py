@@ -2,6 +2,7 @@ from pathlib import Path
 
 from PIL import Image
 
+from opp.extractors import rapidocr_adapter
 from opp.extractors.base import ExtractorBase
 from opp.logger import logger
 from opp.utils.dataclasses import (
@@ -127,9 +128,8 @@ class ImageOCRExtractor(ExtractorBase):
         return result
 
     def _extract_rapidocr(self, image_path: Path) -> dict:
-        try:
-            from rapidocr_onnxruntime import RapidOCRSentenceExtractor
-        except ImportError:
+        engine = rapidocr_adapter.load_engine()
+        if engine is None:
             return {
                 "text": "",
                 "confidence": 0.0,
@@ -139,8 +139,7 @@ class ImageOCRExtractor(ExtractorBase):
             }
 
         try:
-            engine = RapidOCRSentenceExtractor()
-            ocr_result = engine(str(image_path))
+            rows = rapidocr_adapter.recognize(engine, str(image_path))
         except Exception as e:
             logger.warning(f"RapidOCR failed: {e}")
             error_str = str(e).lower()
@@ -154,24 +153,17 @@ class ImageOCRExtractor(ExtractorBase):
                 }
             raise CorruptedFileError(f"RapidOCR extraction failed: {e}")
 
-        if ocr_result is None or len(ocr_result) == 0:
+        if not rows:
             return {
                 "text": "",
                 "confidence": 0.0,
                 "language": "eng",
             }
 
-        text_parts = []
-        total_confidence = 0.0
-        for item in ocr_result:
-            if len(item) >= 2:
-                text_parts.append(item[1])
-                total_confidence += item[2] if len(item) > 2 else 0.0
-
-        avg_confidence = total_confidence / len(ocr_result) if ocr_result else 0.0
+        avg_confidence = sum(score for _, score in rows) / len(rows)
 
         return {
-            "text": "\n".join(text_parts),
+            "text": "\n".join(text for text, _ in rows),
             "confidence": avg_confidence,
             "language": "eng",
         }
