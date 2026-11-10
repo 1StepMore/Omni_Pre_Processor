@@ -5,6 +5,7 @@ import fitz
 import pytest
 
 from opp.extractors.pdf import PDFExtractor
+from opp.utils.dataclasses import TextBlockData
 from opp.utils.exceptions import CorruptedFileError, PasswordProtectedError
 
 
@@ -354,3 +355,37 @@ class TestPDFOCRFallback:
             "OCR should still be attempted on image-only PDFs; "
             f"got {mock_ocr.call_count} calls"
         )
+
+    def test_ocr_does_not_replace_existing_text_layer(self, tmp_path):
+        """Sparse text layer keeps its exact characters over OCR noise."""
+        doc = fitz.open()
+        page = doc.new_page()
+        page.insert_text((50, 50), "Hello PDF")
+        p = tmp_path / "sparse.pdf"
+        doc.save(str(p))
+        doc.close()
+
+        ext = PDFExtractor()
+        ocr_block = TextBlockData(
+            text="Hello PDF OCR", bbox=(0, 0, 10, 10), page=1,
+        )
+        with patch.object(ext, "_ocr_page", return_value=[ocr_block]):
+            res = ext.extract(p)
+
+        texts = [para.text for para in res.paragraphs]
+        assert "Hello PDF" in texts, texts
+        assert "Hello PDF OCR" not in texts, texts
+
+    def test_ocr_replaces_page_without_text_layer(self, tmp_path):
+        """A page whose OCR text beats its empty layer still uses OCR."""
+        pdf = _make_image_only_pdf(["Scanned content"], tmp_path)
+
+        ext = PDFExtractor()
+        ocr_block = TextBlockData(
+            text="Scanned content", bbox=(0, 0, 10, 10), page=1,
+        )
+        with patch.object(ext, "_ocr_page", return_value=[ocr_block]):
+            res = ext.extract(pdf)
+
+        texts = [para.text for para in res.paragraphs]
+        assert any("Scanned content" in t for t in texts), texts
