@@ -413,3 +413,46 @@ def test_image_extraction_order_is_deterministic(tmp_path: Path) -> None:
         '图像未按名称排序（应 alpha, mid, zeta）；实际顺序：'
         f'{[n for n, d in payloads.items() if d in order]}'
     )
+
+
+def test_extract_is_byte_deterministic_across_run_dirs(tmp_path: Path) -> None:
+    """T3 回归：同一 EPUB 复制进两个不同目录各抽取一次，核心产物 sha256 一致。
+
+    ACCEPTED_GAPS.md 的 EPUB 行剩余疑问是 ``_parse_html_elements`` 的 HTML
+    元素迭代序——本测试把「两次运行（不同目录、同一字节内容）→ paragraphs/images
+    序列 → sha256 相同」钉成单元级断言（md / xlf / images.json 的内容源）。
+
+    manifest.json 的 ``generated_at`` / ``request_id`` 与 skeleton.zip 的容器
+    mtime 属每轮 provenance（设计使然，与 OL frontmatter 同类），2026-11-13
+    CLI 级两遍对比（5 样本 × 2 遍）已单独钉死，不在本断言范围内。
+    """
+    import hashlib
+
+    from ebooklib import epub as epub_lib
+
+    chapters = [
+        ("Chapter 1", '<html><body><h1>Chapter 1</h1><p>Alpha <b>bold</b> text.</p>'
+                      '<ul><li>one</li><li>two</li></ul>'
+                      '<p><a href="#fn1" role="doc-noteref">[1]</a> trailing note.'
+                      '<aside id="fn1" role="doc-endnote">note body</aside></p></body></html>'),
+        ("Chapter 2", '<html><body><h1>Chapter 2</h1>'
+                      '<p><img src="images/pic.png" alt="pic"/> Beta text.</p>'
+                      '<table><tr><td>cell</td></tr></table></body></html>'),
+    ]
+    digests = []
+    for run_dir in (tmp_path / "run1", tmp_path / "run2"):
+        run_dir.mkdir()
+        sample = create_epub_with_ebooklib(
+            run_dir, "sample.epub", chapters,
+            images={"pic.png": create_minimal_png(20, 20)},
+        )
+        result = EPUBExtractor().extract(sample)
+        canonical = repr([(p.style, p.text) for p in result.paragraphs]).encode("utf-8")
+        for img in result.images:
+            canonical += b"|" + str(img.spine_index).encode() + b"\x00" + bytes(img.data)
+        digests.append(hashlib.sha256(canonical).hexdigest())
+
+    assert digests[0] == digests[1], (
+        '两次不同目录运行的抽取产物 sha256 不一致：'
+        f'{digests[0]} vs {digests[1]}（_parse_html_elements 迭代序漂移）'
+    )
