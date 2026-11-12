@@ -24,7 +24,11 @@ pip install -e ".[all]"
 ## Running Tests
 
 ```bash
-# Run all tests
+# uv path (recommended): plain sync installs the dev group (pytest included)
+uv sync
+uv run pytest
+
+# Run all tests (pip/extras path)
 pytest
 
 # Run with coverage

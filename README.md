@@ -224,6 +224,17 @@ src/opp/
 
 ## Development
 
+uv path (recommended — test deps ride the default `dev` group, so a plain
+`uv sync` gives you a runnable pytest):
+
+```bash
+uv sync
+uv run pytest tests/test_chunker.py tests/test_terms.py -q   # smoke
+uv run pytest tests/ -q                                      # full suite
+```
+
+pip/extras path (what CI does, see `.github/workflows/ci.yml`):
+
 ```bash
 pip install -e ".[dev]"
 pytest tests/ -v --cov=src/opp --cov-report=term-missing

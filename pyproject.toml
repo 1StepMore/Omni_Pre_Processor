@@ -78,6 +78,25 @@ all = [
     "markitdown[audio,notebook,office,web,email,ocr,mcp,youtube]",
 ]
 
+# Test dependencies live in BOTH places on purpose:
+# - [project.optional-dependencies].dev/.mcp = the pip/extras path
+#   (`pip install -e ".[dev,mcp]"` — what CI does, see .github/workflows/ci.yml).
+# - [dependency-groups].dev                  = the uv path: a plain `uv sync` installs
+#   the default `dev` group, so a fresh `uv sync` + `uv run pytest` collects the
+#   whole suite (pytest itself, plus the mcp/fastmcp/pyyaml trio that
+#   tests/mcp/* and friends import at collection time — the ci.yml comment
+#   documents the same ".[dev,mcp]" pairing). Zero new packages: every entry
+#   below is already resolved in uv.lock via the extras above. Keep the lists
+#   in lockstep when either side changes.
+[dependency-groups]
+dev = [
+    "pytest>=9.0.0",
+    "pytest-cov>=7.0.0",
+    "mcp>=1.0.0,<2",
+    "fastmcp>=1.0.0",
+    "pyyaml>=5.0.0",
+]
+
 [project.scripts]
 opp = "opp.cli:main"
 opp-mcp-server = "opp.mcp.server:main"
