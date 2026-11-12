@@ -20,6 +20,7 @@ from opp.detector import FormatType
 from opp.error_handler import ErrorHandler
 from opp.logger import get_logger
 from opp.pipeline import OPPPipeline, ProcessingResult
+from opp.terms import write_terms_json
 from opp.cliutils import (
     _compute_file_md5,
     _count_xliff_units,
@@ -236,6 +237,24 @@ def process_single_file(
             get_logger().info(f"Generated: {images_json_path}")
         if images_json_path is not None:
             outputs["images_json"] = str(images_json_path.resolve())
+
+        # Emit terms.json when candidates are present (OPP#116 M3). OPP only
+        # outputs structural candidates; semantic filtering stays with OL.
+        # OPP_TERMS_JSON=0 disables the artifact (escape hatch, default on).
+        terms_json_path: Path | None = None
+        if (
+            os.environ.get("OPP_TERMS_JSON", "1") != "0"
+            and proc_result.extraction_result is not None
+        ):
+            terms_json_path = output_dir / f"{base_name}_terms.json"
+            terms = write_terms_json(
+                proc_result.extraction_result.paragraphs, terms_json_path
+            )
+            if terms is None:
+                terms_json_path = None
+            else:
+                outputs["terms_json"] = str(terms_json_path.resolve())
+                get_logger().info(f"Generated: {terms_json_path}")
 
         md_path = output_dir / f"{base_name}.md"
         xliff_path = output_dir / f"{base_name}.xlf"
