@@ -117,7 +117,7 @@ covers server/tool inventory and namespacing.
 
 | 项 | 内容 |
 |:--|:--|
-| 解释器 | uv 工程：`uv run` 优先；Windows 原生由套件仓 `scripts/setup_dev.ps1` 建 `.venv_win` |
+| 解释器 | uv 工程：`uv run` 优先；Windows 原生由**套件仓**的引导脚本建 `.venv_win`（脚本在本仓之外，不在本仓路径下） |
 | 安装 | `uv sync --all-extras`（成员依赖以套件根 `uv.lock` 为准） |
 | 必需密钥 | **无**（纯机械转换，不要给本仓加任何 key 相关代码或配置） |
 | DoD 顺序 | `make test` → `make lint`（ruff）；三模块联合验证在套件仓跑 |
