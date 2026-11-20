@@ -229,7 +229,7 @@ class TestOPPtoOLContract_MD:
         opp_pipeline.generate_markdown(result.extraction_result, md_path)
         md_content = md_path.read_text(encoding="utf-8")
 
-        with patch("ol_mcp.translate_md.ModelPool") as mock_pool_cls:
+        with patch("ol_mcp.translate_md.translation_pool") as mock_pool_cls:
             mock_instance = _AsyncMockPool()
             mock_pool_cls.get_instance.return_value = mock_instance
             mock_pool_cls.return_value = mock_instance
@@ -279,7 +279,7 @@ class TestOLtoORFContract_MD:
         # Step 2: Real OL MCP → real translated MD
         ol_md_path = tmp_path / "ol_output.md"
         md_content = md_path.read_text(encoding="utf-8")
-        with patch("ol_mcp.translate_md.ModelPool") as mock_pool_cls:
+        with patch("ol_mcp.translate_md.translation_pool") as mock_pool_cls:
             mock_instance = _AsyncMockPool()
             mock_pool_cls.get_instance.return_value = mock_instance
             mock_pool_cls.return_value = mock_instance
@@ -347,7 +347,7 @@ class TestFullPipelineContracts_MD:
         assert valid, f"OPP contract violated: {msg}"
 
         # Step 3: Real OL MCP with comprehensive mock (verifies text changed)
-        with patch("ol_mcp.translate_md.ModelPool") as mock_pool_cls:
+        with patch("ol_mcp.translate_md.translation_pool") as mock_pool_cls:
             mock_instance = _AsyncMockPool()
             mock_pool_cls.get_instance.return_value = mock_instance
             mock_pool_cls.return_value = mock_instance

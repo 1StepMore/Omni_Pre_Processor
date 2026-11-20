@@ -252,7 +252,7 @@ class TestOPPtoOLContract:
         xliff_path = tmp_path / "opp_output.xlf"
         opp_pipeline.generate_xliff(result.extraction_result, xliff_path, "en", "zh")
 
-        with patch("ol_mcp.translate_xliff.ModelPool") as mock_pool_cls:
+        with patch("ol_mcp.translate_xliff.translation_pool") as mock_pool_cls:
             mock_instance = _AsyncMockPool()
             mock_pool_cls.get_instance.return_value = mock_instance
             mock_pool_cls.return_value = mock_instance
@@ -309,7 +309,7 @@ class TestOLtoORFContract:
 
         # Step 2: Real OL MCP → real translated XLIFF
         ol_xliff_path = tmp_path / "ol_output.xlf"
-        with patch("ol_mcp.translate_xliff.ModelPool") as mock_pool_cls:
+        with patch("ol_mcp.translate_xliff.translation_pool") as mock_pool_cls:
             mock_instance = _AsyncMockPool()
             mock_pool_cls.get_instance.return_value = mock_instance
             mock_pool_cls.return_value = mock_instance
@@ -390,7 +390,7 @@ class TestFullPipelineContracts:
 
         # Step 3: Real OL MCP with comprehensive mock (verifies text changed)
         ol_xliff_path = tmp_path / "step2_ol_output.xlf"
-        with patch("ol_mcp.translate_xliff.ModelPool") as mock_pool_cls:
+        with patch("ol_mcp.translate_xliff.translation_pool") as mock_pool_cls:
             mock_instance = _AsyncMockPool()
             mock_pool_cls.get_instance.return_value = mock_instance
             mock_pool_cls.return_value = mock_instance
