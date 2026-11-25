@@ -123,6 +123,9 @@ class MarkdownGenerator:
                         img_path = images_dir / img_filename
                         img_path.write_bytes(img.data)
                         rel_path = f"./{stem}_images/{img_filename}" if stem else f"./images/{img_filename}"
+                        # Issue #139: record the exact reference used in the md
+                        # so generate_images_json can mirror it in the manifest.
+                        img.written_rel_path = rel_path
                         output_lines.append(f"![Image {img._seq}]({rel_path})")
                     else:
                         import base64
@@ -335,6 +338,9 @@ class MarkdownGenerator:
                 img_path = images_dir / img_filename
                 img_path.write_bytes(img.data)
                 rel_path = f"./{stem}_images/{img_filename}" if stem else f"./images/{img_filename}"
+                # Issue #139: record the exact reference used in the md so
+                # generate_images_json can mirror it in the manifest.
+                img.written_rel_path = rel_path
                 lines.append(f"![Image {i+1+offset}]({rel_path})")
             else:
                 import base64

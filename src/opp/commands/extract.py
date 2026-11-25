@@ -228,8 +228,16 @@ def process_single_file(
                 get_logger().warning(f"No HTML skeleton available for {file_path}")
 
         # Always emit images.json when images are present (POST_MORTEM OPP-1).
+        # Issue #139: also emit it when the separate-images step wrote files
+        # to {base}_images/ — even if the extraction result carries no image
+        # entries, the manifest writer rebuilds the entries from the markdown
+        # references instead of leaving OL/ORF to conclude "no images".
         images_json_path: Path | None = None
-        if proc_result.extraction_result is not None and proc_result.extraction_result.images:
+        images_dir = output_dir / f"{base_name}_images"
+        has_orphan_image_files = images_dir.is_dir() and any(images_dir.iterdir())
+        if proc_result.extraction_result is not None and (
+            proc_result.extraction_result.images or has_orphan_image_files
+        ):
             images_json_path = output_dir / f"{base_name}_images.json"
             pipeline.generate_images_json(
                 proc_result.extraction_result, images_json_path

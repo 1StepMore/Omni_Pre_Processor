@@ -103,6 +103,13 @@ class ImageData:
     # Pipeline uses this to skip redundant write-to-temp-file step.
     temp_path: Path | None = None
 
+    # Issue #139: relative markdown path recorded by MarkdownGenerator when
+    # the image file is written to the ``{stem}_images/`` directory (e.g.
+    # ``./sample_images/sample_image_1.png``). ``generate_images_json`` reads
+    # this so every manifest entry matches the reference the markdown uses.
+    # None when the image was not written to disk (embedded as data URI).
+    written_rel_path: str | None = None
+
 
 @dataclass
 class AttachmentData:
