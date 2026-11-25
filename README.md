@@ -445,7 +445,7 @@ extraction:
 
 | Variable | Scope | Description | Default |
 |----------|-------|-------------|---------|
-| `OPP_MCP_ALLOWED_DIRS` | **MCP** | Colon/semicolon-separated allowlist of directories the MCP server can read (e.g. `/docs:/tmp/out`). **Required** for any `opp mcp` tool call to succeed. | (none) |
+| `OPP_MCP_ALLOWED_DIRS` | **MCP** | Colon/semicolon-separated allowlist of directories the MCP server can read (e.g. `/docs:/tmp/out`). **Required** for any `opp-mcp-server` tool call to succeed. | (none) |
 | `OPP_ALLOWED_DIRECTORIES` | CLI only | Comma-separated allowlist for the CLI's `--resource-dir` guard (`src/opp/cli.py:496`). NOT read by the MCP server. | (none) |
 | `OPP_MCP_MAX_FILE_SIZE` | MCP | Max input file size in bytes | `104857600` (100 MB) |
 | `OPP_MCP_TIMEOUT` | MCP | Per-tool request timeout in seconds | `300` |

@@ -6,13 +6,13 @@ description: >
   trans-unit count, and the zh target language declared in the returned
   XLIFF. The scenario drives the REAL
   in-process tool function after the same `_init_server(load_config())`
-  the `opp mcp` server performs. Hermetic (tier 1): JSON input, no
+  the `opp-mcp-server` server performs. Hermetic (tier 1): JSON input, no
   pandoc/OCR/LLM/network.
 category: opp-extraction
 tier: 1
 instructions: |
   What to do:
-  1. Initialize the OPP MCP server state exactly like `opp mcp` does:
+  1. Initialize the OPP MCP server state exactly like `opp-mcp-server` does:
      `_init_server(load_config())`, with the fixture dir on the MCP
      allowlist (OPP_MCP_ALLOWED_DIRS) so the call passes path security.
   2. Call the real `extract_document` tool function with

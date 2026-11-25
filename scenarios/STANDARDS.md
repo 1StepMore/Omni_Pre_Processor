@@ -41,7 +41,7 @@ exit codes, and a structured success marker an agent can branch on.
 Every OPP tool accepts its schema-shaped parameters, executes against the
 real surface (the `opp` console script, or the in-process
 `opp.mcp.server.<tool>` function after `_init_server(load_config())` —
-the exact initialization `opp mcp` performs), and returns a structured
+the exact initialization `opp-mcp-server` performs), and returns a structured
 result carrying the expected keys. A step enforces this with an `expect`
 block of `exit_code: 0` plus stream/JSON assertions naming the keys the
 live surface returns.

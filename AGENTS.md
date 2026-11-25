@@ -29,7 +29,7 @@ opp document.docx --target-format both --output-dir /tmp/out
 opp document.docx --target-format both --source-lang en --target-lang zh
 
 # MCP server (stdio)
-opp mcp             # or: python -m opp.mcp.server
+opp-mcp-server     # or: python -m opp.mcp.server
 
 # Tests
 make test           # runs uv run pytest tests/ -v
