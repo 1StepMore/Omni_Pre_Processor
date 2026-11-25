@@ -8,5 +8,5 @@
 | `opp <file> --style-map '{"a5":1}'` | Promote paragraph style `a5` to H1 (pandoc) |
 | `opp --detect-format <file>` | Format detection only |
 | `opp -v <file> …` | Verbose (writes to **stderr** since v0.6.2) |
-| `opp mcp` | Start the MCP server (stdio) |
+| `opp-mcp-server` | Start the MCP server (stdio) (alias: `python -m opp.mcp.server`) |
 | `opp --batch <file1> <file2> …` | Batch extract |
