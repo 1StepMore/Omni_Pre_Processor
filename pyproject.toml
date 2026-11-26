@@ -27,6 +27,7 @@ classifiers = [
 ]
 dependencies = [
     "python-docx>=1.0.0",
+    "pydantic>=2.0.0",
     "python-pptx>=1.0.0",
     "pymupdf>=1.27.0",
     "translate-toolkit>=3.0.0",
