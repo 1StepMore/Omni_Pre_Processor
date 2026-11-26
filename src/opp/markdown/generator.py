@@ -17,6 +17,9 @@ class MarkdownGenerator:
         output_lines = []
         list_buffer: list[str] = []
         list_type = None
+        # Per-nesting-level counter so ordered lists are numbered 1., 2., ...
+        # (issue #145). Reset whenever the list block ends.
+        ordered_counters: dict[int, int] = {}
 
         para_images: dict = defaultdict(list)
         for img in result.images:
@@ -42,6 +45,7 @@ class MarkdownGenerator:
                 output_lines.extend(list_buffer)
                 list_buffer.clear()
                 list_type = None
+                ordered_counters.clear()
 
         written_images: set = set()
 
@@ -63,9 +67,13 @@ class MarkdownGenerator:
                 if level is None and style_mapping and para.style in style_mapping:
                     level = style_mapping[para.style]
 
-                is_heading = level is not None and level >= 1
                 is_number = "Number" in style
                 is_bullet = "List" in style
+                is_heading = (
+                    level is not None
+                    and level >= 1
+                    and not (is_number or is_bullet)
+                )
 
                 if is_heading:
                     flush_list()
@@ -77,16 +85,31 @@ class MarkdownGenerator:
                     heading = "#" * min(level or 1, 6) + " " + para.text
                     output_lines.append(heading)
                 elif is_number or is_bullet:
+                    kind = "ordered" if is_number else "bullet"
+                    # ``level`` is the list nesting depth here (1 = top level),
+                    # set by the extractor; it is never a heading level for a
+                    # list paragraph.
+                    list_level = level if level is not None and level >= 1 else 1
+                    if list_type is None:
+                        list_type = kind
+                    elif list_type != kind and list_level <= 1:
+                        # A different list kind at top level starts a new block;
+                        # a nested kind change stays inside the current one.
+                        flush_list()
+                        list_type = kind
                     if is_number:
-                        marker = "1. "
+                        ordered_item_num = ordered_counters.get(list_level, 0) + 1
+                        ordered_counters[list_level] = ordered_item_num
+                        # Returning to a shallower level starts those sublists over.
+                        for deeper in [
+                            key for key in ordered_counters if key > list_level
+                        ]:
+                            del ordered_counters[deeper]
+                        marker = f"{ordered_item_num}. "
                     else:
                         marker = "- "
-                    if list_type is None:
-                        list_type = "ordered" if is_number else "bullet"
-                    if list_type != ("ordered" if is_number else "bullet"):
-                        flush_list()
-                        list_type = "ordered" if is_number else "bullet"
-                    list_buffer.append(marker + para.text)
+                    indent = "  " * (max(1, min(list_level, 6)) - 1)
+                    list_buffer.append(indent + marker + para.text)
                 else:
                     flush_list()
                     if para.text:
