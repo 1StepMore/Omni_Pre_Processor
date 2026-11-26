@@ -470,8 +470,11 @@ class HTMLExtractor(ExtractorBase):
         in_table = False
         in_fence = False
 
-        for line in lines:
-            line = line.strip()
+        for raw_line in lines:
+            # Keep the raw indentation to recover nesting depth of list items;
+            # markdownify emits nested lists as "  - x" (ul) / "   1. x" (ol).
+            indent_width = len(raw_line) - len(raw_line.lstrip(" \t"))
+            line = raw_line.strip()
             if not line:
                 if not in_fence:
                     in_table = False
@@ -501,6 +504,16 @@ class HTMLExtractor(ExtractorBase):
                 style = "List"
             elif _RE_ORDERED_LIST.match(line):
                 style = "Number"
+
+            # markdownify already wrote the list marker; strip it so
+            # ParagraphData.text is the bare item text. MarkdownGenerator
+            # re-adds the marker exactly once (issue #145).
+            if style is not None:
+                marker_re = (
+                    _RE_BULLET_LIST if style == "List" else _RE_ORDERED_LIST
+                )
+                line = marker_re.sub("", line, count=1)
+                level = indent_width // 2 + 1
 
             soup = BeautifulSoup(f"<div>{line}</div>", "html.parser")
             element = soup.find("div")
