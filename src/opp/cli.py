@@ -292,6 +292,35 @@ def _error_payload(code: str, message: str) -> dict:
     }
 
 
+def _print_warnings_to_stderr(stats: dict) -> None:
+    """Surface per-file extraction warnings on stderr (issue #146).
+
+    Degraded conversions (e.g. a missing optional dependency downgrading
+    HTML to raw passthrough) are recorded in ``ExtractionResult.warnings``
+    and the manifest JSON, but until now the CLI exited silently, so the
+    user only discovered the bad output by opening the file. Warnings must
+    never go to stdout (scripts parse stdout for output paths) and they do
+    not change the exit code (degradation is not an error). With no
+    warnings the CLI stays as quiet as before.
+    """
+    warnings: list[str] = []
+    manifests: list[str] = []
+    for r in stats.get("results", []):
+        warnings.extend(r.get("warnings", []))
+        manifest = (r.get("outputs") or {}).get("manifest")
+        if manifest and manifest not in manifests:
+            manifests.append(manifest)
+    if not warnings:
+        return
+    for warning in warnings:
+        print(f"WARNING: {warning}", file=sys.stderr)
+    if manifests:
+        print(
+            "Full degradation record: " + "; ".join(manifests),
+            file=sys.stderr,
+        )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = create_parser()
     args = parser.parse_args(argv)
@@ -443,6 +472,10 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     stats = batch_process(args, pipeline, stats, error_handler, logger, all_files)
+
+    # Issue #146: degraded extractions previously exited 0 with empty
+    # stdout/stderr; the warnings were only buried in the manifest JSON.
+    _print_warnings_to_stderr(stats)
 
     logger.info(f"Completed: {stats['files_processed']} succeeded, {stats['errors']} failed")
 

@@ -187,5 +187,95 @@ class TestMissingMarkdownifyIsReported:
         assert healthy["content"]["degradations"] == []
 
 
+# ── OPP#148: a readability summary that dropped lists must not be silent ──
+
+
+class TestReadabilityListLossGuardrail:
+    """readability's summary is a scoring filter, not a faithful copy.
+
+    Measured on a plain ``<article>`` page (3 ``<p>`` + a 2-item ``<ul>`` +
+    ``<h2>`` + ``<p>``): ``Document(...).summary()`` keeps the paragraphs and
+    heading but cuts the entire ``<ul>``, so markdownify never sees the list
+    and the default-install MD output loses both items at exit code 0. The
+    guardrail counts ``<li>`` in source vs summary and falls back to the
+    sanitized full body when the summary lost any.
+    """
+
+    _PARAS = (
+        "<p>First paragraph with enough words to be scored as article "
+        "content by readability heuristics.</p>"
+    )
+    _LIST = "<ul><li>Alpha item</li><li>Beta item</li></ul>"
+    _TAIL = "<h2>Sub</h2><p>tail text</p>"
+
+    def _html(self, tmp_path: Path) -> Path:
+        f = tmp_path / "page.html"
+        f.write_text(
+            f"<html><body><article>{self._PARAS}{self._LIST}"
+            f"{self._TAIL}</article></body></html>",
+            encoding="utf-8",
+        )
+        return f
+
+    @pytest.mark.skipif(
+        not READABILITY_AVAILABLE,
+        reason="readability-lxml not installed; its summary path is unreachable",
+    )
+    def test_summary_losing_lists_falls_back_and_warns(self, tmp_path: Path):
+        """Summary without the <ul> ⇒ full-body fallback + diagnostic warning."""
+        summary_without_lists = (
+            f'<body id="readabilityBody"><article>{self._PARAS}'
+            f"{self._TAIL}</article></body>"
+        )
+
+        with patch(
+            "opp.extractors.html.markdown_converter.readability.Document"
+        ) as mock_doc:
+            mock_doc.return_value.summary.return_value = summary_without_lists
+            result = HTMLExtractor().extract(self._html(tmp_path))
+
+        assert "Alpha item" in result.content, (
+            "list item lost with no fallback — the #148 silent-loss path"
+        )
+        assert "Beta item" in result.content
+        assert any("readability摘要丢失列表" in w for w in result.warnings), (
+            f"list loss must be named in warnings, got {result.warnings}"
+        )
+
+    @pytest.mark.skipif(
+        not READABILITY_AVAILABLE,
+        reason="readability-lxml not installed; its summary path is unreachable",
+    )
+    def test_summary_keeping_lists_is_left_untouched(self, tmp_path: Path):
+        """A summary that kept every <li> must not trigger the fallback."""
+        full_summary = (
+            f'<body id="readabilityBody"><article>{self._PARAS}{self._LIST}'
+            f"{self._TAIL}</article></body>"
+        )
+
+        with patch(
+            "opp.extractors.html.markdown_converter.readability.Document"
+        ) as mock_doc:
+            mock_doc.return_value.summary.return_value = full_summary
+            result = HTMLExtractor().extract(self._html(tmp_path))
+
+        assert "Alpha item" in result.content
+        assert not any("readability摘要丢失列表" in w for w in result.warnings)
+
+    def test_list_free_document_never_warns(self, tmp_path: Path):
+        """No <li> in the source ⇒ guardrail is a strict no-op (cheap probe)."""
+        f = tmp_path / "plain.html"
+        f.write_text(
+            "<!DOCTYPE html><html><body><h1>Test</h1>"
+            "<p>Hello, world.</p></body></html>",
+            encoding="utf-8",
+        )
+
+        result = HTMLExtractor().extract(f)
+
+        assert not any("readability摘要丢失列表" in w for w in result.warnings)
+        assert "Hello, world." in result.content
+
+
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(pytest.main([__file__, "-v"]))

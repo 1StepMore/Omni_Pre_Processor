@@ -137,6 +137,41 @@ _TABLE_CELL_BLOCK_TAGS = frozenset(
 
 _RE_WHITESPACE_RUN = re.compile(r"\s+")
 
+# OPP#148 — completeness guardrail. readability is a *scoring* extractor: its
+# summary keeps only the blocks its heuristics score as article content, and
+# ``<ul>/<ol>`` lists routinely score out. Verified on a plain article page
+# (``<article>`` with 3 ``<p>`` + one 2-item ``<ul>`` + ``<h2>`` + ``<p>``):
+# ``Document(...).summary()`` returns the paragraphs and heading but drops the
+# entire ``<ul>`` — markdownify never sees the list, so the default-install MD
+# output loses "Alpha item"/"Beta item" silently while exiting 0. When the
+# summary has fewer ``<li>`` than the source, fall back to a sanitized full
+# body (boilerplate/active tags stripped) so markdownify sees the real
+# document, and say so in ``warnings`` (#146 already prints those to stderr).
+_SANITIZED_BODY_STRIP_TAGS = (
+    "script",
+    "style",
+    "nav",
+    "footer",
+    "aside",
+    "iframe",
+    "noscript",
+)
+
+
+def _sanitized_full_body(html_content: str) -> str:
+    """Boilerplate/active tags stripped, then the ``<body>`` (or whole doc).
+
+    This is the OPP#148 fallback body: complete enough that no source list can
+    disappear, clean enough that markdownify does not turn scripts into code
+    fences or navigation into body paragraphs.
+    """
+    soup = BeautifulSoup(html_content, "html.parser")
+    for tag_name in _SANITIZED_BODY_STRIP_TAGS:
+        for node in soup.find_all(tag_name):
+            node.decompose()
+    body = soup.find("body")
+    return str(body) if body is not None else str(soup)
+
 
 def _is_table_cell_block(node: Any) -> bool:
     """True for a direct-child ``Tag`` whose tag name is in the block set."""
@@ -292,7 +327,9 @@ class HTMLExtractor(ExtractorBase):
                     warnings.append(
                         f"docling失败 ({type(e).__name__})，降级到readability"
                     )
-                    extracted_text = self._extract_with_readability(content)
+                    extracted_text = self._extract_with_readability(
+                        content, warnings
+                    )
                 else:
                     if not extracted_text or not extracted_text.strip():
                         logger.warning(
@@ -301,7 +338,9 @@ class HTMLExtractor(ExtractorBase):
                         warnings.append(
                             "docling返回空结果，降级到readability"
                         )
-                        extracted_text = self._extract_with_readability(content)
+                        extracted_text = self._extract_with_readability(
+                            content, warnings
+                        )
                     else:
                         warnings.append("使用docling(AI)提取HTML")
             else:
@@ -315,9 +354,13 @@ class HTMLExtractor(ExtractorBase):
                 )
                 logger.warning(f"docling不可用，降级到{fallback}")
                 warnings.append(f"docling不可用，降级到{fallback}")
-                extracted_text = self._extract_with_readability(content)
+                extracted_text = self._extract_with_readability(
+                    content, warnings
+                )
         else:
-            extracted_text = self._extract_with_readability(content)
+            extracted_text = self._extract_with_readability(
+                content, warnings
+            )
             quality_ok, quality_reason = self._check_quality(
                 extracted_text, content
             )
@@ -358,7 +401,7 @@ class HTMLExtractor(ExtractorBase):
             # document DOM), which points nowhere near the absent package.
             warnings.append(
                 "markdownify不可用，HTML→Markdown降级为原文透传，"
-                "段落边界可能丢失（pip install 'omni-pre-processor[web]' 可修复）"
+                "段落边界可能丢失（pip install markdownify 可修复）"
             )
 
         md_content = self._html_to_markdown(extracted_text, input_path.parent)
@@ -401,14 +444,63 @@ class HTMLExtractor(ExtractorBase):
     def _detect_js_heavy(self, html_content: str) -> bool:
         return detect_js_heavy(html_content)
 
-    def _extract_with_readability(self, html_content: str) -> str:
+    def _extract_with_readability(
+        self,
+        html_content: str,
+        warnings: list[str] | None = None,
+    ) -> str:
         # Every readability call site in extract() funnels through here, so this
         # is the one place that has to honour use_readability. docling is left
         # alone: it is an AI layout model, not a boilerplate stripper, so it has
         # no reason to reject positioned markup the way readability does.
         if not self._use_readability:
             return strip_scripts_and_styles(html_content)
-        return extract_with_readability(html_content)
+        extracted = extract_with_readability(html_content)
+        if warnings is None:
+            # Callers that cannot record warnings (e.g. PDF2HTMLExtractor's
+            # passthrough contract) get the historical behaviour unchanged;
+            # the guardrail only arms when the caller can be told about it.
+            return extracted
+        return self._guard_readability_list_loss(
+            html_content, extracted, warnings
+        )
+
+    def _guard_readability_list_loss(
+        self,
+        original_html: str,
+        extracted_text: str,
+        warnings: list[str],
+    ) -> str:
+        """OPP#148: refuse a readability summary that dropped source lists.
+
+        readability's summary is a scoring filter, not a faithful copy: blocks
+        it scores low — most often ``<ul>/<ol>`` — are cut from the output
+        entirely, and markdownify cannot recover what it is never shown. When
+        the summary carries fewer ``<li>`` than the source, swap in the
+        sanitized full body and record a diagnostic warning. The cheap
+        ``"<li"`` substring probe keeps list-free documents (the majority) at
+        zero extra parse cost, and a summary that keeps every ``<li>`` leaves
+        this method a strict no-op, so behaviour only moves on actual loss.
+        """
+        if "<li" not in original_html.lower():
+            return extracted_text
+        try:
+            n_src = len(
+                BeautifulSoup(original_html, "html.parser").find_all("li")
+            )
+            n_sum = len(
+                BeautifulSoup(extracted_text, "html.parser").find_all("li")
+            )
+        except Exception as e:
+            logger.debug(f"List-loss guardrail check failed: {e}")
+            return extracted_text
+        if n_sum >= n_src:
+            return extracted_text
+        warnings.append(
+            f"readability摘要丢失列表（原文 {n_src} 项 / 摘要 {n_sum} 项），"
+            "已回退为全文提取以保全内容"
+        )
+        return _sanitized_full_body(original_html)
 
     def _extract_with_docling(self, html_content: str) -> str:
         return extract_with_docling(html_content)

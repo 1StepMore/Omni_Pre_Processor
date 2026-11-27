@@ -8,7 +8,7 @@
 | Document | Lines |
 |---|---:|
 | AGENTS.md | 127 |
-| README.md | 492 |
+| README.md | 494 |
 | docs/API.md | 541 |
 | docs/ARCHITECTURE.md | 266 |
 | docs/TROUBLESHOOTING.md | 282 |
