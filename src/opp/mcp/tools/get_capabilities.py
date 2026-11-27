@@ -68,7 +68,7 @@ async def get_capabilities(
     if not MARKDOWNIFY_AVAILABLE:
         degradations.append(
             "markdownify不可用：HTML→Markdown降级为原文透传，"
-            "段落边界与骨架可能丢失（pip install 'omni-pre-processor[web]' 可修复）"
+            "段落边界与骨架可能丢失（pip install markdownify 可修复）"
         )
 
     return {

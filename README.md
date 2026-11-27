@@ -50,7 +50,8 @@ Document content extraction for DOCX, PPTX, PDF, XLSX, CSV, JSON, XML, HTML, EPU
 ## Installation
 
 ```bash
-# Core package
+# Core package (HTML/EPUB → Markdown conversion included:
+# markdownify + readability-lxml are core dependencies since #146)
 pip install -e .
 
 # With office/data formats (XLSX, CSV, JSON, XML)
@@ -66,6 +67,7 @@ pip install -e ".[email]"
 
 | 依赖组 | 命令 | 用途 | 体积 |
 |--------|------|------|------|
+| `[web]` | `pip install -e ".[web]"` | HTML 提取的 docling（AI）质量升级；`markdownify` / `readability-lxml` 已入核心依赖，无需 extra（#146） | ~2GB |
 | `[ocr]` | `pip install -e ".[ocr]"` | 图片 OCR（RapidOCR） | ~100MB |
 | `[youtube]` | `pip install -e ".[youtube]"` | YouTube `.url` 自动检测 | ~50MB |
 | `[audio]` | `pip install -e ".[audio]"` | 音频转录（Whisper） | ~2GB |

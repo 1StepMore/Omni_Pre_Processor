@@ -36,6 +36,8 @@ dependencies = [
     "structlog>=24.0.0",
     "prometheus_client>=0.20.0",
     "beautifulsoup4>=4.12.0",
+    "markdownify>=0.14.0",
+    "readability-lxml>=0.8.0",
     "ebooklib>=0.5.0",
     "openpyxl>=3.1.5,<3.2",
     "pandas>=2.0.0",
@@ -52,9 +54,12 @@ dev = [
 office = [
     "numpy>=2.0.0",
 ]
+# HTML/EPUB → Markdown needs markdownify + readability-lxml, which are CORE
+# dependencies since #146: HTML and EPUB are README-declared input formats,
+# so a bare `pip install -e .` must convert them correctly. The `web` extra
+# now only carries docling (the optional AI-based quality upgrade, kept out
+# of core because it is a heavy ML dependency).
 web = [
-    "markdownify>=0.14.0",
-    "readability-lxml>=0.8.0",
     "docling>=1.0.0",
 ]
 email = [
