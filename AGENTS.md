@@ -115,17 +115,17 @@ covers server/tool inventory and namespacing.
 ## Role routing (契约跟仓走 + 机检防漂移, suite#446 option B, 2026-11-28)
 
 角色契约（coder/maintainer/tester/user，57 行）= 本仓 `.agents/roles/`，与套件根母版字节一致——`scripts/doc_inventory.py` 的 `ROLES_SHA256` 钉住校验；改版 = 改套件根母版 + 三仓同传 + 同步 bump pin。
-进入本仓的 agent：读本仓 `.agents/roles/` 对应契约 + 套件根 `AGENTS.md` 的 §0 安全与优先级 + 角色路由表；期望映射层 = 套件根 `.agents/expectations/`，期望唯一事实源 = `scenarios/STANDARDS.md`（均 Owner 门禁）；standalone clone 按本仓 `docs/` 工作、边界按根 AGENTS.md §0 类推。
+进入本仓的 agent：读本仓 `.agents/roles/` 对应契约 + 套件根 `AGENTS.md` 的 §0 安全与优先级 + 角色路由表；期望映射层 = 本仓 `.agents/expectations/`（薄映射层：只做指针，锚点必须在本仓 `scenarios/STANDARDS.md` 里解析得到），期望唯一事实源 = 本仓 `scenarios/STANDARDS.md`（均 Owner 门禁；套件级期望见 e2e-test-suite）；standalone clone 按本仓 `docs/` 工作、边界按根 AGENTS.md §0 类推。
 
 ## 运行环境与门禁速查（harness 用 · 2026-11-14 核对）
 
 | 项 | 内容 |
 |:--|:--|
-| 解释器 | uv 工程：`uv run` 优先；Windows 原生由**套件仓**的引导脚本建 `.venv_win`（脚本在本仓之外，不在本仓路径下） |
+| 解释器 | uv 工程：`uv run` 优先；Windows 原生用**本仓** `scripts/setup_dev.ps1` 建 `.venv_win`，Linux/macOS 用本仓 `scripts/setup_dev.sh` |
 | 安装 | 两种模式：**联合模式** `uv sync --all-extras`（成员依赖以套件根 `uv.lock` 为准）；**独立模式** 只 clone 本仓时用本仓 `uv.lock` 同样 `uv sync --all-extras`（OPP#150） |
 | 必需密钥 | **无**（纯机械转换，不要给本仓加任何 key 相关代码或配置） |
 | DoD 顺序 | `make test` → `make lint`（ruff）；三模块联合验证在套件仓跑 |
-| 已知坑 | ① 改了成员依赖却不重建套件根 `uv.lock` ⇒ push CI 的 `validate` 会红（本地重建 lock 再提交）；② Windows 原生缺 `omni-security` / `markdownify` 等包 —— **已修**（套件 #320，2026-11-14 closed）：`setup_dev.ps1` 现可解析 uv workspace 成员并一次装齐；若仍缺包先升级套件引导脚本，不要在本仓加依赖；③ 断言类测试严格，`AttributeError` 优先怀疑 API 变更而非测试写错 |
+| 已知坑 | ① 改了成员依赖却不重建套件根 `uv.lock` ⇒ push CI 的 `validate` 会红（本地重建 lock 再提交）；② Windows 原生缺 `omni-security` / `markdownify` 等包 —— 先按**本仓** `scripts/setup_dev.ps1` 装齐再判红（Linux 用 `scripts/setup_dev.sh`），脚本会解析 uv workspace 成员一次装齐；"在本仓加依赖"与"跟套件 lock"是两个决定，前者需 Owner 明确指令；③ 断言类测试严格，`AttributeError` 优先怀疑 API 变更而非测试写错 |
 | 队列 | `gh issue list -l agent-ready --state open` |
 
 > 本块是**本仓运行事实的唯一真身**（Owner 侧的通用执行提示词不写具体仓信息）。通用规则（边界 / 权限 / 合并判定）见 Owner 侧提示词，不入库。
