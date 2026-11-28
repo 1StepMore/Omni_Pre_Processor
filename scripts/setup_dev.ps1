@@ -16,10 +16,11 @@ function Write-Ok2  { param([string]$m) Write-Host "[OK]   $m" }
 function Write-Err2 { param([string]$m) Write-Host "[ERR]  $m" }
 
 if (Get-Command uv -ErrorAction SilentlyContinue) {
-    if ($CheckOnly) { Write-Ok2 "CHECK-ONLY: uv found ($(uv --version | Select-Object -First 1)); sync skipped."; exit 0 }
+    if ($CheckOnly) { Write-Ok2 "CHECK-ONLY: uv found ($(uv --version | Select-Object -First 1)); sync skipped."; Write-Ok2 "$(&(uv python find) -V)"; exit 0 }
     Write-Info "uv found — uv sync --all-extras (independent mode: this repo's uv.lock)"
     uv sync --all-extras
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    Write-Ok2 "$(&(uv python find) -V)"
     Write-Info "Self-check:"
     uv run python -c "import opp; from importlib.metadata import version; print('OK: opp', version('omni-pre-processor'), 'importable')"
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -44,6 +45,7 @@ if ($CheckOnly) { Write-Ok2 "CHECK-ONLY: Python $VersionRaw found (no uv); venv 
 
 if (-not (Test-Path '.venv')) { & $PythonExe -m venv .venv }
 $Vpy = if (Test-Path '.venv\Scripts\python.exe') { '.venv\Scripts\python.exe' } else { '.venv\bin\python' }
+Write-Ok2 "$(& $Vpy -V)"
 & $Vpy -m pip install --upgrade pip | Out-Null
 & $Vpy -m pip install -e .
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

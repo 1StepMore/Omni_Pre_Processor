@@ -17,10 +17,12 @@ CHECK_ONLY=0
 if command -v uv >/dev/null 2>&1; then
   if [ "$CHECK_ONLY" = "1" ]; then
     echo "[CHECK-ONLY] uv $(uv --version | head -1) found; sync skipped."
+    echo "[OK] $("$(uv python find)" -V)"
     exit 0
   fi
   echo "[INFO] uv found — uv sync --all-extras (independent mode: this repo's uv.lock)"
   uv sync --all-extras
+  echo "[OK] $("$(uv python find)" -V)"
   echo "[INFO] Self-check:"
   uv run python -c "import opp; from importlib.metadata import version; print('OK: opp', version('omni-pre-processor'), 'importable')"
   echo "[OK] OPP ready. CLI smoke: OMNI_TEST_FAKE_LLM=1 uv run opp <file> --target-format both --output-dir <dir>"
@@ -45,6 +47,7 @@ fi
 
 [ -d .venv ] || "$PY" -m venv .venv
 if [ -f .venv/bin/python ]; then VPY=.venv/bin/python; else VPY=.venv/Scripts/python.exe; fi
+echo "[OK] $("$VPY" -V)"
 "$VPY" -m pip install --upgrade pip >/dev/null
 "$VPY" -m pip install -e .
 echo "[INFO] Self-check:"
