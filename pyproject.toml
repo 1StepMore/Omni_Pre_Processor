@@ -50,6 +50,7 @@ dependencies = [
 dev = [
     "pytest>=9.0.0",
     "pytest-cov>=7.0.0",
+    "pytest-asyncio>=0.24",
 ]
 office = [
     "numpy>=2.0.0",
@@ -88,16 +89,20 @@ all = [
 # - [project.optional-dependencies].dev/.mcp = the pip/extras path
 #   (`pip install -e ".[dev,mcp]"` — what CI does, see .github/workflows/ci.yml).
 # - [dependency-groups].dev                  = the uv path: a plain `uv sync` installs
-#   the default `dev` group, so a fresh `uv sync` + `uv run pytest` collects the
-#   whole suite (pytest itself, plus the mcp/fastmcp/pyyaml trio that
-#   tests/mcp/* and friends import at collection time — the ci.yml comment
-#   documents the same ".[dev,mcp]" pairing). Zero new packages: every entry
-#   below is already resolved in uv.lock via the extras above. Keep the lists
-#   in lockstep when either side changes.
+#   the default `dev` group (pytest, pytest-asyncio, pytest-cov, plus the
+#   mcp/fastmcp/pyyaml trio that tests/mcp/* and friends import at collection
+#   time — the ci.yml comment documents the same ".[dev,mcp]" pairing). A bare
+#   `uv sync` does NOT guarantee the whole suite collects: format-specific
+#   extras (office/web/email/ocr/audio/notebook/youtube) still require
+#   `uv sync --all-extras` or the matching extra installed. Zero new packages
+#   beyond pytest-asyncio (#153): every other entry below is already resolved
+#   in uv.lock via the extras above. Keep the lists in lockstep when either
+#   side changes.
 [dependency-groups]
 dev = [
     "pytest>=9.0.0",
     "pytest-cov>=7.0.0",
+    "pytest-asyncio>=0.24",
     "mcp>=1.0.0,<2",
     "fastmcp>=1.0.0",
     "pyyaml>=5.0.0",
@@ -128,6 +133,9 @@ include = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# async tests are marked explicitly with @pytest.mark.asyncio; strict mode
+# surfaces any unmarked async test as an error instead of silently skipping.
+asyncio_mode = "strict"
 
 [tool.coverage.run]
 source = ["src/opp"]
