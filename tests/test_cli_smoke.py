@@ -3,11 +3,16 @@
 This file spawns the OPP CLI as a real subprocess (not in-process CliRunner),
 so it exercises the same code path users hit from the shell. All LLM/AI seams
 are bypassed via OMNI_TEST_FAKE_LLM=1 (or are non-applicable to OPP, which
-performs deterministic parsing only).
+performs deterministic parsing only). Fixtures are generated synthetically at
+runtime; the real DOCX/PPTX documents come from the suite layout.
 
-Run with:
-    cd /mnt/d/贯维/Omni_Suite/Omni_Pre_Processor
-    OMNI_TEST_FAKE_LLM=1 pytest tests/test_cli_smoke.py -v --tb=short
+Run from the repository root:
+    OMNI_TEST_FAKE_LLM=1 python -m pytest tests/test_cli_smoke.py -v --tb=short
+
+The path-sensitive parts (repo root, interpreter) are derived at runtime, so
+this file runs unchanged from any clone location. Tests that need the real
+E2E DOCX/PPTX fixtures skip with an explicit reason: those files live in the
+four-repo suite root, not in this repository.
 
 Goals:
     1. `--help` works.
@@ -33,33 +38,57 @@ from pathlib import Path
 import pytest
 
 
-VENV_PY = (
-    "/mnt/d/贯维/Omni_Suite/.venv_ol/bin/python"
-    if Path("/mnt/d/贯维/Omni_Suite/.venv_ol/bin/python").exists()
-    else sys.executable
-)
-OPP_DIR = Path("/mnt/d/贯维/Omni_Suite")
-REPO_ROOT = Path("/mnt/d/贯维/Omni_Suite")
+# The interpreter running pytest; never a hardcoded venv path.
+PYTHON = sys.executable
 
-HAIER_DOCX = REPO_ROOT / "爱上海尔_第二章_全球创牌 - E2E测试专用.docx"
-MERIDIAN_PPTX = REPO_ROOT / "Meridian_Q1_Update_E2E.pptx"
-MERIDIAN_DOCX = REPO_ROOT / "Meridian_Robotics_Product_Overview_E2E.docx"
+# Repo root, derived from this file (tests/test_cli_smoke.py -> <repo root>),
+# so the suite works from any clone location.
+REPO_ROOT = Path(__file__).resolve().parents[1]
+# Four-repo suite layout (<suite>/opp + <suite>/ol + <suite>/orf + venvs).
+SUITE_ROOT = REPO_ROOT.parent
 
-# Subprocess env: fake-LLM seam + unbuffered IO + a writable cwd.
+# Real E2E fixtures are not part of this repository: they are handed out at
+# the suite repo root. Absent here => the tests that need them skip explicitly
+# (see the `real_fixtures` fixture) instead of silently passing.
+_REAL_FIXTURE_NAMES = {
+    "haier": "爱上海尔_第二章_全球创牌 - E2E测试专用.docx",
+    "meridian_docx": "Meridian_Robotics_Product_Overview_E2E.docx",
+    "meridian_pptx": "Meridian_Q1_Update_E2E.pptx",
+}
+
+
+def _locate_real_fixture(name: str) -> Path | None:
+    """Return the fixture path if present in this repo or at the suite root."""
+    for base in (REPO_ROOT, SUITE_ROOT):
+        candidate = base / name
+        if candidate.exists():
+            return candidate
+    return None
+
+
+HAIER_DOCX = _locate_real_fixture(_REAL_FIXTURE_NAMES["haier"])
+MERIDIAN_PPTX = _locate_real_fixture(_REAL_FIXTURE_NAMES["meridian_pptx"])
+MERIDIAN_DOCX = _locate_real_fixture(_REAL_FIXTURE_NAMES["meridian_docx"])
+
+# Subprocess env: fake-LLM seam + unbuffered IO + a writable cwd. `src` is on
+# PYTHONPATH so `python -m opp.cli` resolves the package from this checkout.
 _BASE_ENV = {
     **os.environ,
     "OMNI_TEST_FAKE_LLM": "1",
     "PYTHONUNBUFFERED": "1",
     "PYTHONIOENCODING": "utf-8",
+    "PYTHONPATH": os.pathsep.join(
+        [str(REPO_ROOT / "src"), os.environ.get("PYTHONPATH", "")]
+    ).rstrip(os.pathsep),
 }
 
 
 def run_opp(*args: str, timeout: int = 180) -> subprocess.CompletedProcess:
-    """Invoke `python -m opp.cli ...` in OPP_DIR with the venv interpreter."""
-    cmd = [VENV_PY, "-m", "opp.cli", *args]
+    """Invoke `python -m opp.cli ...` in REPO_ROOT with the current interpreter."""
+    cmd = [PYTHON, "-m", "opp.cli", *args]
     return subprocess.run(
         cmd,
-        cwd=str(OPP_DIR),
+        cwd=str(REPO_ROOT),
         capture_output=True,
         text=True,
         timeout=timeout,
@@ -186,13 +215,30 @@ def synthetic_formats(tmp_path_factory) -> dict[str, Path]:
     return {"html": html, "csv": csv, "epub": epub, "xlsx": xlsx, "json": json_path}
 
 
-# --- Sanity: required real fixtures exist ---------------------------------
+# --- Real fixtures: only available in the suite layout ---------------------
 
-@pytest.fixture(scope="module", autouse=True)
-def _check_real_fixtures():
-    missing = [p for p in (HAIER_DOCX, MERIDIAN_PPTX, MERIDIAN_DOCX) if not p.exists()]
+@pytest.fixture(scope="module")
+def real_fixtures() -> dict[str, Path]:
+    """Real E2E DOCX/PPTX fixtures, or an explicit skip when unavailable.
+
+    These documents are handed out at the four-repo suite root
+    (``<suite>/``, next to ``<suite>/opp``); they are not part of this
+    repository. A standalone clone therefore cannot run the tests that need
+    them, and skipping is the honest outcome -- the synthetic-format tests
+    (HTML/CSV/JSON/EPUB/XLSX) still run and still cover the CLI paths.
+    """
+    resolved = {
+        "haier": HAIER_DOCX,
+        "meridian_docx": MERIDIAN_DOCX,
+        "meridian_pptx": MERIDIAN_PPTX,
+    }
+    missing = [_REAL_FIXTURE_NAMES[key] for key, path in resolved.items() if path is None]
     if missing:
-        pytest.skip(f"Real fixtures missing: {missing}")
+        pytest.skip(
+            "requires suite layout: real E2E fixtures live in the suite repo "
+            f"root, not in this repo (missing: {missing})"
+        )
+    return {key: path for key, path in resolved.items() if path is not None}
 
 
 # --- Tests ------------------------------------------------------------------
@@ -226,30 +272,30 @@ class TestExtractMarkdown:
         assert any(f.stat().st_size > min_chars for f in md_files), \
             f"all .md files under {min_chars} bytes"
 
-    def test_docx_haier(self, tmp_path):
+    def test_docx_haier(self, tmp_path, real_fixtures):
         out = tmp_path / "docx_haier"
         proc = run_opp(
-            str(HAIER_DOCX),
+            str(real_fixtures["haier"]),
             "--target-format", "md",
             "--source-lang", "zh", "--target-lang", "en",
             "--output-dir", str(out),
         )
         self._assert_md_output(proc, out, "爱上海尔_第二章_全球创牌 - E2E测试专用")
 
-    def test_docx_meridian(self, tmp_path):
+    def test_docx_meridian(self, tmp_path, real_fixtures):
         out = tmp_path / "docx_meridian"
         proc = run_opp(
-            str(MERIDIAN_DOCX),
+            str(real_fixtures["meridian_docx"]),
             "--target-format", "md",
             "--source-lang", "en", "--target-lang", "zh",
             "--output-dir", str(out),
         )
         self._assert_md_output(proc, out, "Meridian_Robotics_Product_Overview_E2E")
 
-    def test_pptx(self, tmp_path):
+    def test_pptx(self, tmp_path, real_fixtures):
         out = tmp_path / "pptx"
         proc = run_opp(
-            str(MERIDIAN_PPTX),
+            str(real_fixtures["meridian_pptx"]),
             "--target-format", "md",
             "--source-lang", "en", "--target-lang", "zh",
             "--output-dir", str(out),
@@ -310,10 +356,10 @@ class TestExtractMarkdown:
 class TestExtractXLIFF:
     """`opp <file> --target-format xlf --source-lang en --target-lang zh`."""
 
-    def test_docx_xliff_has_trans_units(self, tmp_path):
+    def test_docx_xliff_has_trans_units(self, tmp_path, real_fixtures):
         out = tmp_path / "xliff"
         proc = run_opp(
-            str(HAIER_DOCX),
+            str(real_fixtures["haier"]),
             "--target-format", "xlf",
             "--source-lang", "zh", "--target-lang", "en",
             "--output-dir", str(out),
@@ -330,10 +376,10 @@ class TestExtractXLIFF:
 class TestExtractBoth:
     """`--target-format both` should emit .md and .xlf side by side."""
 
-    def test_both_produces_md_and_xlf(self, tmp_path):
+    def test_both_produces_md_and_xlf(self, tmp_path, real_fixtures):
         out = tmp_path / "both"
         proc = run_opp(
-            str(MERIDIAN_DOCX),
+            str(real_fixtures["meridian_docx"]),
             "--target-format", "both",
             "--source-lang", "en", "--target-lang", "zh",
             "--output-dir", str(out),
@@ -347,10 +393,10 @@ class TestOutputArtifacts:
     """Every extraction should also write a manifest.json (and skeleton.zip
     for DOCX/PPTX)."""
 
-    def test_manifest_and_skeleton_for_docx(self, tmp_path):
+    def test_manifest_and_skeleton_for_docx(self, tmp_path, real_fixtures):
         out = tmp_path / "artifacts"
         proc = run_opp(
-            str(MERIDIAN_DOCX),
+            str(real_fixtures["meridian_docx"]),
             "--target-format", "md",
             "--source-lang", "en", "--target-lang", "zh",
             "--output-dir", str(out),
@@ -377,10 +423,10 @@ class TestOutputArtifacts:
 class TestFlags:
     """Misc documented flags."""
 
-    def test_detect_format_flag(self, tmp_path):
+    def test_detect_format_flag(self, tmp_path, real_fixtures):
         out = tmp_path / "detect"
         proc = run_opp(
-            str(MERIDIAN_DOCX),
+            str(real_fixtures["meridian_docx"]),
             "--detect-format", "-v",
             "--target-format", "md",
             "--source-lang", "en", "--target-lang", "zh",
@@ -392,10 +438,10 @@ class TestFlags:
             f"expected 'Detected' + format token in stderr; got: {proc.stderr[-800:]}"
         )
 
-    def test_report_text(self, tmp_path):
+    def test_report_text(self, tmp_path, real_fixtures):
         out = tmp_path / "report"
         proc = run_opp(
-            str(MERIDIAN_DOCX),
+            str(real_fixtures["meridian_docx"]),
             "--report", "text",
             "--target-format", "md",
             "--source-lang", "en", "--target-lang", "zh",
@@ -403,10 +449,10 @@ class TestFlags:
         )
         assert proc.returncode == 0, f"stderr: {proc.stderr[:1500]}"
 
-    def test_batch_multiple_files(self, tmp_path):
+    def test_batch_multiple_files(self, tmp_path, real_fixtures):
         out = tmp_path / "batch"
         proc = run_opp(
-            str(MERIDIAN_DOCX), str(MERIDIAN_PPTX),
+            str(real_fixtures["meridian_docx"]), str(real_fixtures["meridian_pptx"]),
             "--target-format", "md",
             "--source-lang", "en", "--target-lang", "zh",
             "--output-dir", str(out),
@@ -415,14 +461,14 @@ class TestFlags:
         stems = {f.stem for f in out.glob("*.md")}
         assert len(stems) >= 2, f"expected 2 stems, got {stems}"
 
-    def test_xlf_requires_target_lang(self, tmp_path):
+    def test_xlf_requires_target_lang(self, tmp_path, real_fixtures):
         """OPP CLI now REQUIRES --target-lang when --target-format is xlf.
 
         Previously the default was 'en' (truthy) and the check never fired.
         See TestTargetLangFlag.test_target_lang_is_required_for_xlf.
         """
         proc = run_opp(
-            str(MERIDIAN_DOCX),
+            str(real_fixtures["meridian_docx"]),
             "--target-format", "xlf",
             "--source-lang", "zh",
             "--output-dir", str(tmp_path),
@@ -437,8 +483,9 @@ def test_smoke_total_runtime_under_15_minutes(synthetic_formats, tmp_path):
     """A backstop: all six per-format extractions complete inside 15 min total.
 
     On a warm venv this is normally <60s. We re-run only the synthetic
-    formats (HTML/CSV/EPUB/XLSX) + the two real DOCX/PPTX to keep the
-    backstop test fast.
+    formats (HTML/CSV/EPUB/XLSX/JSON) plus whichever real DOCX/PPTX fixtures
+    this checkout has -- a standalone clone has none, and the tests that
+    require them skip with an explicit reason (see `real_fixtures`).
     """
     deadline = time.time() + 15 * 60
     targets = [
@@ -451,6 +498,7 @@ def test_smoke_total_runtime_under_15_minutes(synthetic_formats, tmp_path):
         (synthetic_formats["xlsx"], "xlsx"),
         (synthetic_formats["json"], "json"),
     ]
+    targets = [(path, tag) for path, tag in targets if path is not None]
     for path, tag in targets:
         assert time.time() < deadline, f"deadline exceeded before {tag}"
         out = tmp_path / tag
