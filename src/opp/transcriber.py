@@ -1,12 +1,28 @@
 """Audio transcription module using faster-whisper."""
 
 from dataclasses import dataclass, field
+from typing import Any
 
-try:
-    from faster_whisper import WhisperModel
-    _FASTER_WHISPER_AVAILABLE = True
-except ImportError:
-    _FASTER_WHISPER_AVAILABLE = False
+#: ``None`` = not probed yet.  Importing ``faster_whisper`` pulls ctranslate2
+#: (and, transitively, torch) and costs ~80s, so it must never happen at module
+#: import time — see #154: ``import opp`` took 91s purely because
+#: ``opp.extractors.__init__`` → ``audio`` → ``transcriber`` did this eagerly.
+_FASTER_WHISPER_AVAILABLE: bool | None = None
+_WhisperModel: Any = None
+
+
+def _whisper_model_class() -> Any:
+    """Import ``faster_whisper.WhisperModel`` on first use; ``None`` if absent."""
+    global _FASTER_WHISPER_AVAILABLE, _WhisperModel
+    if _FASTER_WHISPER_AVAILABLE is None:
+        try:
+            from faster_whisper import WhisperModel
+        except ImportError:
+            _FASTER_WHISPER_AVAILABLE = False
+        else:
+            _WhisperModel = WhisperModel
+            _FASTER_WHISPER_AVAILABLE = True
+    return _WhisperModel
 
 
 @dataclass
@@ -56,18 +72,19 @@ class AudioTranscriber:
         Raises:
             ImportError: If faster-whisper is not installed.
         """
-        if not _FASTER_WHISPER_AVAILABLE:
+        model_cls = _whisper_model_class()
+        if model_cls is None:
             raise ImportError(
                 "faster-whisper is not installed. "
                 "Please install it with: pip install faster-whisper"
             )
 
         self.model_name = model
-        self._model: "WhisperModel" | None = None
+        self._model: Any = None
         self._device: str | None = None
         self._compute_type: str | None = None
 
-    def _get_model(self) -> "WhisperModel":
+    def _get_model(self) -> Any:
         """Load and cache the faster-whisper model.
 
         Uses GPU with float16 if available, otherwise falls back to CPU with int8.
@@ -85,7 +102,7 @@ class AudioTranscriber:
             self._device = "cpu"
             self._compute_type = "int8"
 
-        self._model = WhisperModel(
+        self._model = _whisper_model_class()(
             self.model_name,
             device=self._device,
             compute_type=self._compute_type,
